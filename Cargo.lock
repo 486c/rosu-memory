@@ -39,6 +39,7 @@ dependencies = [
 name = "memory_tests"
 version = "0.1.0"
 dependencies = [
+ "cfg-if",
  "nix",
 ]
 

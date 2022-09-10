@@ -4,6 +4,41 @@ pub enum MemoryErrors {
     StrToHexFailed,
 }
 
+/*
+use crate::linux::{ReadProcessTraits, Process};
+
+impl ReadProcessTraits for Process {
+    fn read_i32() {
+        todo!();
+    }
+}
+*/
+
+use cfg_if;
+cfg_if::cfg_if! {
+
+    if #[cfg(unix)] {
+        use crate::linux::Process;
+    } else if #[cfg(windows)] {
+    } 
+}
+
+#[derive(Debug)]
+pub (crate) struct MemAddress<'a> {
+    pub (crate) process: &'a Process,
+    pub (crate) offset: i32,
+}
+
+trait MemAddressTraits {
+    fn read_f32(&self) -> f32;
+}
+
+#[derive(Debug)]
+pub (crate) struct MemoryRegion {
+    pub (crate) from: i64,
+    pub (crate) to: i64,
+}
+
 use std::str::FromStr;
 use std::ops::Index;
 
@@ -74,16 +109,12 @@ impl Index<usize> for Signature {
     }
 }
 
-//read_value
-//write_value
-//
-
 pub fn find_signature(
     buff: &Vec<u8>,
     sig: &Signature
-) -> Result<usize, MemoryErrors> {
+) -> Result<i32, MemoryErrors> {
     let mut found = true;
-    let mut offset = 0;
+    let mut offset: i32 = 0;
 
     for i in 0..buff.len() {
         found = true;
@@ -97,7 +128,7 @@ pub fn find_signature(
         }
 
         if found {
-            offset = i;
+            offset = i as i32;
             break;
         }
     }

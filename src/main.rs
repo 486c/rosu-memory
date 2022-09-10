@@ -1,69 +1,18 @@
-use std::fs;
-use i64;
-use nix::sys::uio;
-use std::io::IoSliceMut;
-use nix::unistd::Pid;
-use std::thread::sleep;
+pub mod memory;
 
-use std::time::Duration;
+use cfg_if;
+cfg_if::cfg_if! {
 
-mod memory;
-use crate::memory::find_signature;
-
-use std::str::FromStr;
-use crate::memory::Signature;
-
-struct MemoryRegion {
-    from: i64,
-    to: i64,
+    if #[cfg(unix)] {
+        pub mod linux;
+        use crate::linux::*;
+    } else if #[cfg(windows)] {
+        pub mod windows;
+    } 
 }
 
-fn read_maps(pid: i32) -> Vec<MemoryRegion> {
-    let path = format!("/proc/{}/maps", &pid);
 
-    let mut v = Vec::new();
-    let mut buff = String::new();
-
-    buff = fs::read_to_string(&path).unwrap();
-
-    for line in buff.split('\n')
-    {
-        if line.len() == 0 {
-            break;
-        }
-
-        let mut split = line.split_whitespace();
-        let range_raw = split.next().unwrap();
-        let mut range_split = range_raw.split('-');
-
-        let from = i64::from_str_radix(range_split.next().unwrap(), 16)
-            .unwrap();
-        let to = i64::from_str_radix(range_split.next().unwrap(), 16)
-            .unwrap();
-
-        v.push(MemoryRegion{from, to});
-    }
-
-    v
-}
-
-fn read_at<'a>(addr: &'a i64, size: usize) -> Vec<u8> {
-    let mut buf = vec![0u8; size];
-
-    let remote_iov = uio::RemoteIoVec{
-        base: (*addr) as usize,
-        len: size,
-    };
-
-    let ret = uio::process_vm_readv(
-        Pid::from_raw(127227), 
-        &mut[IoSliceMut::new(&mut buf)],
-        &[remote_iov]
-    );
-
-    buf
-}
-
+/*
 fn read_i32(addr: i64) -> i32 {
     let vec_buf: Vec<u8> = read_at(&addr, 4);
 
@@ -87,6 +36,7 @@ fn read_f32(addr: i64) -> f32 {
 
     f32::from_le_bytes(buff)
 }
+*/
 
 #[derive(Debug, Default)]
 struct StaticAddrs {
@@ -94,29 +44,29 @@ struct StaticAddrs {
 }
 
 fn main() {
+    let mut p = Process::find_proc("osu!.exe").unwrap();
+    println!("Found the process!!");
+
+    p.read_maps();
+
+    /*
+     *
+     * find_signature -------> MemAdress 
+     *                             |     +-> read_u32() -> u32
+     *                             |     +-> read_i32() -> i32
+     *            +--------+       |     +-> read_i64() -> i64
+     *            | offset | <-----+-----+-> read_f32() -> f32
+     *            +--------+             +-> read_f32arr() -> Vec<f32>
+     *                                   +-> ...
+     *
+     */
+
+    //let p = Process::find_proc("asd");
+
+    /*
     let mut addrs = StaticAddrs::default();
     let maps = read_maps(127227);
 
-    for range in maps {
-        let mut buf = vec![0u8; (range.to - range.from) as usize];
-
-        let remote_iov = uio::RemoteIoVec{
-            base: (range.from) as usize,
-            len: (range.to - range.from) as usize,
-        };
-
-        let ret = uio::process_vm_readv(
-            Pid::from_raw(127227), 
-            &mut[IoSliceMut::new(&mut buf)],
-            &[remote_iov]
-        );
-    
-        match ret {
-            Ok(size) => size,
-            Err(_error) => {
-                continue;
-            },
-        };
 
         /* Reading here */
         
@@ -139,7 +89,7 @@ fn main() {
         }
     }
 
-    while true {
+    loop {
         //Check values
         
         let beatmap_addr = read_i32((addrs.Base - 0xC) as i64);
@@ -153,5 +103,6 @@ fn main() {
 
         sleep(Duration::from_secs(5));
     }
+    */
 
 }
