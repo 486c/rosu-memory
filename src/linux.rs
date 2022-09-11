@@ -88,7 +88,8 @@ impl ProcessTraits for Process {
         let path = format!("/proc/{}/maps", &self.pid);
     
         let mut v = Vec::new();
-    
+        
+        //TODO remove expect
         let buff = fs::read_to_string(&path)
             .expect("Can't read maps!");
     
@@ -146,11 +147,12 @@ impl ProcessTraits for Process {
 
         for map in &self.maps {
             let ret = self.read_at(&(map.from as i32), (map.to-map.from) as usize);
+
             match ret {
                 Ok(buf) => buff = buf,
                 Err(_) => continue,
             };
-            
+
             let ret = find_signature(&buff, &sig);
             match ret {
                 Ok(off) => {

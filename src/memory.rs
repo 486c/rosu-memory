@@ -1,26 +1,18 @@
-#[derive(Debug, Clone)]
-pub enum MemoryErrors {
-    PatternNotFound,
-    StrToHexFailed,
-}
-
-/*
-use crate::linux::{ReadProcessTraits, Process};
-
-impl ReadProcessTraits for Process {
-    fn read_i32() {
-        todo!();
-    }
-}
-*/
+use std::ops::{Sub, Add};
 
 use cfg_if;
 cfg_if::cfg_if! {
 
     if #[cfg(unix)] {
-        use crate::linux::Process;
+        use crate::linux::{Process, ProcessTraits};
     } else if #[cfg(windows)] {
     } 
+}
+
+#[derive(Debug, Clone)]
+pub enum MemoryErrors {
+    PatternNotFound,
+    StrToHexFailed,
 }
 
 #[derive(Debug)]
@@ -29,8 +21,48 @@ pub (crate) struct MemAddress<'a> {
     pub (crate) offset: i32,
 }
 
-trait MemAddressTraits {
+pub trait MemAddressTraits {
+    fn follow_addr(&self) -> Self;
+    fn read_i32(&self) -> i32;
     fn read_f32(&self) -> f32;
+}
+
+impl MemAddressTraits for MemAddress<'_> {
+    fn follow_addr(&self) -> Self {
+        Self { process: self.process, offset: self.read_i32() }
+    }
+
+    fn read_i32(&self) -> i32 {
+        let vec_buf: Vec<u8> = self.process.read_at(&self.offset, 4).unwrap();
+    
+        i32::from_le_bytes(
+            vec_buf[0..4].try_into().unwrap()
+        )
+    }
+    
+    fn read_f32(&self) -> f32 {
+        let vec_buf: Vec<u8> = self.process.read_at(&self.offset, 4).unwrap();
+    
+        f32::from_le_bytes(
+            vec_buf[0..4].try_into().unwrap()
+        )
+    }
+}
+
+impl<'a> Sub<i32> for &MemAddress<'a> {
+    type Output = MemAddress<'a>;
+
+    fn sub(self, other: i32) -> Self::Output {
+        Self::Output { process: self.process, offset: self.offset - other }
+    }
+}
+
+impl<'a> Add<i32> for &MemAddress<'a> {
+    type Output = MemAddress<'a>;
+
+    fn add(self, other: i32) -> Self::Output {
+        Self::Output { process: self.process, offset: self.offset + other }
+    }
 }
 
 #[derive(Debug)]
@@ -82,7 +114,7 @@ impl Signature {
         Self { bytes }
     }
 
-    fn len(&self) -> usize {
+    pub fn len(&self) -> usize {
         self.bytes.len()
     }
 }
@@ -118,6 +150,12 @@ pub fn find_signature(
 
     for i in 0..buff.len() {
         found = true;
+        
+        // index out of bounds check 
+        if i + sig.len() > buff.len() {
+            found = false;
+            break;
+        }
 
         for j in 0..sig.len() {
             
