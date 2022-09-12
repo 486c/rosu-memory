@@ -54,19 +54,15 @@ impl FindProc for Process {
             }
 
             let buff = fs::read_to_string(&cmd_line).unwrap();
-
             let line = buff.split(' ').next().unwrap();
 
             if line.contains(&s) {
-                let mut components = cmd_line.components();
-                components.next(); // Root
-                components.next(); // Parent
+                let stat = p.join("stat");
+                let buff = fs::read_to_string(&stat).unwrap();
 
-                let pid_str = components.next()
-                    .expect("PID Parsing failed!")
-                    .as_os_str();
-        
-                pid = i32::from_str(pid_str.to_str().unwrap()).unwrap();
+                let pid_str = buff.split(' ').next().unwrap();
+                
+                pid = i32::from_str(pid_str).unwrap();
                 found = true;
                 break;
             }
@@ -170,4 +166,18 @@ impl ProcessTraits for Process {
         }
     }
 
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::linux::Process;
+    use crate::linux::FindProc;
+    use std::process;
+    
+    #[test]
+    fn find_proc() {
+        let p = Process::find_proc("memory_tests").unwrap();
+
+        assert_eq!(p.pid as u32, process::id());
+    }
 }
