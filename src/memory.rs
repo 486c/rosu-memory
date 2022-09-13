@@ -1,4 +1,5 @@
 use std::ops::{Sub, Add};
+use std::str;
 
 use cfg_if;
 cfg_if::cfg_if! {
@@ -24,7 +25,9 @@ pub (crate) struct MemAddress<'a> {
 pub trait MemAddressTraits {
     fn follow_addr(&self) -> Self;
     fn read_i32(&self) -> i32;
+    fn read_u32(&self) -> u32;
     fn read_f32(&self) -> f32;
+    fn read_string(&mut self) -> String;
 }
 
 impl MemAddressTraits for MemAddress<'_> {
@@ -32,6 +35,19 @@ impl MemAddressTraits for MemAddress<'_> {
         Self { process: self.process, offset: self.read_i32() }
     }
 
+    fn read_u32(&self) -> u32 {
+        let vec_buf: Vec<u8> = self.process.read_at(&self.offset, 4).unwrap();
+        
+        println!("Reading u32 at offset: 0x{:x}", &self.offset);
+        for b in &vec_buf {
+            println!("{}", b);
+        }
+    
+        u32::from_le_bytes(
+            vec_buf[0..4].try_into().unwrap()
+        )
+    }
+ 
     fn read_i32(&self) -> i32 {
         let vec_buf: Vec<u8> = self.process.read_at(&self.offset, 4).unwrap();
     
@@ -46,6 +62,24 @@ impl MemAddressTraits for MemAddress<'_> {
         f32::from_le_bytes(
             vec_buf[0..4].try_into().unwrap()
         )
+    }
+
+    fn read_string(&mut self) -> String {
+        self.offset += 4;
+        
+        let len: u32 = self.read_u32();
+        let vec_buf: Vec<u8> = self.process.read_at(
+            &(self.offset+8),
+            (len*2) as usize
+        ).unwrap();
+
+        let mut buff: Vec<u16> = Vec::with_capacity(len as usize);
+
+        for i in 0..len as usize {
+            buff.push(u16::from_le_bytes(vec_buf[i*2..i*2+2].try_into().unwrap()));
+        }
+
+        String::from_utf16(&buff).unwrap()
     }
 }
 
