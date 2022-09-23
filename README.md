@@ -4,11 +4,11 @@ Can be used as alternative to [gosu-memory](https://github.com/l3lackShark/gosum
 
 # Usage
 WebSocket running on `ws://localhost:24050`.
-Even though rosu-memory is reading same data as gosu-memory JSON output is slighly changed so please see [output example](#Output example)
+Even though rosu-memory is reading same data as gosu-memory JSON output is slighly changed so please see [output example](#Output)
 and change your code accordingly.
 
 
-# Output example
+# Output
 ```
 {
     "beatmap": {
