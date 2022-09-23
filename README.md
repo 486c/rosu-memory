@@ -9,7 +9,7 @@ and change your code accordingly.
 
 
 # Output
-```
+```json
 {
     "beatmap": {
 		"AR": 9.0,
