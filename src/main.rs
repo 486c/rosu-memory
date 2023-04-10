@@ -1,28 +1,13 @@
 pub mod memory;
-use crate::memory::*;
 
-use core::time::Duration;
-use std::thread::sleep;
-
-use std::collections::HashMap;
-
-use simple_websockets::{Event, Responder, Message};
-use serde_json::json;
-
-use cfg_if;
-cfg_if::cfg_if! {
-    if #[cfg(unix)] {
-        pub mod linux;
-        use crate::linux::*;
-    } else if #[cfg(windows)] {
-        pub mod windows;
-        use crate::windows::*;
-    } 
-}
+use crate::memory::process::{Process, ProcessTraits};
 
 fn main() {
-    let mut p = Process::find_proc("osu!.exe")
-        .expect("Can't find osu! process!");
+    let p = Process::initialize("osu!.exe").unwrap();
+
+    dbg!(p);
+
+    /*
 
     println!("Found the process!!");
     p.read_maps();
@@ -100,5 +85,6 @@ fn main() {
 
         sleep(Duration::from_secs(5));
     }
+        */
 
 }
