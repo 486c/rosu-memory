@@ -1,11 +1,12 @@
 use std::str::FromStr;
 
+#[derive(Debug, PartialEq)]
 pub enum SignatureByte {
     Byte(u8),
     Any,
 }
 
-impl std::str::FromStr for SignatureByte {
+impl FromStr for SignatureByte {
     type Err = std::num::ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -16,11 +17,20 @@ impl std::str::FromStr for SignatureByte {
        }
 }
 
+impl PartialEq<u8> for SignatureByte {
+    fn eq(&self, other: &u8) -> bool {
+        match self {
+            SignatureByte::Any => true,
+            SignatureByte::Byte(b) => b == other,
+        }
+    }
+}
+
 pub struct Signature {
     pub bytes: Vec<SignatureByte>,
 }
 
-impl std::str::FromStr for Signature {
+impl FromStr for Signature {
     type Err = std::num::ParseIntError;
 
     fn from_str(s: &str) -> Result<Self, Self::Err> {
@@ -35,6 +45,11 @@ impl std::str::FromStr for Signature {
     }
 }
 
+impl From<&str> for Signature {
+    fn from(value: &str) -> Self {
+        Signature::from_str(value).unwrap()
+    }
+}
 
 #[cfg(test)]
 mod tests {
@@ -52,7 +67,6 @@ mod tests {
         assert_eq!(s.bytes.len(), 17);
     }
     
-    /*
     #[test]
     fn test_signature_byte() {
         let s = SignatureByte::from_str("AB").unwrap();
@@ -66,35 +80,5 @@ mod tests {
         assert!(s == 0xF3);
         assert!(s == 0xCB);
     }
-    */
-    
-    /*
-    #[test]
-    fn test_find_sig() {
-        //              0     1     2     3     4     5     6     7
-        let buff = vec![0xFF, 0x30, 0xA3, 0x50, 0x12, 0xAB, 0x2B, 0xCB];
-
-        let sig = Signature::from_str("AB 2B CB").unwrap();
-        let s = find_pattern(&buff, &sig).unwrap();
-        assert_eq!(s, 5);
-
-        let sig2 = Signature::from_str("AB ?? CB").unwrap();
-        let s = find_pattern(&buff, &sig2).unwrap();
-        assert_eq!(s, 5);
-
-        let sig3 = Signature::from_str("30 ?? 50").unwrap();
-        let s = find_pattern(&buff, &sig3).unwrap();
-        assert_eq!(s, 1);
-
-        let sig4 = Signature::from_str("FF ?? ?? 50").unwrap();
-        let s = find_pattern(&buff, &sig4).unwrap();
-        assert_eq!(s, 0);
-
-        let sig5 = Signature::from_str("12 AB ?? CB").unwrap();
-        let s = find_pattern(&buff, &sig5).unwrap();
-        assert_eq!(s, 4);
-
-    }
-    */
 }
 
