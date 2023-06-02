@@ -38,12 +38,12 @@ impl ProcessTraits for Process {
                 continue;
             }
 
-            let buff = fs::read_to_string(&cmd_line)?;
+            let buff = fs::read_to_string(cmd_line)?;
             let line = buff.split(' ').next().unwrap();
 
-            if line.contains(&proc_name) {
+            if line.contains(proc_name) {
                 let stat = p.join("stat");
-                let buff = fs::read_to_string(&stat)?;
+                let buff = fs::read_to_string(stat)?;
 
                 let pid_str = buff.split(' ').next().unwrap();
                 
@@ -70,7 +70,7 @@ impl ProcessTraits for Process {
     
         for line in buff.split('\n')
         {
-            if line.len() == 0 {
+            if line.is_empty() {
                 break;
             }
     
@@ -101,7 +101,7 @@ impl ProcessTraits for Process {
             .unwrap_or(4096)
             .try_into()?;
 
-        for chunk in self.maps.chunks(limit as usize) {
+        for chunk in self.maps.chunks(limit) {
             let remotes: Vec<RemoteIoVec> = chunk.iter()
                 .map(|region| {
                     RemoteIoVec {
@@ -121,7 +121,7 @@ impl ProcessTraits for Process {
 
             process_vm_readv(
                 Pid::from_raw(self.pid),
-                &mut slices.as_mut_slice(),
+                slices.as_mut_slice(),
                 &[remotes[0]]
             )?;
 
@@ -133,6 +133,6 @@ impl ProcessTraits for Process {
             }
         }
 
-        return Ok(None)
+        Ok(None)
     }
 }

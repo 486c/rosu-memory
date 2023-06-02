@@ -36,7 +36,7 @@ impl FromStr for Signature {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         let mut bytes = Vec::new();
 
-        for c in s.split(" ") {
+        for c in s.split(' ') {
             let b = SignatureByte::from_str(c)?;
             bytes.push(b);
         }
