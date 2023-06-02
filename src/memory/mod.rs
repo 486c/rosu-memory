@@ -8,9 +8,9 @@ use cfg_if;
 use self::signature::{Signature, SignatureByte};
 
 cfg_if::cfg_if! {
-    if #[cfg(unix)] {
+    if #[cfg(target_os = "linux")] {
         mod linux;
-    } else if #[cfg(windows)] {
+    } else if #[cfg(target_os = "windows")] {
         mod windows;
         use self::windows::*;
     } 

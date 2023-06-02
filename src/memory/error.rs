@@ -4,10 +4,12 @@ pub enum ProcessError {
     IoError{
         inner: std::io::Error
     },
+    ConvertionError,
+
+    #[cfg(target_os = "linux")]
     OsError{
         inner: nix::errno::Errno
     },
-    ConvertionError
 }
 
 impl From<std::io::Error> for ProcessError {
@@ -29,6 +31,7 @@ impl From<std::num::TryFromIntError> for ProcessError {
 }
 
 // Linux only
+#[cfg(target_os = "linux")]
 impl From<nix::errno::Errno> for ProcessError {
     fn from(inner: nix::errno::Errno) -> Self {
         Self::OsError{
