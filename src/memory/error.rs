@@ -6,9 +6,11 @@ pub enum ProcessError {
     },
     ConvertionError,
 
-    #[cfg(target_os = "linux")]
     OsError{
-        inner: nix::errno::Errno
+        #[cfg(target_os = "linux")]
+        inner: nix::errno::Errno,
+        #[cfg(target_os = "windows")]
+        inner: windows::core::Error,
     },
 }
 
@@ -34,6 +36,16 @@ impl From<std::num::TryFromIntError> for ProcessError {
 #[cfg(target_os = "linux")]
 impl From<nix::errno::Errno> for ProcessError {
     fn from(inner: nix::errno::Errno) -> Self {
+        Self::OsError{
+            inner
+        }// TODO add code value
+    }
+}
+
+// Windows only
+#[cfg(target_os = "windows")]
+impl From<windows::core::Error> for ProcessError {
+    fn from(inner: windows::core::Error) -> Self {
         Self::OsError{
             inner
         }// TODO add code value
