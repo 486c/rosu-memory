@@ -1,25 +1,10 @@
 use super::error::ProcessError;
 use super::signature::Signature;
 
-#[cfg(target_os = "linux")]
-#[derive(Debug)]
-pub struct MemoryRegion {
-    pub from: usize,
-    pub to: usize,
-}
-
-#[cfg(target_os = "windows")]
 #[derive(Debug)]
 pub struct MemoryRegion {
     pub from: usize,
     pub size: usize
-}
-
-#[cfg(target_os = "linux")]
-impl MemoryRegion {
-    pub fn size(&self) -> usize {
-        self.to - self.from
-    }
 }
 
 #[cfg(target_os = "windows")]

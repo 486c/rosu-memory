@@ -86,7 +86,7 @@ impl ProcessTraits for Process {
                 range_split.next().unwrap(), 16
             )?;
     
-            v.push(MemoryRegion{ from, to });
+            v.push(MemoryRegion{ from, size: to - from });
         }
     
         self.maps = v;
@@ -106,7 +106,7 @@ impl ProcessTraits for Process {
                 .map(|region| {
                     RemoteIoVec {
                         base: region.from,
-                        len: region.to - region.from
+                        len: region.size
                     }
                 })
                 .collect();
