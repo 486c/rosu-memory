@@ -1,7 +1,4 @@
-use std::path::Path;
-
 use memory_tests::memory::process::{Process, ProcessTraits};
-
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "linux")] {
@@ -10,12 +7,13 @@ cfg_if::cfg_if! {
             CloseHandle, FALSE, GetLastError}}, 
             core::PSTR
         };
+
         use windows::Win32::System::Threading::{ 
             OpenProcess, 
-            PROCESS_QUERY_INFORMATION
+            PROCESS_QUERY_INFORMATION,
+            QueryFullProcessImageNameA,
+            PROCESS_NAME_FORMAT
         };
-        use windows::Win32::System::Threading::QueryFullProcessImageNameA;
-        use windows::Win32::System::Threading::PROCESS_NAME_FORMAT;
     } 
 }
 
@@ -45,7 +43,7 @@ fn get_process_name(id: u32) -> String {
 
         let name = name.to_string().unwrap();
 
-        let path = Path::new(&name);
+        let path = std::path::Path::new(&name);
 
         path.file_name().unwrap()
             .to_os_string().into_string().unwrap()
@@ -54,7 +52,11 @@ fn get_process_name(id: u32) -> String {
 
 #[cfg(target_os = "linux")]
 fn get_process_name(id: u32) -> String {
-    todo!()
+    let cmdline = std::fs::read_to_string(
+        format!("/proc/{}/cmdline", id)
+    ).unwrap();
+
+    cmdline
 }
 
 #[test]
