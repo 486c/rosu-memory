@@ -26,6 +26,7 @@ impl PartialEq<u8> for SignatureByte {
     }
 }
 
+#[derive(Debug)]
 pub struct Signature {
     pub bytes: Vec<SignatureByte>,
 }

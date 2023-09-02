@@ -1,4 +1,4 @@
-use memory_tests::memory::process::{Process, ProcessTraits};
+use rosu_memory::memory::process::{Process, ProcessTraits};
 
 cfg_if::cfg_if! {
     if #[cfg(target_os = "linux")] {

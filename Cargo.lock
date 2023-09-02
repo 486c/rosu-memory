@@ -27,15 +27,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8371e4e5341c3a96db127eb2465ac681ced4c433e01dd0e938adbef26ba93ba5"
 
 [[package]]
-name = "memory_tests"
-version = "0.1.0"
-dependencies = [
- "cfg-if",
- "nix",
- "windows",
-]
-
-[[package]]
 name = "nix"
 version = "0.25.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -45,6 +36,15 @@ dependencies = [
  "bitflags",
  "cfg-if",
  "libc",
+]
+
+[[package]]
+name = "rosu-memory"
+version = "0.1.0"
+dependencies = [
+ "cfg-if",
+ "nix",
+ "windows",
 ]
 
 [[package]]

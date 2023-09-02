@@ -33,9 +33,9 @@ fn find_signature(buff: &[u8], sign: &Signature) -> Option<usize> {
 
         if found {
             return Some(i);
-        } else {
-            found = true;
         }
+
+        found = true;
 
         i += 1;
     }

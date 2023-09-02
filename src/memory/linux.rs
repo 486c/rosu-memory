@@ -77,13 +77,16 @@ impl ProcessTraits for Process {
             let mut split = line.split_whitespace();
             let range_raw = split.next().unwrap();
             let mut range_split = range_raw.split('-');
-    
+
+            let from_str = range_split.next().unwrap();
+            let to_str = range_split.next().unwrap();
+
             let from = usize::from_str_radix(
-                range_split.next().unwrap(), 16
+                from_str, 16
             )?;
 
             let to = usize::from_str_radix(
-                range_split.next().unwrap(), 16
+                to_str, 16
             )?;
     
             v.push(MemoryRegion{ from, size: to - from });
