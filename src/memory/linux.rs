@@ -2,7 +2,7 @@ use std::fs;
 use std::io::IoSliceMut;
 
 use nix::sys::uio::{RemoteIoVec, process_vm_readv};
-use nix::unistd::{Pid, sysconf};
+use nix::unistd::Pid;
 
 use crate::memory::process::{ Process, MemoryRegion, ProcessTraits };
 use crate::memory::error::ProcessError;
@@ -100,39 +100,29 @@ impl ProcessTraits for Process {
         &self, 
         sign: &Signature
     ) -> Result<Option<usize>, ProcessError> {
-        let limit: usize = sysconf(nix::unistd::SysconfVar::IOV_MAX)?
-            .unwrap_or(4096)
-            .try_into()?;
+        for region in &self.maps {
+            let remote = RemoteIoVec {
+                base: region.from,
+                len: region.size
+            };
 
-        for chunk in self.maps.chunks(limit) {
-            let remotes: Vec<RemoteIoVec> = chunk.iter()
-                .map(|region| {
-                    RemoteIoVec {
-                        base: region.from,
-                        len: region.size
-                    }
-                })
-                .collect();
+            let mut buff = vec![0; region.size];
 
-            let mut buffs: Vec<Vec<u8>> = remotes.iter()
-                .map(|remote| vec![0; remote.len] )
-                .collect();
+            let slice = IoSliceMut::new(buff.as_mut_slice());
 
-            let mut slices: Vec<IoSliceMut> = buffs.iter_mut()
-                .map(|buff| IoSliceMut::new(buff.as_mut_slice()))
-                .collect();
-
-            process_vm_readv(
+            let res = process_vm_readv(
                 Pid::from_raw(self.pid),
-                slices.as_mut_slice(),
-                &[remotes[0]]
-            )?;
+                &mut [slice],
+                &[remote]
+            );
 
-            for (i, buf) in buffs.iter().enumerate() {
-                let res = find_signature(buf.as_slice(), sign);
-                if let Some(offset) = res {
-                    return Ok(Some(remotes[i].base + offset));
-                }
+            if let Err(_) = res {
+                continue;
+            }
+
+            let res = find_signature(buff.as_slice(), sign);
+            if let Some(offset) = res {
+                return Ok(Some(remote.base + offset));
             }
         }
 
