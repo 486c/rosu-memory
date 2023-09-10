@@ -116,7 +116,7 @@ impl ProcessTraits for Process {
                 &[remote]
             );
 
-            if let Err(_) = res {
+            if res.is_err() {
                 continue;
             }
 
