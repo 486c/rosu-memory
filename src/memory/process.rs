@@ -57,6 +57,15 @@ pub trait ProcessTraits where Self: Sized {
         buff: &mut [u8]
     ) -> Result<(), ProcessError>;
 
+    fn read_uleb128(
+    ) -> Result<(), ProcessError> {
+        todo!();
+    }
+
+    fn read_string(
+    ) -> Result<(), ProcessError> {
+        todo!();
+    }
 
     prim_read_impl!(i8);
     prim_read_impl!(i16);
