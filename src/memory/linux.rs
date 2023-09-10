@@ -130,7 +130,7 @@ impl ProcessTraits for Process {
     }
 
     fn read(
-        self, 
+        &self, 
         addr: usize, 
         len: usize, 
         buff: &mut [u8]
