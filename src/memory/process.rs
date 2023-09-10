@@ -26,12 +26,29 @@ pub struct Process {
 }
 
 pub trait ProcessTraits where Self: Sized {
-    // Find process by name & read all memory regions
     fn initialize(proc_name: &str) -> Result<Self, ProcessError>;
     fn find_process(proc_name: &str) -> Result<Self, ProcessError>;
     fn read_regions(self) -> Result<Self, ProcessError>;
-    fn read_signature(&self, sign: &Signature) -> Result<Option<usize>, ProcessError>;
-    //fn read_maps(&mut self);
-    //fn read_at(&self, addr: &i32, size: usize) -> Result<Vec<u8>, ProcessErrors>;
-    //fn find_signature(&self, s: &str) -> Result<MemAddress, MemoryErrors>;
+
+    fn read_signature(
+        &self, 
+        sign: &Signature
+    ) -> Result<Option<usize>, ProcessError>;
+
+    fn read(
+        self, 
+        addr: usize, 
+        len: usize, 
+        buff: &mut [u8]
+    ) -> Result<(), ProcessError>;
+
+    fn read_i32(
+        self,
+        addr: usize,
+    ) -> Result<i32, ProcessError> {
+        let mut bytes = [0u8; 4];
+        self.read(addr, bytes.len(), &mut bytes)?;
+
+        Ok(i32::from_le_bytes(bytes))
+    }
 }

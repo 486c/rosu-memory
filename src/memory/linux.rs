@@ -128,4 +128,26 @@ impl ProcessTraits for Process {
 
         Ok(None)
     }
+
+    fn read(
+        self, 
+        addr: usize, 
+        len: usize, 
+        buff: &mut [u8]
+    ) -> Result<(), ProcessError> {
+        let remote = RemoteIoVec {
+            base: addr,
+            len
+        };
+
+        let slice = IoSliceMut::new(buff);
+
+        process_vm_readv(
+            Pid::from_raw(self.pid),
+            &mut [slice],
+            &[remote]
+        )?;
+
+        Ok(())
+    }
 }
