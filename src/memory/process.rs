@@ -19,7 +19,7 @@ macro_rules! prim_read_impl {
                 addr: usize
             ) -> Result<$t, ProcessError> {
                 let mut bytes = [0u8; std::mem::size_of::<$t>()];
-                self.read(addr, bytes.len(), &mut bytes)?;
+                self.read(addr, std::mem::size_of::<$t>(), &mut bytes)?;
 
                 Ok($t::from_le_bytes(bytes))
             }
@@ -58,13 +58,42 @@ pub trait ProcessTraits where Self: Sized {
     ) -> Result<(), ProcessError>;
 
     fn read_uleb128(
-    ) -> Result<(), ProcessError> {
-        todo!();
+        &self,
+        mut addr: usize
+    ) -> Result<u64, ProcessError> {
+        let mut value: u64 = 0;
+        let mut bytes_read = 0;
+
+        loop {
+            let byte = self.read_u8(addr)?;
+            addr += 1;
+
+            let byte_value = (byte & 0b0111_1111) as u64;
+            value |= byte_value << (7 * bytes_read);
+
+            bytes_read += 1;
+
+            if (byte &!0b0111_1111) == 0 {
+                break;
+            }
+        }
+
+        Ok(value)
     }
 
     fn read_string(
-    ) -> Result<(), ProcessError> {
-        todo!();
+        &self,
+        mut addr: usize
+    ) -> Result<String, ProcessError> {
+        addr += 1;
+
+        let len = self.read_uleb128(addr)?;
+        addr += 1;
+        
+        let mut buff = vec![0u8; len as usize];
+        self.read(addr, len as usize, &mut buff)?;
+
+        Ok(String::from_utf8(buff)?)
     }
 
     prim_read_impl!(i8);

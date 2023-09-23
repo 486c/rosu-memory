@@ -1,7 +1,6 @@
 pub mod process;
 pub mod signature;
-
-mod error;
+pub mod error;
 
 use cfg_if;
 

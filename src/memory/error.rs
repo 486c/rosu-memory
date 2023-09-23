@@ -1,9 +1,12 @@
+use std::string::FromUtf8Error;
+
 #[derive(Debug)]
 pub enum ProcessError {
     ProcessNotFound,
     IoError{
         inner: std::io::Error
     },
+    FromUtf8Error,
     ConvertionError,
 
     OsError{
@@ -29,6 +32,12 @@ impl From<std::num::ParseIntError> for ProcessError {
 impl From<std::num::TryFromIntError> for ProcessError {
     fn from(_: std::num::TryFromIntError) -> Self {
         Self::ConvertionError
+    }
+}
+
+impl From<FromUtf8Error> for ProcessError {
+    fn from(_: FromUtf8Error) -> Self {
+        Self::FromUtf8Error
     }
 }
 
