@@ -1,7 +1,30 @@
+use std::fs::File;
 use std::io::Read;
+use rand::prelude::*;
+use paste::paste;
 
 use rosu_memory::memory::process::ProcessTraits;
 use rosu_memory::memory::error::*;
+
+macro_rules! prim_read_test {
+    ($t: ident) => {
+        paste! {
+            #[test]
+            fn [<test_ $t>]() {
+                let mut rng = rand::thread_rng();
+                let num: $t = rng.gen();
+
+                let buff: Vec<u8> = num.to_le_bytes().to_vec();
+                let p = FakeProccess {
+                    buff
+                };
+
+                let tmp = p.[<read_ $t>](0).unwrap();
+                assert_eq!(tmp, num);
+            }
+        }
+    }
+}
 
 pub struct FakeProccess {
     buff: Vec<u8>,
@@ -46,7 +69,8 @@ impl ProcessTraits for FakeProccess {
 
 #[test]
 fn test_uleb() {
-    let mut file = std::fs::File::open("./tests/files/test_uleb").unwrap();
+    let mut file = File::open("./tests/files/test_uleb")
+        .unwrap();
 
     let mut buff = Vec::new();
 
@@ -62,7 +86,8 @@ fn test_uleb() {
 
 #[test]
 fn test_string() {
-    let mut file = std::fs::File::open("./tests/files/test_uleb").unwrap();
+    let mut file = File::open("./tests/files/test_uleb")
+        .unwrap();
 
     let mut buff = Vec::new();
 
@@ -77,35 +102,25 @@ fn test_string() {
     assert_eq!(s, "test".to_owned())
 }
 
-#[test]
-fn test_u8() {
-    let buff: Vec<u8> = vec![0x01, 0x0A, 0xFF];
-    let p = FakeProccess {
-        buff
-    };
+prim_read_test!(i8);
+prim_read_test!(i16);
+prim_read_test!(i32);
+prim_read_test!(i64);
+prim_read_test!(i128);
 
-    let mut tmp = [0u8; 1];
-    p.read(0, 1, &mut tmp).unwrap();
-    assert!(tmp[0] == 0x01);
+prim_read_test!(u8);
+prim_read_test!(u16);
+prim_read_test!(u32);
+prim_read_test!(u64);
+prim_read_test!(u128);
 
-    let mut tmp = [0u8; 1];
-    p.read(1, 1, &mut tmp).unwrap();
-    assert!(tmp[0] == 0x0A);
+prim_read_test!(f32);
+prim_read_test!(f64);
 
-    let mut tmp = [0u8; 1];
-    p.read(2, 1, &mut tmp).unwrap();
-    assert!(tmp[0] == 0xFF);
-}
+//#[test]
+//`fn test_u32() {
+    /*
 
-#[test]
-fn test_u32() {
-    let buff: Vec<u8> = 32u32.to_le_bytes().to_vec();
-    let mut p = FakeProccess {
-        buff
-    };
-
-    let tmp = p.read_u32(0).unwrap();
-    assert_eq!(tmp, 32 as u32);
 
     p.buff = 245u32.to_le_bytes().to_vec();
     let tmp = p.read_u32(0).unwrap();
@@ -118,4 +133,5 @@ fn test_u32() {
     p.buff = 3728123u32.to_le_bytes().to_vec();
     let tmp = p.read_u32(0).unwrap();
     assert_eq!(tmp, 3728123 as u32);
-}
+    */
+//`:w}
