@@ -116,22 +116,3 @@ prim_read_test!(u128);
 
 prim_read_test!(f32);
 prim_read_test!(f64);
-
-//#[test]
-//`fn test_u32() {
-    /*
-
-
-    p.buff = 245u32.to_le_bytes().to_vec();
-    let tmp = p.read_u32(0).unwrap();
-    assert_eq!(tmp, 245 as u32);
-
-    p.buff = 888u32.to_le_bytes().to_vec();
-    let tmp = p.read_u32(0).unwrap();
-    assert_eq!(tmp, 888 as u32);
-
-    p.buff = 3728123u32.to_le_bytes().to_vec();
-    let tmp = p.read_u32(0).unwrap();
-    assert_eq!(tmp, 3728123 as u32);
-    */
-//`:w}
