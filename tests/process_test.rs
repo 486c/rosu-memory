@@ -52,11 +52,11 @@ fn get_process_name(id: u32) -> String {
 
 #[cfg(target_os = "linux")]
 fn get_process_name(id: u32) -> String {
-    let cmdline = std::fs::read_to_string(
-        format!("/proc/{}/cmdline", id)
-    ).unwrap();
+    
 
-    cmdline
+    std::fs::read_to_string(
+        format!("/proc/{}/cmdline", id)
+    ).unwrap()
 }
 
 #[test]
@@ -68,5 +68,5 @@ fn test_process_finder() {
     assert_eq!(proc_id, proc.pid as u32);
 
     let proc = proc.read_regions().unwrap();
-    assert!(proc.maps.len() > 0)
+    assert!(!proc.maps.is_empty())
 }

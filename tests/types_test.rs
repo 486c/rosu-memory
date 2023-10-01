@@ -31,11 +31,11 @@ pub struct FakeProccess {
 }
 
 impl ProcessTraits for FakeProccess {
-    fn initialize(proc_name: &str) -> Result<Self, ProcessError> {
+    fn initialize(_proc_name: &str) -> Result<Self, ProcessError> {
         todo!()
     }
 
-    fn find_process(proc_name: &str) -> Result<Self, ProcessError> {
+    fn find_process(_proc_name: &str) -> Result<Self, ProcessError> {
         todo!()
     }
 
@@ -45,7 +45,7 @@ impl ProcessTraits for FakeProccess {
 
     fn read_signature(
         &self, 
-        sign: &rosu_memory::memory::signature::Signature
+        _sign: &rosu_memory::memory::signature::Signature
     ) -> Result<Option<usize>, ProcessError> {
         todo!()
     }

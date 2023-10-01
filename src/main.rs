@@ -29,10 +29,10 @@ fn main() {
     let p = Process::initialize("osu!.exe").unwrap();
 
     let base_sign = Signature::from_str("F8 01 74 04 83 65").unwrap();
-    let status_sign = Signature::from_str("48 83 F8 04 73 1E").unwrap();
+    //let status_sign = Signature::from_str("48 83 F8 04 73 1E").unwrap();
 
     let base = p.read_signature(&base_sign).unwrap().unwrap();
-    let status = p.read_signature(&status_sign).unwrap().unwrap();
+    //let status = p.read_signature(&status_sign).unwrap().unwrap();
 
     loop {
         // Receive new WebSocket clients if there any
@@ -41,7 +41,7 @@ fn main() {
             client_id += 1;
         }
 
-        let beatmap_addr = p.read_i32((base - 0xC) as usize).unwrap();
+        let beatmap_addr = p.read_i32(base - 0xC).unwrap();
         let ar_addr = p.read_i32(beatmap_addr as usize).unwrap() + 0x2c;
         values.ar = p.read_f32(ar_addr as usize).unwrap();
 
@@ -50,6 +50,7 @@ fn main() {
                 let next_future = websocket.next();
                 let msg_future = smol::future::poll_once(next_future);
 
+                #[allow(clippy::collapsible_match)]
                 let msg = match msg_future.await {
                     Some(v) => {
                         match v {
@@ -64,16 +65,12 @@ fn main() {
                     },
                     None => None,
                 };
+                
 
-                if let Some(msg) = msg {
-                    match msg {
-                        tungstenite::Message::Close(_) => {
-                            println!("Client {} disconnected", client_id);
-                            return false;
-                        },
-                        _ => (),
-                    };
-                }
+                if let Some(tungstenite::Message::Close(_)) = msg {
+                    println!("Client {} disconnected", client_id);
+                    return false;
+                };
 
                 websocket.send(
                     Message::Text(json::to_string(&values))
