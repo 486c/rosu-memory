@@ -5,7 +5,7 @@ use crossbeam_channel::bounded;
 use rosu_memory::{memory::{process::{Process, ProcessTraits}, signature::Signature}, websockets::server_thread};
 use miniserde::{json, Serialize};
 use async_tungstenite::tungstenite;
-use futures::sink::SinkExt;
+use futures_util::sink::SinkExt;
 use smol::{prelude::*, Async};
 use tungstenite::Message;
 

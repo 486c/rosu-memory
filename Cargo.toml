@@ -9,11 +9,10 @@ edition = "2021"
 async-tungstenite = "0.23.0"
 cfg-if = "1.0.0"
 crossbeam-channel = "0.5.8"
-futures = "0.3.28"
+futures-util = "0.3.28"
 miniserde = "0.1.34"
 paste = "1.0.14"
 smol = "1.3.0"
-tungstenite = "0.20.1"
 
 [target.'cfg(unix)'.dependencies]
 nix = { version = "0.25.0",  default-features = false,  features = ["uio", "process", "feature"] }
