@@ -1,21 +1,21 @@
 <html>
-	<body>
-		<a>Example on how to read from websockets inside js</a>
+  <body>
+    <a>Example on how to read from websockets inside js</a>
 
-		<script>
-			const socket = new WebSocket("ws://localhost:9001");
+	<script>
+	  const socket = new WebSocket("ws://localhost:9001");
 
-			socket.addEventListener("open", (event) => {
-				console.log("Connected!");
-			});
+	  socket.addEventListener("open", (event) => {
+		  console.log("Connected!");
+	  });
 
-			socket.addEventListener("close", (event) => {
-				console.log("Disconnected!");
-			});
+	  socket.addEventListener("close", (event) => {
+		  console.log("Disconnected!");
+	  });
 
-			socket.onmessage = function(event) {
-  				console.log(`[message] Data received from server: ${event.data}`);
-			};
-		</script>
-	</body>
+	  socket.addEventListener("message", (event) => {
+		  console.log("Message from server ", event.data);
+	  });
+	</script>
+  </body>
 </html>
