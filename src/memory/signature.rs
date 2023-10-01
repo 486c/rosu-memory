@@ -14,7 +14,7 @@ impl FromStr for SignatureByte {
             "??" => Ok(Self::Any),
             _ => Ok(Self::Byte(u8::from_str_radix(s, 16)?)),
         }
-       }
+    }
 }
 
 impl PartialEq<u8> for SignatureByte {
@@ -34,10 +34,10 @@ pub struct Signature {
 impl FromStr for Signature {
     type Err = std::num::ParseIntError;
 
-    fn from_str(s: &str) -> Result<Self, Self::Err> {
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
         let mut bytes = Vec::new();
 
-        for c in s.split(' ') {
+        for c in value.split(' ') {
             let b = SignatureByte::from_str(c)?;
             bytes.push(b);
         }
