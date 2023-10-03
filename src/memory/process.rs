@@ -85,15 +85,21 @@ pub trait ProcessTraits where Self: Sized {
         &self,
         mut addr: usize
     ) -> Result<String, ProcessError> {
-        addr += 1;
+        let len = self.read_u32(addr + 0x4)? * 2;
+        addr = addr + 0x8;
 
-        let len = self.read_uleb128(addr)?;
-        addr += 1;
-        
         let mut buff = vec![0u8; len as usize];
         self.read(addr, len as usize, &mut buff)?;
 
-        Ok(String::from_utf8(buff)?)
+        // TODO check align of bytes
+        let buff = unsafe { 
+            std::slice::from_raw_parts(
+                buff.as_ptr() as *const u16, 
+                (len / 2) as usize
+            )
+        };
+
+        Ok(String::from_utf16_lossy(buff))
     }
 
     prim_read_impl!(i8);
