@@ -86,20 +86,43 @@ fn test_uleb() {
 
 #[test]
 fn test_string() {
-    let mut file = File::open("./tests/files/test_uleb")
-        .unwrap();
+    // TODO rewrite this test by generating random string
 
-    let mut buff = Vec::new();
+    let mut buff: Vec<u8> = vec![0x0, 0x0, 0x0, 0x0]; // Random 4 bytes
 
-    file.read_to_end(&mut buff).unwrap();
+    let s = 0x08u32.to_le_bytes();
+    buff.extend_from_slice(&s);
+
+    let test_string_bytes: Vec<u8> = vec![
+        83,
+        0,
+        101,
+        0,
+        114,
+        0,
+        101,
+        0,
+        110,
+        0,
+        105,
+        0,
+        116,
+        0,
+        121,
+        0,
+    ];
+
+    buff.extend_from_slice(&test_string_bytes);
 
     let p = FakeProccess {
         buff
     };
 
-    let s = p.read_string(0).unwrap();
+    let len = p.read_u32(0 + 0x4).unwrap();
+    assert_eq!(len, 8);
 
-    assert_eq!(s, "test".to_owned())
+    let s = p.read_string(0).unwrap();
+    assert_eq!(s, "Serenity");
 }
 
 prim_read_test!(i8);
