@@ -86,7 +86,7 @@ pub trait ProcessTraits where Self: Sized {
         mut addr: usize
     ) -> Result<String, ProcessError> {
         let len = self.read_u32(addr + 0x4)? * 2;
-        addr = addr + 0x8;
+        addr += 0x8;
 
         let mut buff = vec![0u8; len as usize];
         self.read(addr, len as usize, &mut buff)?;

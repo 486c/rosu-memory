@@ -12,6 +12,7 @@ use tungstenite::Message;
 #[derive(Debug, Default, Serialize)]
 pub struct Values {
     artist: String,
+    beatmap_file: String,
 
     ar: f32,
     cs: f32,
@@ -70,8 +71,11 @@ fn main() {
         let artist_addr = p.read_i32((beatmap_addr + 0x18) as usize).unwrap();
         values.artist = p.read_string(artist_addr as usize).unwrap();
 
+        let path_addr = p.read_i32((beatmap_addr + 0x94) as usize).unwrap();
+        values.beatmap_file = p.read_string(path_addr as usize).unwrap();
+
         // web sockets handler
-        clients.retain(|client_id, websocket| {
+        clients.retain(|_client_id, websocket| {
             smol::block_on(async {
                 let next_future = websocket.next();
                 let msg_future = smol::future::poll_once(next_future);
