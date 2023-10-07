@@ -8,10 +8,13 @@ edition = "2021"
 [dependencies]
 async-tungstenite = "0.23.0"
 cfg-if = "1.0.0"
+clap = { version = "4.4.6", features = ["derive"] }
 crossbeam-channel = "0.5.8"
+eyre = "0.6.8"
 futures-util = "0.3.28"
 miniserde = "0.1.34"
 paste = "1.0.14"
+rosu-pp = "0.9.5"
 smol = "1.3.0"
 
 [target.'cfg(unix)'.dependencies]
@@ -21,6 +24,7 @@ nix = { version = "0.25.0",  default-features = false,  features = ["uio", "proc
 windows = {version = "0.48", features = ["Win32_Foundation", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Threading", "Win32_System_Memory", "Win32_System_Diagnostics_Debug", "Win32_System_ProcessStatus"] }
 
 [profile.release]
+opt-level = "s"
 lto = "thin"
 codegen-units = 1
 strip = "debuginfo"
