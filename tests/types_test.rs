@@ -46,7 +46,7 @@ impl ProcessTraits for FakeProccess {
     fn read_signature(
         &self, 
         _sign: &rosu_memory::memory::signature::Signature
-    ) -> Result<Option<usize>, ProcessError> {
+    ) -> Result<usize, ProcessError> {
         todo!()
     }
 

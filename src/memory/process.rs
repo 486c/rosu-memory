@@ -48,7 +48,7 @@ pub trait ProcessTraits where Self: Sized {
     fn read_signature(
         &self, 
         sign: &Signature
-    ) -> Result<Option<usize>, ProcessError>;
+    ) -> Result<usize, ProcessError>;
 
     fn read(
         &self, 

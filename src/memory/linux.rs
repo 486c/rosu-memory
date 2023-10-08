@@ -99,7 +99,7 @@ impl ProcessTraits for Process {
     fn read_signature(
         &self, 
         sign: &Signature
-    ) -> Result<Option<usize>, ProcessError> {
+    ) -> Result<usize, ProcessError> {
         for region in &self.maps {
             let remote = RemoteIoVec {
                 base: region.from,
@@ -122,11 +122,11 @@ impl ProcessTraits for Process {
 
             let res = find_signature(buff.as_slice(), sign);
             if let Some(offset) = res {
-                return Ok(Some(remote.base + offset));
+                return Ok(remote.base + offset);
             }
         }
 
-        Ok(None)
+        Err(ProcessError::SignatureNotFound(sign.to_string()))
     }
 
     fn read(

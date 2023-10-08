@@ -1,5 +1,7 @@
 use std::string::FromUtf8Error;
 
+use super::signature::Signature;
+
 #[derive(Debug)]
 pub enum ProcessError {
     ProcessNotFound,
@@ -8,6 +10,8 @@ pub enum ProcessError {
     },
     FromUtf8Error,
     ConvertionError,
+
+    SignatureNotFound(String),
 
     OsError{
         #[cfg(target_os = "linux")]

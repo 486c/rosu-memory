@@ -17,6 +17,7 @@ impl FromStr for SignatureByte {
     }
 }
 
+
 impl PartialEq<u8> for SignatureByte {
     fn eq(&self, other: &u8) -> bool {
         match self {
@@ -43,6 +44,26 @@ impl FromStr for Signature {
         }
 
         Ok(Self { bytes })
+    }
+}
+
+impl ToString for Signature {
+    fn to_string(&self) -> String {
+        // TODO too many allocations for such simple formatting
+
+        let mut result = String::with_capacity(self.bytes.len() * 2);
+
+        for byte in &self.bytes {
+            match byte {
+                SignatureByte::Byte(v) => 
+                    result.push_str(
+                        &format!("{:#02x} ", v
+                    ).to_uppercase()),
+                SignatureByte::Any => result.push_str("?? "),
+            }
+        };
+
+        result.trim_end().replace("0X", "").to_owned()
     }
 }
 
@@ -80,6 +101,14 @@ mod tests {
         assert!(s == 0xFF);
         assert!(s == 0xF3);
         assert!(s == 0xCB);
+    }
+
+    #[test]
+    fn test_formatting() {
+        let s = Signature::from_str("FF 30 A3 50").unwrap();
+        assert_eq!(s.bytes.len(), 4);
+
+        assert_eq!("FF 30 A3 50".to_owned(), s.to_string());
     }
 }
 

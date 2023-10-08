@@ -29,3 +29,10 @@ impl From<u32> for GameStatus {
         }
     }
 }
+
+pub struct StaticAdresses {
+    pub base: usize,
+    pub status: usize,
+    pub menu_mods: usize,
+    pub relusets: usize,
+}

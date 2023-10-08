@@ -1,6 +1,6 @@
 mod structs;
 
-use crate::structs::GameStatus;
+use crate::structs::{GameStatus, StaticAdresses};
 
 use std::{
     str::FromStr, 
@@ -93,13 +93,18 @@ fn main() -> Result<()> {
     println!("Reading static signatures...");
     let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
     let status_sign = Signature::from_str("48 83 F8 04 73 1E")?;
-    let menu_mods_sign = Signature::from_str("C8 FF ?? ?? ?? ?? ?? 81 0D ?? ?? ?? ?? 00 08 00 00")?;
-    let rulesets_sign = Signature::from_str("7D 15 A1 ?? ?? ?? ?? 85 C0")?;
+    let menu_mods_sign = Signature::from_str(
+        "C8 FF ?? ?? ?? ?? ?? 81 0D ?? ?? ?? ?? 00 08 00 00"
+    )?;
 
-    let base = p.read_signature(&base_sign).unwrap().unwrap();
-    let status = p.read_signature(&status_sign).unwrap().unwrap();
-    let menu_mods = p.read_signature(&menu_mods_sign).unwrap().unwrap();
-    let rulesets = p.read_signature(&rulesets_sign).unwrap().unwrap();
+    let rulesets_sign = Signature::from_str(
+        "7D 15 A1 ?? ?? ?? ?? 85 C0"
+    )?;
+
+    let base = p.read_signature(&base_sign).unwrap();
+    let status = p.read_signature(&status_sign).unwrap();
+    let menu_mods = p.read_signature(&menu_mods_sign).unwrap();
+    let rulesets = p.read_signature(&rulesets_sign).unwrap();
 
     println!("Starting reading loop");
 
