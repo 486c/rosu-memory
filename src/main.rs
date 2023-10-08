@@ -1,3 +1,7 @@
+mod structs;
+
+use crate::structs::GameStatus;
+
 use std::{
     str::FromStr, 
     time::Duration, 
@@ -24,6 +28,7 @@ use rosu_memory::{
     websockets::server_thread
 };
 
+
 use eyre::{Report, Result};
 
 #[derive(Parser, Debug)]
@@ -39,7 +44,7 @@ pub struct Values {
     folder: String,
     beatmap_file: String,
 
-    status: u32,
+    status: GameStatus,
 
     ar: f32,
     cs: f32,
@@ -60,6 +65,7 @@ pub struct Values {
     // Calculated each iteration
     current_pp: f64,
 
+    menu_mods: u32,
     mods: u32,
 
     plays: i32,
@@ -107,14 +113,18 @@ fn main() -> Result<()> {
         }
         
         let menu_mods_ptr = p.read_i32(menu_mods + 0x9).unwrap();
-        values.mods = p.read_u32(menu_mods_ptr as usize).unwrap();
+        values.menu_mods = p.read_u32(menu_mods_ptr as usize).unwrap();
 
         let beatmap_ptr = p.read_i32(base - 0xC).unwrap();
         let beatmap_addr = p.read_i32(beatmap_ptr as usize).unwrap();
 
         let status_ptr = p.read_i32(status - 0x4).unwrap();
 
-        values.status = p.read_u32(status_ptr as usize).unwrap();
+        values.status = GameStatus::from(
+            p.read_u32(status_ptr as usize).unwrap()
+        );
+
+        dbg!(&values.status);
         
         let ar_addr = beatmap_addr + 0x2c;
         let cs_addr = ar_addr + 0x04;
@@ -137,7 +147,7 @@ fn main() -> Result<()> {
         values.beatmap_file = p.read_string(path_addr as usize).unwrap();
 
         // TODO Read after status != 0
-        if values.status != 0 {
+        if values.status != GameStatus::PreSongSelect {
             let folder_addr = p.read_i32((beatmap_addr + 0x78) as usize).unwrap();
             let folder = p.read_string(folder_addr as usize).unwrap();
             if folder != values.folder {
@@ -168,7 +178,7 @@ fn main() -> Result<()> {
         //}
 
         // TODO do not read gameplay info on status 7 and 0 and 5
-        if values.status != 7 && values.status != 0 {
+        if values.status == GameStatus::Playing {
             let gameplay_base = p.read_i32((ruleset_addr + 0x68) as usize).unwrap() as usize;
             let score_base = p.read_i32(gameplay_base + 0x38).unwrap() as usize;
 
@@ -183,6 +193,15 @@ fn main() -> Result<()> {
             values.hit_miss = p.read_i16(score_base + 0x92).unwrap();
             values.combo = p.read_i16(score_base + 0x94).unwrap();
             values.max_combo = p.read_i16(score_base + 0x68).unwrap();
+            
+            let mods_xor_base = (
+                p.read_i32(score_base + 0x1C).unwrap()
+            ) as usize;
+
+            let mods_xor1 = p.read_i32(mods_xor_base + 0xC).unwrap();
+            let mods_xor2 = p.read_i32(mods_xor_base + 0x8).unwrap();
+
+            values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
             // Calculate pp
             if let Some(beatmap) = &cur_beatmap {
