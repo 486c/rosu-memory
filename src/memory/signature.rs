@@ -1,4 +1,5 @@
 use std::str::FromStr;
+use std::fmt::Write;
 
 #[derive(Debug, PartialEq)]
 pub enum SignatureByte {
@@ -50,20 +51,20 @@ impl FromStr for Signature {
 impl ToString for Signature {
     fn to_string(&self) -> String {
         // TODO too many allocations for such simple formatting
+        // TODO implement display
 
         let mut result = String::with_capacity(self.bytes.len() * 2);
 
         for byte in &self.bytes {
             match byte {
-                SignatureByte::Byte(v) => 
-                    result.push_str(
-                        &format!("{:#02x} ", v
-                    ).to_uppercase()),
+                SignatureByte::Byte(v) => {
+                    let _ = write!(result, "{:x} ", v);
+                },
                 SignatureByte::Any => result.push_str("?? "),
             }
         };
 
-        result.trim_end().replace("0X", "").to_owned()
+        result.trim_end().to_owned()
     }
 }
 
@@ -108,7 +109,10 @@ mod tests {
         let s = Signature::from_str("FF 30 A3 50").unwrap();
         assert_eq!(s.bytes.len(), 4);
 
-        assert_eq!("FF 30 A3 50".to_owned(), s.to_string());
+        assert_eq!(
+            "FF 30 A3 50".to_owned(), 
+            s.to_string().to_uppercase()
+        );
     }
 }
 
