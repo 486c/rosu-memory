@@ -55,10 +55,7 @@ impl ProcessTraits for Process {
 
         match found {
             true => Ok(Self { pid, maps: Vec::new() }),
-            false => {
-                println!("Can't find process!");
-                Err(ProcessError::ProcessNotFound)
-            }
+            false => Err(ProcessError::ProcessNotFound)
         }
     }
 

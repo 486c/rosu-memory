@@ -34,5 +34,5 @@ pub struct StaticAdresses {
     pub base: usize,
     pub status: usize,
     pub menu_mods: usize,
-    pub relusets: usize,
+    pub rulesets: usize,
 }

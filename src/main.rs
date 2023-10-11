@@ -88,7 +88,7 @@ fn main() -> Result<()> {
 
     let mut values = Values::default();
 
-    let p = Process::initialize("osu!.exe").unwrap();
+    let p = Process::initialize("osu!.exe")?;
     
     println!("Reading static signatures...");
     let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
@@ -101,10 +101,14 @@ fn main() -> Result<()> {
         "7D 15 A1 ?? ?? ?? ?? 85 C0"
     )?;
 
-    let base = p.read_signature(&base_sign).unwrap();
-    let status = p.read_signature(&status_sign).unwrap();
-    let menu_mods = p.read_signature(&menu_mods_sign).unwrap();
-    let rulesets = p.read_signature(&rulesets_sign).unwrap();
+
+    let adresses = StaticAdresses {
+        base: p.read_signature(&base_sign)?,
+        status: p.read_signature(&status_sign)?,
+        menu_mods: p.read_signature(&menu_mods_sign)?,
+        rulesets: p.read_signature(&rulesets_sign)?
+    };
+
 
     println!("Starting reading loop");
 
@@ -117,44 +121,41 @@ fn main() -> Result<()> {
             client_id += 1;
         }
         
-        let menu_mods_ptr = p.read_i32(menu_mods + 0x9).unwrap();
-        values.menu_mods = p.read_u32(menu_mods_ptr as usize).unwrap();
+        let menu_mods_ptr = p.read_i32(adresses.menu_mods + 0x9)?;
+        values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
 
-        let beatmap_ptr = p.read_i32(base - 0xC).unwrap();
-        let beatmap_addr = p.read_i32(beatmap_ptr as usize).unwrap();
+        let beatmap_ptr = p.read_i32(adresses.base - 0xC)?;
+        let beatmap_addr = p.read_i32(beatmap_ptr as usize)?;
 
-        let status_ptr = p.read_i32(status - 0x4).unwrap();
+        let status_ptr = p.read_i32(adresses.status - 0x4)?;
 
         values.status = GameStatus::from(
-            p.read_u32(status_ptr as usize).unwrap()
+            p.read_u32(status_ptr as usize)?
         );
 
-        dbg!(&values.status);
-        
         let ar_addr = beatmap_addr + 0x2c;
         let cs_addr = ar_addr + 0x04;
         let hp_addr = cs_addr + 0x04;
         let od_addr = hp_addr + 0x04;
 
-        values.ar = p.read_f32(ar_addr as usize).unwrap();
-        values.cs = p.read_f32(cs_addr as usize).unwrap();
-        values.hp = p.read_f32(hp_addr as usize).unwrap();
-        values.od = p.read_f32(od_addr as usize).unwrap();
+        values.ar = p.read_f32(ar_addr as usize)?;
+        values.cs = p.read_f32(cs_addr as usize)?;
+        values.hp = p.read_f32(hp_addr as usize)?;
+        values.od = p.read_f32(od_addr as usize)?;
         
-        let plays_addr = p.read_i32(base - 0x33).unwrap() + 0xC;
-        values.plays = p.read_i32(plays_addr as usize).unwrap();
+        let plays_addr = p.read_i32(adresses.base - 0x33)? + 0xC;
+        values.plays = p.read_i32(plays_addr as usize)?;
 
-        let artist_addr = p.read_i32((beatmap_addr + 0x18) as usize).unwrap();
-        values.artist = p.read_string(artist_addr as usize).unwrap();
-
-        // TODO Read after status != 0
-        let path_addr = p.read_i32((beatmap_addr + 0x94) as usize).unwrap();
-        values.beatmap_file = p.read_string(path_addr as usize).unwrap();
+        let artist_addr = p.read_i32((beatmap_addr + 0x18) as usize)?;
+        values.artist = p.read_string(artist_addr as usize)?;
 
         // TODO Read after status != 0
+        let path_addr = p.read_i32((beatmap_addr + 0x94) as usize)?;
+        values.beatmap_file = p.read_string(path_addr as usize)?;
+
         if values.status != GameStatus::PreSongSelect {
-            let folder_addr = p.read_i32((beatmap_addr + 0x78) as usize).unwrap();
-            let folder = p.read_string(folder_addr as usize).unwrap();
+            let folder_addr = p.read_i32((beatmap_addr + 0x78) as usize)?;
+            let folder = p.read_string(folder_addr as usize)?;
             if folder != values.folder {
                 let full_path = args.osu_path
                     .join("Songs")
@@ -175,8 +176,8 @@ fn main() -> Result<()> {
         }
 
         let ruleset_addr = p.read_i32(
-            (p.read_i32(rulesets - 0xb).unwrap() + 0x4) as usize
-        ).unwrap();
+            (p.read_i32(adresses.rulesets - 0xb)? + 0x4) as usize
+        )?;
         
         // TODO
         //if ruleset_addr == 0 {
@@ -184,27 +185,27 @@ fn main() -> Result<()> {
 
         // TODO do not read gameplay info on status 7 and 0 and 5
         if values.status == GameStatus::Playing {
-            let gameplay_base = p.read_i32((ruleset_addr + 0x68) as usize).unwrap() as usize;
-            let score_base = p.read_i32(gameplay_base + 0x38).unwrap() as usize;
+            let gameplay_base = p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
+            let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
 
-            values.mode = p.read_i32(score_base + 0x64).unwrap();
+            values.mode = p.read_i32(score_base + 0x64)?;
 
-            values.hit_300 = p.read_i16(score_base + 0x8a).unwrap();
-            values.hit_100 = p.read_i16(score_base + 0x88).unwrap();
-            values.hit_50 = p.read_i16(score_base + 0x8c).unwrap();
+            values.hit_300 = p.read_i16(score_base + 0x8a)?;
+            values.hit_100 = p.read_i16(score_base + 0x88)?;
+            values.hit_50 = p.read_i16(score_base + 0x8c)?;
 
-            values.hit_geki = p.read_i16(score_base + 0x8e).unwrap();
-            values.hit_katu = p.read_i16(score_base + 0x90).unwrap();
-            values.hit_miss = p.read_i16(score_base + 0x92).unwrap();
-            values.combo = p.read_i16(score_base + 0x94).unwrap();
-            values.max_combo = p.read_i16(score_base + 0x68).unwrap();
+            values.hit_geki = p.read_i16(score_base + 0x8e)?;
+            values.hit_katu = p.read_i16(score_base + 0x90)?;
+            values.hit_miss = p.read_i16(score_base + 0x92)?;
+            values.combo = p.read_i16(score_base + 0x94)?;
+            values.max_combo = p.read_i16(score_base + 0x68)?;
             
             let mods_xor_base = (
-                p.read_i32(score_base + 0x1C).unwrap()
+                p.read_i32(score_base + 0x1C)?
             ) as usize;
 
-            let mods_xor1 = p.read_i32(mods_xor_base + 0xC).unwrap();
-            let mods_xor2 = p.read_i32(mods_xor_base + 0x8).unwrap();
+            let mods_xor1 = p.read_i32(mods_xor_base + 0xC)?;
+            let mods_xor2 = p.read_i32(mods_xor_base + 0x8)?;
 
             values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
@@ -253,9 +254,9 @@ fn main() -> Result<()> {
                     return false;
                 };
 
-                websocket.send(
+                let _ = websocket.send(
                     Message::Text(json::to_string(&values))
-                ).await.unwrap();
+                ).await;
 
                 true
             })

@@ -1,6 +1,4 @@
-use std::string::FromUtf8Error;
-
-use super::signature::Signature;
+use std::{string::FromUtf8Error, fmt::Display};
 
 #[derive(Debug)]
 pub enum ProcessError {
@@ -63,4 +61,26 @@ impl From<windows::core::Error> for ProcessError {
             inner
         }// TODO add code value
     }
+}
+
+impl Display for ProcessError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ProcessError::ProcessNotFound => 
+                write!(f, "Process not found!"),
+            ProcessError::IoError { .. } => 
+                write!(f, "Got I/O error!"),
+            ProcessError::FromUtf8Error => 
+                write!(f, "Got Error when converting bytes to string!"),
+            ProcessError::ConvertionError => 
+                write!(f, "Got error during type convertion"),
+            ProcessError::SignatureNotFound(v) => 
+                write!(f, "Cannot found signature {}", v),
+            ProcessError::OsError { .. } => 
+                write!(f, "Got OS error"),
+        }
+    }
+}
+
+impl std::error::Error for ProcessError {
 }
