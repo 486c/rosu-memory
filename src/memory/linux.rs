@@ -8,7 +8,7 @@ use nix::unistd::Pid;
 use crate::memory::process::{ Process, MemoryRegion, ProcessTraits };
 use crate::memory::error::ProcessError;
 
-use super::find_signature;
+use super::signature::find_signature;
 use super::signature::Signature;
 
 impl ProcessTraits for Process {

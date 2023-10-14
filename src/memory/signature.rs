@@ -74,9 +74,68 @@ impl From<&str> for Signature {
     }
 }
 
+// Find signature inside of [u8] buffer
+#[inline]
+pub fn find_signature(buff: &[u8], sign: &Signature) -> Option<usize> {
+    let mut i = 0;
+    let mut found = true;
+
+    while i + sign.bytes.len() <= buff.len() {
+        for j in 0..sign.bytes.len() {
+            if sign.bytes[j] != buff[i + j]
+            && sign.bytes[j] != SignatureByte::Any {
+                found = false;
+                break;
+            }
+        }
+
+        if found {
+            return Some(i);
+        }
+
+        found = true;
+
+        i += 1;
+    }
+
+    None
+}
+
 #[cfg(test)]
 mod tests {
     use crate::memory::signature::*;
+    use std::str::FromStr;
+
+    #[test]
+    fn test_find_sig() {
+        //              0     1     2     3     4     5     6     7
+        let buff = vec![0xFF, 0x30, 0xA3, 0x50, 0x12, 0xAB, 0x2B, 0xCB];
+
+        let sig = Signature::from_str("AB 2B CB").unwrap();
+        let s = find_signature(&buff, &sig).unwrap();
+        assert_eq!(s, 5);
+
+        let sig = Signature::from_str("AB ?? CB").unwrap();
+        let s = find_signature(&buff, &sig).unwrap();
+        assert_eq!(s, 5);
+
+        let sig = Signature::from_str("30 ?? 50").unwrap();
+        let s = find_signature(&buff, &sig).unwrap();
+        assert_eq!(s, 1);
+
+        let sig = Signature::from_str("FF ?? ?? 50").unwrap();
+        let s = find_signature(&buff, &sig).unwrap();
+        assert_eq!(s, 0);
+
+        let sig = Signature::from_str("12 AB ?? CB").unwrap();
+        let s = find_signature(&buff, &sig).unwrap();
+        assert_eq!(s, 4);
+
+        let sig = Signature::from_str("50 12 AB").unwrap();
+        let s = find_signature(&buff, &sig).unwrap();
+        assert_eq!(s, 3);
+
+    }
 
     #[test]
     fn test_signature_parsing() {
