@@ -3,6 +3,7 @@ use std::{string::FromUtf8Error, fmt::Display};
 #[derive(Debug)]
 pub enum ProcessError {
     ProcessNotFound,
+    NotEnoughPermissions,
     IoError{
         inner: std::io::Error
     },
@@ -47,9 +48,13 @@ impl From<FromUtf8Error> for ProcessError {
 #[cfg(target_os = "linux")]
 impl From<nix::errno::Errno> for ProcessError {
     fn from(inner: nix::errno::Errno) -> Self {
-        Self::OsError{
-            inner
-        }// TODO add code value
+        match inner {
+            nix::errno::Errno::EPERM => 
+                Self::NotEnoughPermissions,
+            nix::errno::Errno::ESRCH => 
+                Self::ProcessNotFound,
+            _ => Self::OsError { inner },
+        }
     }
 }
 
@@ -78,9 +83,13 @@ impl Display for ProcessError {
                 write!(f, "Cannot found signature {}", v),
             ProcessError::OsError { .. } => 
                 write!(f, "Got OS error"),
+            ProcessError::NotEnoughPermissions => 
+                write!(
+                    f, 
+                    "Not enough permissions to run, please run as sudo"
+                ),
         }
     }
 }
 
-impl std::error::Error for ProcessError {
-}
+impl std::error::Error for ProcessError {}

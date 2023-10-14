@@ -1,6 +1,7 @@
 use std::fs;
 use std::io::IoSliceMut;
 
+use nix::errno::Errno;
 use nix::sys::uio::{RemoteIoVec, process_vm_readv};
 use nix::unistd::Pid;
 
@@ -112,9 +113,13 @@ impl ProcessTraits for Process {
                 &mut [slice],
                 &[remote]
             );
-
-            if res.is_err() {
-                continue;
+            
+            if let Err(e) = res {
+                match e {
+                    Errno::EPERM | Errno::ESRCH =>
+                        return Err(e.into()),
+                    _ => continue,
+                }
             }
 
             let res = find_signature(buff.as_slice(), sign);

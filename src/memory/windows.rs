@@ -42,6 +42,8 @@ macro_rules! trailing_zero_slice {
     }}
 }
 
+//TODO put unsafe only where it belongs
+//or wrap safe helper functions :)
 impl ProcessTraits for Process {
     fn initialize(proc_name: &str) -> Result<Process, ProcessError> {
         let process = Process::find_process(proc_name)?;
@@ -147,8 +149,9 @@ impl ProcessTraits for Process {
                         buffs[index].as_mut_ptr() as *mut c_void,
                         region.size,
                         Some(&mut bytesread)
-                        );
+                    );
 
+                    //TODO do the same as L117:linux.rs
                     if let Err(_error) = res.ok() {
                         continue;
                     }
