@@ -217,6 +217,9 @@ fn main() -> Result<()> {
                     match e {
                         ProcessError::ProcessNotFound =>
                             continue 'init_loop,
+                        #[cfg(target_os = "windows")]
+                        ProcessError::OsError{ .. } =>
+                            continue 'init_loop,
                         _ => {
                             println!("{}", e);
                             continue 'static_loop
@@ -244,6 +247,9 @@ fn main() -> Result<()> {
             ) {
                 match e {
                     ProcessError::ProcessNotFound =>
+                        continue 'init_loop,
+                    #[cfg(target_os = "windows")]
+                    ProcessError::OsError{ .. } =>
                         continue 'init_loop,
                     _ => {
                         println!("{}", e);

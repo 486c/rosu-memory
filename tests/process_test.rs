@@ -4,7 +4,7 @@ cfg_if::cfg_if! {
     if #[cfg(target_os = "linux")] {
     } else if #[cfg(target_os = "windows")] {
         use windows::{Win32::{Foundation::{
-            CloseHandle, FALSE, GetLastError}}, 
+            CloseHandle, FALSE }}, 
             core::PSTR
         };
 

@@ -1,4 +1,4 @@
-use std::{string::FromUtf8Error, fmt::Display};
+use std::{string::FromUtf8Error, fmt::Display, str::Utf8Error};
 
 #[derive(Debug)]
 pub enum ProcessError {
@@ -44,6 +44,12 @@ impl From<FromUtf8Error> for ProcessError {
     }
 }
 
+impl From<Utf8Error> for ProcessError {
+    fn from(_: Utf8Error) -> Self {
+        Self::FromUtf8Error
+    }
+}
+
 // Linux only
 #[cfg(target_os = "linux")]
 impl From<nix::errno::Errno> for ProcessError {
@@ -62,7 +68,6 @@ impl From<nix::errno::Errno> for ProcessError {
 #[cfg(target_os = "windows")]
 impl From<windows::core::Error> for ProcessError {
     fn from(inner: windows::core::Error) -> Self {
-        dbg!(&inner);
         Self::OsError{
             inner
         }// TODO add code value
