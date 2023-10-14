@@ -23,11 +23,6 @@ fn get_process_name(id: u32) -> String {
         let handle = OpenProcess(PROCESS_QUERY_INFORMATION, FALSE, id)
             .unwrap();
 
-        let result = GetLastError();
-        if result.is_err() {
-            panic!("{:?}", result);
-        }
-
         let mut size = 128;
         let mut buff: Vec<u8> = Vec::with_capacity(128);
         let name = PSTR::from_raw(buff.as_mut_slice().as_mut_ptr());

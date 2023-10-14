@@ -62,6 +62,7 @@ impl From<nix::errno::Errno> for ProcessError {
 #[cfg(target_os = "windows")]
 impl From<windows::core::Error> for ProcessError {
     fn from(inner: windows::core::Error) -> Self {
+        dbg!(&inner);
         Self::OsError{
             inner
         }// TODO add code value

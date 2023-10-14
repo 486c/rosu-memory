@@ -1,6 +1,17 @@
-use std::{ptr::{addr_of_mut, null_mut}, ffi::c_void};
+use std::ffi::c_void;
 
-use crate::memory::{process::{ Process, MemoryRegion, ProcessTraits }, find_signature};
+use windows::Win32::System::Memory::MEMORY_BASIC_INFORMATION;
+use windows::Win32::System::Memory::VirtualQueryEx;
+use windows::Win32::System::Memory::MEM_FREE;
+use windows::Win32::System::Diagnostics::Debug::ReadProcessMemory;
+use windows::Win32::System::ProcessStatus::EnumProcesses;
+use windows::Win32::System::ProcessStatus::GetProcessImageFileNameA;
+use windows::Win32::Foundation::GetLastError;
+
+use crate::memory::{
+    process::{ Process, MemoryRegion, ProcessTraits }, 
+    signature::find_signature
+};
 
 use super::signature::Signature;
 use super::error::ProcessError;
@@ -14,31 +25,11 @@ use windows::Win32::{
     }
 };
 
-use windows::Win32::System::Memory::MEMORY_BASIC_INFORMATION;
-use windows::Win32::System::Memory::VirtualQueryEx;
-use windows::Win32::System::Memory::MEM_FREE;
-use windows::Win32::System::Diagnostics::Debug::ReadProcessMemory;
-use windows::Win32::System::ProcessStatus::EnumProcesses;
-use windows::Win32::System::ProcessStatus::GetProcessImageFileNameA;
-
 macro_rules! check_win32_error {
     () => {{
-        let result = GetLastError();
-        if result.is_err() {
-            return Err(ProcessError::OsError {
-                inner: result.into()
-            })
-        }
-    }}
-}
+        let result = unsafe { GetLastError() };
 
-macro_rules! trailing_zero_slice {
-    ($bytes:expr) => {{
-        let (index, _) = $bytes.iter().enumerate().find(|(_, c)| {
-            **c == 0x0
-        }).unwrap();
-    
-        &$bytes[0..index]
+        windows::core::Error::from(result)?;
     }}
 }
 
@@ -132,7 +123,7 @@ impl ProcessTraits for Process {
     fn read_signature(
         &self, 
         sign: &Signature
-    ) -> Result<Option<usize>, ProcessError> {
+    ) -> Result<usize, ProcessError> {
         unsafe {
             for chunk in self.maps.chunks(32) {
                 let mut buffs: Vec<Vec<u8>> = chunk.iter()
@@ -152,18 +143,42 @@ impl ProcessTraits for Process {
                     );
 
                     //TODO do the same as L117:linux.rs
-                    if let Err(_error) = res.ok() {
+                    if let Err(error) = res.ok() {
+                        dbg!(error);
                         continue;
                     }
 
                     let res = find_signature(&buffs[index], sign);
                     if let Some(offset) = res {
-                        return Ok(Some(region.from + offset))
+                        return Ok(region.from + offset)
                     }
                 }
             }
 
-            Ok(None)
+            Err(ProcessError::SignatureNotFound(sign.to_string()))
         }
+    }
+
+    fn read(
+        &self, 
+        addr: usize, 
+        len: usize, 
+        buff: &mut [u8]
+    ) -> Result<(), ProcessError> {
+        // TODO check if buff size is corresponding to len
+
+        let mut n = 0;
+
+        let res = unsafe { ReadProcessMemory(
+            self.handle as HANDLE,
+            addr as *mut c_void,
+            buff.as_mut_ptr() as *mut c_void,
+            len,
+            Some(&mut n)
+        )};
+
+        res.ok()?;
+
+        Ok(())
     }
 }
