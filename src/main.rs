@@ -8,7 +8,6 @@ use crate::structs::{
 
 use std::{
     str::FromStr, 
-    time::Duration, 
     collections::HashMap, net::TcpStream, path::PathBuf
 };
 
@@ -38,8 +37,20 @@ use eyre::{Report, Result};
 #[derive(Parser, Debug)]
 pub struct Args {
     /// Path to osu folder
-    #[arg(short, long)]
+    #[arg(short, long, env)]
     osu_path: PathBuf,
+
+    /// Interval between updates in ms
+    #[clap(default_value = "300")]
+    #[arg(short, long, value_parser=parse_interval)]
+    interval: std::time::Duration,
+}
+
+fn parse_interval(
+    arg: &str
+) -> Result<std::time::Duration, std::num::ParseIntError> {
+    let ms = arg.parse()?;
+    Ok(std::time::Duration::from_millis(ms))
 }
 
 fn read_static_adresses(
@@ -294,7 +305,7 @@ fn main() -> Result<()> {
             });
             
             // TODO Read interval from args
-            std::thread::sleep(Duration::from_secs(1));
+            std::thread::sleep(args.interval);
         }
     };
 }

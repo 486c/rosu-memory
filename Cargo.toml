@@ -8,7 +8,7 @@ edition = "2021"
 [dependencies]
 async-tungstenite = "0.23.0"
 cfg-if = "1.0.0"
-clap = { version = "4.4.6", features = ["derive"] }
+clap = { version = "4.4.6", features = ["derive", "env"] }
 crossbeam-channel = "0.5.8"
 eyre = "0.6.8"
 futures-util = { version = "0.3.28", default-features = false, features = ["sink"]}
