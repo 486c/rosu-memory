@@ -1,4 +1,10 @@
-use std::{string::FromUtf8Error, fmt::Display, str::Utf8Error};
+use std::{
+    string::FromUtf8Error, 
+    fmt::Display, 
+    str::Utf8Error, 
+    error::Error
+};
+
 
 #[derive(Debug)]
 pub enum ProcessError {
@@ -98,4 +104,16 @@ impl Display for ProcessError {
     }
 }
 
-impl std::error::Error for ProcessError {}
+impl std::error::Error for ProcessError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            ProcessError::ProcessNotFound => None,
+            ProcessError::NotEnoughPermissions => None,
+            ProcessError::IoError { inner } => Some(inner),
+            ProcessError::FromUtf8Error => None,
+            ProcessError::ConvertionError => None,
+            ProcessError::SignatureNotFound(_) => None,
+            ProcessError::OsError { inner } => Some(inner),
+        }
+    }
+}
