@@ -126,7 +126,6 @@ fn process_reading_loop(
                 .join(&beatmap_file);
 
             if full_path.exists() {
-                dbg!("changing beatmap {}", &full_path);
                 *cur_beatmap = match Beatmap::from_path(full_path) {
                     Ok(beatmap) => Some(beatmap),
                     Err(_) => {
@@ -270,24 +269,22 @@ fn main() -> Result<()> {
         };
 
         println!("Reading static signatures...");
-        'static_loop: loop {
-            match read_static_adresses(&p, &mut static_adresses) {
-                Ok(_) => break 'static_loop,
-                Err(e) => {
-                    match e {
-                        ProcessError::ProcessNotFound =>
-                            continue 'init_loop,
-                        #[cfg(target_os = "windows")]
-                        ProcessError::OsError{ .. } =>
-                            continue 'init_loop,
-                        _ => {
-                            println!("{}", e);
-                            continue 'init_loop
-                        }
+        match read_static_adresses(&p, &mut static_adresses) {
+            Ok(_) => {},
+            Err(e) => {
+                match e {
+                    ProcessError::ProcessNotFound =>
+                        continue 'init_loop,
+                    #[cfg(target_os = "windows")]
+                    ProcessError::OsError{ .. } =>
+                        continue 'init_loop,
+                    _ => {
+                        println!("{}", e);
+                        continue 'init_loop
                     }
-                },
-            };
-        }
+                }
+            },
+        };
 
         let mut cur_beatmap: Option<Beatmap> = None;
 
