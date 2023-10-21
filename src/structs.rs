@@ -64,6 +64,9 @@ pub struct Values {
 
     // Calculated each iteration
     pub current_pp: f64,
+    pub fc_pp: f64,
+
+    pub passed_objects: usize,
 
     pub menu_mods: u32,
     pub mods: u32,

@@ -19,7 +19,7 @@ use crossbeam_channel::bounded;
 use miniserde::json;
 use async_tungstenite::tungstenite;
 use futures_util::sink::SinkExt;
-use rosu_pp::{Beatmap, AnyPP};
+use rosu_pp::{Beatmap, AnyPP, GameMode, ScoreState};
 use smol::{prelude::*, Async};
 use tungstenite::Message;
 
@@ -141,10 +141,6 @@ fn process_reading_loop(
         (p.read_i32(adresses.rulesets - 0xb)? + 0x4) as usize
     )?;
 
-    // TODO
-    //if ruleset_addr == 0 {
-    //}
-
     if values.status == GameStatus::Playing {
         let gameplay_base = 
             p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
@@ -164,7 +160,7 @@ fn process_reading_loop(
 
         let mods_xor_base = (
             p.read_i32(score_base + 0x1C)?
-            ) as usize;
+        ) as usize;
 
         let mods_xor1 = p.read_i32(mods_xor_base + 0xC)?;
         let mods_xor2 = p.read_i32(mods_xor_base + 0x8)?;
@@ -173,19 +169,69 @@ fn process_reading_loop(
 
         // Calculate pp
         if let Some(beatmap) = &cur_beatmap {
+            // TODO PR to rosu-pp to add From<T> trait?
+            let mode = match values.mode {
+                0 => GameMode::Osu,
+                1 => GameMode::Taiko,
+                2 => GameMode::Catch,
+                3 => GameMode::Mania,
+                _ => {
+                    println!(
+                        "Got unkown mode, defaulting to osu"
+                    );
+
+                    GameMode::Osu
+                }
+            };
+
+            let passed_objects = usize::try_from(match mode {
+                GameMode::Osu => 
+                    values.hit_300 + values.hit_100 
+                    + values.hit_50 + values.hit_miss,
+                GameMode::Taiko => 
+                    values.hit_300 + values.hit_100 + values.hit_miss,
+                GameMode::Catch => 
+                    values.hit_300 + values.hit_100 
+                    + values.hit_50 + values.hit_miss
+                    + values.hit_katu,
+                GameMode::Mania => 
+                    values.hit_300 + values.hit_100 
+                    + values.hit_50 + values.hit_miss
+                    + values.hit_katu + values.hit_geki,
+            })?;
+
+            values.passed_objects = passed_objects;
+
             // TODO use mods from gameplay
-            let pp_result = AnyPP::new(beatmap)
+            let pp_current = AnyPP::new(beatmap)
                 .mods(values.mods)
-                .combo(values.max_combo as usize)
+                .mode(mode)
+                .passed_objects(passed_objects)
+                .state(ScoreState {
+                    max_combo: values.max_combo as usize,
+                    n_geki: values.hit_geki as usize,
+                    n_katu: values.hit_katu as usize,
+                    n300: values.hit_300 as usize,
+                    n100: values.hit_100 as usize,
+                    n50: values.hit_50 as usize,
+                    n_misses: values.hit_miss as usize,
+                })
+                .calculate();
+
+            values.current_pp = pp_current.pp();
+
+            let fc_pp = AnyPP::new(beatmap)
+                .mods(values.mods)
+                .mode(mode)
                 .n300(values.hit_300 as usize)
                 .n100(values.hit_100 as usize)
                 .n50(values.hit_50 as usize)
-                .n_misses(values.hit_miss as usize)
                 .n_geki(values.hit_geki as usize)
                 .n_katu(values.hit_katu as usize)
+                .n_misses(values.hit_miss as usize)
                 .calculate();
 
-            values.current_pp = pp_result.pp();
+            values.fc_pp = fc_pp.pp();
         }
     }
 
