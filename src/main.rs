@@ -111,20 +111,22 @@ fn process_reading_loop(
     let artist_addr = p.read_i32((beatmap_addr + 0x18) as usize)?;
     values.artist = p.read_string(artist_addr as usize)?;
 
-    // TODO Read after status != 0
-    let path_addr = p.read_i32((beatmap_addr + 0x94) as usize)?;
-    values.beatmap_file = p.read_string(path_addr as usize)?;
-
     if values.status != GameStatus::PreSongSelect {
+        let path_addr = p.read_i32((beatmap_addr + 0x94) as usize)?;
         let folder_addr = p.read_i32((beatmap_addr + 0x78) as usize)?;
+
+        let beatmap_file = p.read_string(path_addr as usize)?;
         let folder = p.read_string(folder_addr as usize)?;
-        if folder != values.folder {
+
+        if folder != values.folder 
+        || beatmap_file != values.beatmap_file {
             let full_path = args.osu_path
                 .join("Songs")
                 .join(&folder)
-                .join(&values.beatmap_file);
+                .join(&beatmap_file);
 
             if full_path.exists() {
+                dbg!("changing beatmap {}", &full_path);
                 *cur_beatmap = match Beatmap::from_path(full_path) {
                     Ok(beatmap) => Some(beatmap),
                     Err(_) => {
@@ -134,6 +136,7 @@ fn process_reading_loop(
                 }
             }
         }
+        values.beatmap_file = beatmap_file;
         values.folder = folder;
     }
 
@@ -279,7 +282,7 @@ fn main() -> Result<()> {
                             continue 'init_loop,
                         _ => {
                             println!("{}", e);
-                            continue 'static_loop
+                            continue 'init_loop
                         }
                     }
                 },
