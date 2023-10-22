@@ -144,11 +144,22 @@ impl ProcessTraits for Process {
 
         let slice = IoSliceMut::new(buff);
 
-        process_vm_readv(
+        let res = process_vm_readv(
             Pid::from_raw(self.pid),
             &mut [slice],
             &[remote]
-        )?;
+        );
+
+        match res {
+            Ok(_) => (),
+            Err(e) => {
+                match e {
+                    nix::errno::Errno::EFAULT => 
+                        return Err(ProcessError::BadAddress(addr, len)),
+                    _ => return Err(e.into()),
+                }
+            },
+        }
 
         Ok(())
     }

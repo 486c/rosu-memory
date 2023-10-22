@@ -1,7 +1,8 @@
-use miniserde::Serialize;
+use serde::Serialize;
+use serde_repr::Serialize_repr;
 
+#[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
 #[repr(u32)]
-#[derive(Debug, Default, Serialize, PartialEq, Eq)]
 pub enum GameStatus {
     PreSongSelect = 0,
     Playing = 2,
@@ -10,6 +11,7 @@ pub enum GameStatus {
     ResultScreen = 7,
     MultiplayerLobbySelect = 11,
     MultiplayerLobby = 12,
+    MultiplayerResultScreen = 14,
 
     #[default]
     Unkown,
@@ -25,6 +27,7 @@ impl From<u32> for GameStatus {
             7 => Self::ResultScreen,
             11 => Self::MultiplayerLobbySelect,
             12 => Self::MultiplayerLobby,
+            14 => Self::MultiplayerResultScreen,
             _ => Self::Unkown,
         }
     }

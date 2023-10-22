@@ -21,6 +21,7 @@ macro_rules! prim_read_impl {
                 let mut bytes = [0u8; std::mem::size_of::<$t>()];
                 self.read(addr, std::mem::size_of::<$t>(), &mut bytes)?;
 
+
                 Ok($t::from_le_bytes(bytes))
             }
         }

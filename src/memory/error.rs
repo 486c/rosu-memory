@@ -15,9 +15,8 @@ pub enum ProcessError {
     },
     FromUtf8Error,
     ConvertionError,
-
+    BadAddress(usize, usize),
     SignatureNotFound(String),
-
     OsError{
         #[cfg(target_os = "linux")]
         inner: nix::errno::Errno,
@@ -100,6 +99,10 @@ impl Display for ProcessError {
                     f, 
                     "Not enough permissions to run, please run as sudo"
                 ),
+            ProcessError::BadAddress(addr, len) => {
+                let _  = writeln!(f, "Trying to read bad address");
+                writeln!(f, "Address: {:X}, Length: {:X}", addr, len)
+            },
         }
     }
 }
@@ -114,6 +117,7 @@ impl std::error::Error for ProcessError {
             ProcessError::ConvertionError => None,
             ProcessError::SignatureNotFound(_) => None,
             ProcessError::OsError { inner } => Some(inner),
+            ProcessError::BadAddress(..) => None,
         }
     }
 }

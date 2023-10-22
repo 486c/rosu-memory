@@ -16,7 +16,6 @@ use clap::Parser;
 use async_tungstenite::WebSocketStream;
 use crossbeam_channel::bounded;
 
-use miniserde::json;
 use async_tungstenite::tungstenite;
 use futures_util::sink::SinkExt;
 use rosu_pp::{Beatmap, AnyPP, GameMode, ScoreState};
@@ -56,7 +55,7 @@ fn parse_interval(
 fn read_static_adresses(
     p: &Process,
     adresses: &mut StaticAdresses
-) -> std::result::Result<(), ProcessError> {
+) -> Result<()> {
     let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
     let status_sign = Signature::from_str("48 83 F8 04 73 1E")?;
     let menu_mods_sign = Signature::from_str(
@@ -82,7 +81,7 @@ fn process_reading_loop(
     adresses: &StaticAdresses,
     values: &mut Values,
     cur_beatmap: &mut Option<Beatmap>
-) -> std::result::Result<(), ProcessError> {
+) -> Result<()> {
     let menu_mods_ptr = p.read_i32(adresses.menu_mods + 0x9)?;
     values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
 
@@ -95,23 +94,27 @@ fn process_reading_loop(
         p.read_u32(status_ptr as usize)?
     );
 
-    let ar_addr = beatmap_addr + 0x2c;
-    let cs_addr = ar_addr + 0x04;
-    let hp_addr = cs_addr + 0x04;
-    let od_addr = hp_addr + 0x04;
+    if values.status != GameStatus::MultiplayerLobby {
+        let ar_addr = beatmap_addr + 0x2c;
+        let cs_addr = ar_addr + 0x04;
+        let hp_addr = cs_addr + 0x04;
+        let od_addr = hp_addr + 0x04;
 
-    values.ar = p.read_f32(ar_addr as usize)?;
-    values.cs = p.read_f32(cs_addr as usize)?;
-    values.hp = p.read_f32(hp_addr as usize)?;
-    values.od = p.read_f32(od_addr as usize)?;
+        values.ar = p.read_f32(ar_addr as usize)?;
+        values.cs = p.read_f32(cs_addr as usize)?;
+        values.hp = p.read_f32(hp_addr as usize)?;
+        values.od = p.read_f32(od_addr as usize)?;
 
-    let plays_addr = p.read_i32(adresses.base - 0x33)? + 0xC;
-    values.plays = p.read_i32(plays_addr as usize)?;
+        let plays_addr = p.read_i32(adresses.base - 0x33)? + 0xC;
+        values.plays = p.read_i32(plays_addr as usize)?;
 
-    let artist_addr = p.read_i32((beatmap_addr + 0x18) as usize)?;
-    values.artist = p.read_string(artist_addr as usize)?;
+        let artist_addr = p.read_i32((beatmap_addr + 0x18) as usize)?;
+        values.artist = p.read_string(artist_addr as usize)?;
+    }
 
-    if values.status != GameStatus::PreSongSelect {
+    if values.status != GameStatus::PreSongSelect 
+    || values.status != GameStatus::MultiplayerLobby 
+    || values.status != GameStatus::MultiplayerResultScreen {
         let path_addr = p.read_i32((beatmap_addr + 0x94) as usize)?;
         let folder_addr = p.read_i32((beatmap_addr + 0x78) as usize)?;
 
@@ -263,7 +266,7 @@ fn main() -> Result<()> {
         let p = match Process::initialize("osu!.exe") {
             Ok(p) => p,
             Err(e) => {
-                println!("{}", e);
+                println!("{:?}", Report::new(e));
                 continue 'init_loop
             },
         };
@@ -272,16 +275,24 @@ fn main() -> Result<()> {
         match read_static_adresses(&p, &mut static_adresses) {
             Ok(_) => {},
             Err(e) => {
-                match e {
-                    ProcessError::ProcessNotFound =>
-                        continue 'init_loop,
-                    #[cfg(target_os = "windows")]
-                    ProcessError::OsError{ .. } =>
-                        continue 'init_loop,
-                    _ => {
-                        println!("{}", e);
+                match e.downcast_ref::<ProcessError>() {
+                    Some(d_err) => {
+                        match d_err {
+                            ProcessError::ProcessNotFound =>
+                                continue 'init_loop,
+                            #[cfg(target_os = "windows")]
+                            ProcessError::OsError{ .. } =>
+                                continue 'init_loop,
+                            _ => {
+                                println!("{:?}", e);
+                                continue 'init_loop
+                            }
+                        }
+                    },
+                    None => {
+                        println!("{:?}", e);
                         continue 'init_loop
-                    }
+                    },
                 }
             },
         };
@@ -302,16 +313,24 @@ fn main() -> Result<()> {
                 &mut values,
                 &mut cur_beatmap
             ) {
-                match e {
-                    ProcessError::ProcessNotFound =>
-                        continue 'init_loop,
-                    #[cfg(target_os = "windows")]
-                    ProcessError::OsError{ .. } =>
-                        continue 'init_loop,
-                    _ => {
-                        println!("{}", e);
-                        continue 'main_loop
-                    }
+                match e.downcast_ref::<ProcessError>() {
+                    Some(d_err) => {
+                        match d_err {
+                            ProcessError::ProcessNotFound =>
+                                continue 'init_loop,
+                            #[cfg(target_os = "windows")]
+                            ProcessError::OsError{ .. } =>
+                                continue 'init_loop,
+                            _ => {
+                                println!("{:?}", e);
+                                continue 'main_loop
+                            }
+                        }
+                    },
+                    None => {
+                        println!("{:?}", e);
+                        continue 'init_loop
+                    },
                 }
             }
 
@@ -343,14 +362,17 @@ fn main() -> Result<()> {
                     };
 
                     let _ = websocket.send(
-                        Message::Text(json::to_string(&values))
+                        Message::Text(
+                            serde_json::to_string(&values)
+                                .unwrap() 
+                        ) // No way serialization gonna fail so
+                          // using unwrap
                     ).await;
 
                     true
                 })
             });
             
-            // TODO Read interval from args
             std::thread::sleep(args.interval);
         }
     };
