@@ -31,6 +31,9 @@ lto = "thin"
 codegen-units = 1
 strip = "debuginfo"
 
+[profile.release.package."*"]
+opt-level = "s"
+
 [dev-dependencies]
 rand = "0.8.5"
 
