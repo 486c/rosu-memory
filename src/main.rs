@@ -66,11 +66,16 @@ fn read_static_adresses(
         "7D 15 A1 ?? ?? ?? ?? 85 C0"
     )?;
 
+    let playtime_sign = Signature::from_str(
+        "5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04"
+    )?;
+
 
     adresses.base = p.read_signature(&base_sign)?;
     adresses.status = p.read_signature(&status_sign)?;
     adresses.menu_mods = p.read_signature(&menu_mods_sign)?;
     adresses.rulesets = p.read_signature(&rulesets_sign)?;
+    adresses.playtime = p.read_signature(&playtime_sign)?;
 
     Ok(())
 }
@@ -79,11 +84,13 @@ fn process_reading_loop(
     p: &Process,
     args: &Args,
     adresses: &StaticAdresses,
-    values: &mut Values,
-    cur_beatmap: &mut Option<Beatmap>
+    values: &mut Values
 ) -> Result<()> {
     let menu_mods_ptr = p.read_i32(adresses.menu_mods + 0x9)?;
     values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
+
+    let playtime_ptr = p.read_i32(adresses.playtime + 0x5)?;
+    values.playtime = p.read_i32(playtime_ptr as usize)?;
 
     let beatmap_ptr = p.read_i32(adresses.base - 0xC)?;
     let beatmap_addr = p.read_i32(beatmap_ptr as usize)?;
@@ -129,7 +136,7 @@ fn process_reading_loop(
                 .join(&beatmap_file);
 
             if full_path.exists() {
-                *cur_beatmap = match Beatmap::from_path(full_path) {
+                values.current_beatmap = match Beatmap::from_path(full_path) {
                     Ok(beatmap) => Some(beatmap),
                     Err(_) => {
                         println!("Failed to parse beatmap");
@@ -147,6 +154,12 @@ fn process_reading_loop(
     )?;
 
     if values.status == GameStatus::Playing {
+        if values.prev_playtime > values.playtime {
+            values.reset_gameplay();
+        }
+
+        values.prev_playtime = values.playtime;
+
         let gameplay_base = 
             p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
         let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
@@ -163,6 +176,17 @@ fn process_reading_loop(
         values.combo = p.read_i16(score_base + 0x94)?;
         values.max_combo = p.read_i16(score_base + 0x68)?;
 
+        if values.prev_combo > values.combo {
+            values.prev_combo = 0;
+        }
+
+        if values.combo < values.prev_combo
+        && values.hit_miss == values.prev_hit_miss {
+            values.slider_breaks += 1;
+        }
+
+        values.prev_hit_miss = values.hit_miss;
+
         let mods_xor_base = (
             p.read_i32(score_base + 0x1C)?
         ) as usize;
@@ -173,7 +197,7 @@ fn process_reading_loop(
         values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
         // Calculate pp
-        if let Some(beatmap) = &cur_beatmap {
+        if let Some(beatmap) = &values.current_beatmap {
             // TODO PR to rosu-pp to add From<T> trait?
             let mode = match values.mode {
                 0 => GameMode::Osu,
@@ -297,8 +321,6 @@ fn main() -> Result<()> {
             },
         };
 
-        let mut cur_beatmap: Option<Beatmap> = None;
-
         println!("Starting reading loop");
         'main_loop: loop {
             while let Ok(client) = rx.try_recv() {
@@ -310,8 +332,7 @@ fn main() -> Result<()> {
                 &p,
                 &args,
                 &static_adresses,
-                &mut values,
-                &mut cur_beatmap
+                &mut values
             ) {
                 match e.downcast_ref::<ProcessError>() {
                     Some(d_err) => {
