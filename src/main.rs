@@ -120,8 +120,8 @@ fn process_reading_loop(
     }
 
     if values.status != GameStatus::PreSongSelect 
-    || values.status != GameStatus::MultiplayerLobby 
-    || values.status != GameStatus::MultiplayerResultScreen {
+    && values.status != GameStatus::MultiplayerLobby 
+    && values.status != GameStatus::MultiplayerResultScreen {
         let path_addr = p.read_i32((beatmap_addr + 0x94) as usize)?;
         let folder_addr = p.read_i32((beatmap_addr + 0x78) as usize)?;
 
@@ -271,7 +271,12 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     if !args.osu_path.exists() {
-        return Err(Report::msg("Provided path doesn't exists!"));
+        return Err(Report::msg(
+            format!(
+                "Provided osu path doesn't exists!\n Path: {}",
+                &args.osu_path.to_str().unwrap()
+            )
+        ));
     }
 
     let (tx, rx) = bounded::<WebSocketStream<Async<TcpStream>>>(20);
@@ -337,11 +342,15 @@ fn main() -> Result<()> {
                 match e.downcast_ref::<ProcessError>() {
                     Some(d_err) => {
                         match d_err {
-                            ProcessError::ProcessNotFound =>
-                                continue 'init_loop,
+                            ProcessError::ProcessNotFound => {
+                                println!("{:?}", e);
+                                continue 'init_loop
+                            },
                             #[cfg(target_os = "windows")]
-                            ProcessError::OsError{ .. } =>
-                                continue 'init_loop,
+                            ProcessError::OsError{ .. } => {
+                                println!("{:?}", e);
+                                continue 'init_loop
+                            }
                             _ => {
                                 println!("{:?}", e);
                                 continue 'main_loop
