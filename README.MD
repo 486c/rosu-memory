@@ -18,9 +18,15 @@ There two primary methods
 	2. Change `set OSU_PATH=%HOMEDRIVE%%HOMEPATH%\AppData\Local\osu!` to `set OSUPATH=<YOUR OSU PATH>`
 	3. Start rosu-memory by opening `windows_start.bat file` (Note: `rosu-memory.exe` and `windows_start.bat` should be in the same folder)
 ### Linux  
-TODO
+	1. Download binary or compile it by yourself
+	2. Set OSU_PATH environment variable or use `--osu_path` argument
 ### Command line arguments
-TODO
+```
+Options:
+  -o, --osu-path <OSU_PATH>  Path to osu folder [env: OSU_PATH=]
+  -i, --interval <INTERVAL>  Interval between updates in ms [default: 300]
+  -h, --help                 Print help
+```
 
 ## Diffrences between gosu-memory and tosu
 1. Small binary size
