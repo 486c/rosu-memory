@@ -58,7 +58,7 @@ impl ToString for Signature {
         for byte in &self.bytes {
             match byte {
                 SignatureByte::Byte(v) => {
-                    let _ = write!(result, "{:x} ", v);
+                    let _ = write!(result, "{:X} ", v);
                 },
                 SignatureByte::Any => result.push_str("?? "),
             }
