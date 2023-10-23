@@ -82,8 +82,7 @@ pub fn find_signature(buff: &[u8], sign: &Signature) -> Option<usize> {
 
     while i + sign.bytes.len() <= buff.len() {
         for j in 0..sign.bytes.len() {
-            if sign.bytes[j] != buff[i + j]
-            && sign.bytes[j] != SignatureByte::Any {
+            if sign.bytes[j] != buff[i + j] {
                 found = false;
                 break;
             }
@@ -135,6 +134,14 @@ mod tests {
         let s = find_signature(&buff, &sig).unwrap();
         assert_eq!(s, 3);
 
+        let sig = Signature::from_str("?? 30 ?? ?? ?? ?? ?? CB").unwrap();
+        let s = find_signature(&buff, &sig).unwrap();
+        assert_eq!(s, 0);
+
+        let sig = Signature::from_str("FF 30 A3 50 12 ?? ?? CB").unwrap();
+        let s = find_signature(&buff, &sig).unwrap();
+        assert_eq!(s, 0);
+
     }
 
     #[test]
@@ -154,6 +161,10 @@ mod tests {
         let s = SignatureByte::from_str("AB").unwrap();
         assert!(s == 0xAB);
         assert!(s != 0xFF);
+        assert!(s != 0x50);
+        assert!(s != 0xFF);
+        assert!(s != 0xF3);
+        assert!(s != 0xCB);
 
         let s = SignatureByte::from_str("??").unwrap();
         assert!(s == 0xAB);
