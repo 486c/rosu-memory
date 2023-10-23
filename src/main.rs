@@ -198,40 +198,11 @@ fn process_reading_loop(
 
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
-            // TODO PR to rosu-pp to add From<T> trait?
-            let mode = match values.mode {
-                0 => GameMode::Osu,
-                1 => GameMode::Taiko,
-                2 => GameMode::Catch,
-                3 => GameMode::Mania,
-                _ => {
-                    println!(
-                        "Got unkown mode, defaulting to osu"
-                    );
-
-                    GameMode::Osu
-                }
-            };
-
-            let passed_objects = usize::try_from(match mode {
-                GameMode::Osu => 
-                    values.hit_300 + values.hit_100 
-                    + values.hit_50 + values.hit_miss,
-                GameMode::Taiko => 
-                    values.hit_300 + values.hit_100 + values.hit_miss,
-                GameMode::Catch => 
-                    values.hit_300 + values.hit_100 
-                    + values.hit_50 + values.hit_miss
-                    + values.hit_katu,
-                GameMode::Mania => 
-                    values.hit_300 + values.hit_100 
-                    + values.hit_50 + values.hit_miss
-                    + values.hit_katu + values.hit_geki,
-            })?;
+            let mode = values.gamemode();
+            let passed_objects = values.passed_objects()?;
 
             values.passed_objects = passed_objects;
 
-            // TODO use mods from gameplay
             let pp_current = AnyPP::new(beatmap)
                 .mods(values.mods)
                 .mode(mode)

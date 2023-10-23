@@ -1,5 +1,7 @@
-use rosu_pp::Beatmap;
-use serde::Serialize;
+use std::num::TryFromIntError;
+
+use rosu_pp::{Beatmap, GameMode};
+use serde::{Serialize, Deserializer, Deserialize};
 use serde_repr::Serialize_repr;
 
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
@@ -114,6 +116,35 @@ impl Values {
         self.current_pp = 0.0;
         self.fc_pp = 0.0;
     }
-}
 
-// TODO reset gameplay function
+    // TODO PR to rosu-pp to add From<u8> trait?
+    pub fn gamemode(&self) -> GameMode {
+        match self.mode {
+            0 => GameMode::Osu,
+            1 => GameMode::Taiko,
+            2 => GameMode::Catch,
+            3 => GameMode::Mania,
+            _ => GameMode::Osu // Defaulting to osu
+        }
+    }
+
+    pub fn passed_objects(&self) -> Result<usize, TryFromIntError> {
+        let value = match self.gamemode() {
+            GameMode::Osu => 
+                self.hit_300 + self.hit_100 
+                + self.hit_50 + self.hit_miss,
+            GameMode::Taiko => 
+                self.hit_300 + self.hit_100 + self.hit_miss,
+            GameMode::Catch => 
+                self.hit_300 + self.hit_100 
+                + self.hit_50 + self.hit_miss
+                + self.hit_katu,
+            GameMode::Mania => 
+                self.hit_300 + self.hit_100 
+                + self.hit_50 + self.hit_miss
+                + self.hit_katu + self.hit_geki,
+        };
+
+        usize::try_from(value)
+    }
+}
