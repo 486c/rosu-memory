@@ -37,7 +37,7 @@ Options:
 	| Linux   | 1.9 MB       | 21.2 MB               | Does not support     |
 
 2. Small ram usage. Since Rust is compiled language and doesn't have any garbage collection (opposed to gosu and tosu) it's have very low (almost minimal) ram usage.
-3. Small CPU usage
+3. Low CPU usage
 4. Statically linked binary, no runtime dependencies is required (except win32 and glibc)
 5. Can be compiled using musl libc!
 6. Cross-platform
@@ -49,3 +49,35 @@ Options:
 3. Any tournament stuff 
 4. Unstable rate
 5. And many others :)
+
+## JSON Schema
+```
+{
+  "artist": "",
+  "folder": "",
+  "beatmap_file": "",
+  "playtime": 0,
+  "status": 0,
+  "ar": 0,
+  "cs": 0,
+  "hp": 0,
+  "od": 0,
+  "hit_300": 0,
+  "hit_100": 0,
+  "hit_50": 0,
+  "hit_geki": 0,
+  "hit_katu": 0,
+  "hit_miss": 0,
+  "combo": 0,
+  "max_combo": 0,
+  "mode": 0,
+  "slider_breaks": 0,
+  "current_pp": 0,
+  "fc_pp": 0,
+  "passed_objects": 0,
+  "menu_mods": 0,
+  "mods": 0,
+  "plays": 0
+}
+```
+
