@@ -41,7 +41,7 @@ Options:
 4. Statically linked binary, no runtime dependencies required (except win32 and glibc)
 5. Can be compiled using musl libc!
 6. Cross-platform
-7. **Different JSON schema**. Small disadvantage, but rosu-memory outputs slightly diffrent JSON than tosu and gosu. Please consider this when porting your counter to rosu-memory. (See examples folder :) ) 
+7. **Different JSON schema**. Small disadvantage, but rosu-memory outputs slightly different JSON than tosu and gosu. Please consider this when porting your counter to rosu-memory. (See examples folder :) ) 
 
 ## What is not implemented yet
 1. Not all osu! data is present yet. But everything that is required to make simple counter is present :)
