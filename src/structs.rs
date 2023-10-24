@@ -17,7 +17,7 @@ pub enum GameStatus {
     MultiplayerResultScreen = 14,
 
     #[default]
-    Unkown,
+    Unknown,
 }
 
 impl From<u32> for GameStatus {
@@ -31,7 +31,7 @@ impl From<u32> for GameStatus {
             11 => Self::MultiplayerLobbySelect,
             12 => Self::MultiplayerLobby,
             14 => Self::MultiplayerResultScreen,
-            _ => Self::Unkown,
+            _ => Self::Unknown,
         }
     }
 }
