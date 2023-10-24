@@ -191,8 +191,10 @@ fn process_reading_loop(
             p.read_i32(score_base + 0x1C)?
         ) as usize;
 
-        let mods_xor1 = p.read_i32(mods_xor_base + 0xC)?;
-        let mods_xor2 = p.read_i32(mods_xor_base + 0x8)?;
+        let mods_raw = p.read_u64(mods_xor_base + 0x8)?;
+
+        let mods_xor1 = mods_raw & 0xFFFFFFFF;
+        let mods_xor2 = mods_raw >> 32;
 
         values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
