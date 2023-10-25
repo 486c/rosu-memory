@@ -1,0 +1,13 @@
+name: rosu-memory
+
+on:
+  push:
+    branches: ["master"]
+  pull_request:
+    types: [ opened, reopened ]
+    paths-ignore:
+      - '*.md'
+
+jobs:
+  check:
+    uses: ./.github/workflows/check.yml
