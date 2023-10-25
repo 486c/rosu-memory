@@ -118,7 +118,7 @@ fn test_string() {
         buff
     };
 
-    let len = p.read_u32(0 + 0x4).unwrap();
+    let len = p.read_u32(0x4).unwrap();
     assert_eq!(len, 8);
 
     let s = p.read_string(0).unwrap();

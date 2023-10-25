@@ -1,7 +1,7 @@
 use std::num::TryFromIntError;
 
 use rosu_pp::{Beatmap, GameMode};
-use serde::{Serialize, Deserializer, Deserialize};
+use serde::Serialize;
 use serde_repr::Serialize_repr;
 
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]

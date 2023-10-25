@@ -18,7 +18,7 @@ use crossbeam_channel::bounded;
 
 use async_tungstenite::tungstenite;
 use futures_util::sink::SinkExt;
-use rosu_pp::{Beatmap, AnyPP, GameMode, ScoreState};
+use rosu_pp::{Beatmap, AnyPP, ScoreState};
 use smol::{prelude::*, Async};
 use tungstenite::Message;
 
@@ -276,18 +276,14 @@ fn main() -> Result<()> {
             Ok(_) => {},
             Err(e) => {
                 match e.downcast_ref::<ProcessError>() {
-                    Some(d_err) => {
-                        match d_err {
-                            ProcessError::ProcessNotFound =>
-                                continue 'init_loop,
-                            #[cfg(target_os = "windows")]
-                            ProcessError::OsError{ .. } =>
-                                continue 'init_loop,
-                            _ => {
-                                println!("{:?}", e);
-                                continue 'init_loop
-                            }
-                        }
+                    Some(&ProcessError::ProcessNotFound) => 
+                        continue 'init_loop,
+                    #[cfg(target_os = "windows")]
+                    Some(&ProcessError::OsError{ .. }) => 
+                        continue 'init_loop,
+                    Some(_) => {
+                        println!("{:?}", e);
+                        continue 'init_loop
                     },
                     None => {
                         println!("{:?}", e);
