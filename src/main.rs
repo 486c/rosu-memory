@@ -307,22 +307,14 @@ fn main() -> Result<()> {
                 &mut values
             ) {
                 match e.downcast_ref::<ProcessError>() {
-                    Some(d_err) => {
-                        match d_err {
-                            ProcessError::ProcessNotFound => {
-                                println!("{:?}", e);
-                                continue 'init_loop
-                            },
-                            #[cfg(target_os = "windows")]
-                            ProcessError::OsError{ .. } => {
-                                println!("{:?}", e);
-                                continue 'init_loop
-                            }
-                            _ => {
-                                println!("{:?}", e);
-                                continue 'main_loop
-                            }
-                        }
+                    Some(&ProcessError::ProcessNotFound) => 
+                        continue 'init_loop,
+                    #[cfg(target_os = "windows")]
+                    Some(&ProcessError::OsError{ .. }) => 
+                        continue 'init_loop,
+                    Some(_) => {
+                        println!("{:?}", e);
+                        continue 'main_loop
                     },
                     None => {
                         println!("{:?}", e);
