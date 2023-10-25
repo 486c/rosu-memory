@@ -1,0 +1,33 @@
+name: Check
+
+on:
+  workflow_call
+
+jobs:
+  check:
+    name: Check ${{ matrix.os }} ${{ matrix.target }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: x86_64-unknown-linux-gnu
+            os: ubuntu-latest
+          - target: x86_64-unknown-linux-musl
+            os: ubuntu-latest
+          - target: x86_64-pc-windows-msvc
+            os: windows-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+      - name: Install musl
+        if: matrix.target == 'x86_64-unknown-linux-musl'
+        run: rustup target add x86_64-unknown-linux-musl
+      - name: Run cargo check
+        run: cargo check --verbose --target ${{ matrix.target }}
+      - name: Run cargo clippy
+        run: cargo clippy --all-features --all-targets -- -Dwarnings
+      - name: Run cargo audit
+        run: cargo audit
+      - name: Run tests
+        run: cargo test
