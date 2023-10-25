@@ -281,11 +281,7 @@ fn main() -> Result<()> {
                     #[cfg(target_os = "windows")]
                     Some(&ProcessError::OsError{ .. }) => 
                         continue 'init_loop,
-                    Some(_) => {
-                        println!("{:?}", e);
-                        continue 'init_loop
-                    },
-                    None => {
+                    Some(_) | None => {
                         println!("{:?}", e);
                         continue 'init_loop
                     },
@@ -312,13 +308,9 @@ fn main() -> Result<()> {
                     #[cfg(target_os = "windows")]
                     Some(&ProcessError::OsError{ .. }) => 
                         continue 'init_loop,
-                    Some(_) => {
+                    Some(_) | None => {
                         println!("{:?}", e);
                         continue 'main_loop
-                    },
-                    None => {
-                        println!("{:?}", e);
-                        continue 'init_loop
                     },
                 }
             }
@@ -333,12 +325,8 @@ fn main() -> Result<()> {
                     let msg = match msg_future.await {
                         Some(v) => {
                             match v {
-                                Some(m) => {
-                                    match m {
-                                        Ok(v) => Some(v),
-                                        Err(_) => return false,
-                                    }
-                                },
+                                Some(Ok(v)) => Some(v),
+                                Some(Err(_)) => return false,
                                 None => None,
                             }
                         },
