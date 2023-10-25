@@ -6,8 +6,6 @@ use windows::Win32::System::Memory::MEM_FREE;
 use windows::Win32::System::Diagnostics::Debug::ReadProcessMemory;
 use windows::Win32::System::ProcessStatus::EnumProcesses;
 use windows::Win32::System::ProcessStatus::GetProcessImageFileNameA;
-use windows::Win32::Foundation::GetLastError;
-use windows::core::HRESULT;
 
 use crate::memory::{
     process::{ Process, MemoryRegion, ProcessTraits }, 
@@ -35,7 +33,7 @@ impl ProcessTraits for Process {
     }
 
     fn find_process(proc_name: &str) -> Result<Process, ProcessError> {
-        let mut processes: Vec<u32> = vec![0; 512];
+        let mut processes = [0u32; 512];
         let mut returned: u32 = 0;
 
         let res = unsafe { EnumProcesses(
@@ -52,13 +50,13 @@ impl ProcessTraits for Process {
             let handle = match unsafe { OpenProcess(
                 PROCESS_QUERY_INFORMATION|PROCESS_VM_READ, 
                 FALSE, 
-                pid.clone()
+                *pid
             )} {
                 Ok(h) => h,
                 Err(_) => continue,
             };
 
-            let mut string_buff = vec![0u8; 256];
+            let mut string_buff = [0u8; 256];
 
             let size = unsafe { GetProcessImageFileNameA(
                 handle, 
@@ -71,7 +69,7 @@ impl ProcessTraits for Process {
 
             if name.contains(proc_name) {
                 return Ok(Process {
-                    pid: pid.clone(),
+                    pid: *pid,
                     handle,
                     maps: Vec::new()
                 })
@@ -166,10 +164,8 @@ impl ProcessTraits for Process {
             Some(&mut n)
         )};
 
-        if let Err(_) = res.ok() {
-            if self.handle.is_invalid() {
-                return Err(ProcessError::ProcessNotFound);
-            }
+        if res.ok().is_err() && self.handle.is_invalid() {
+            return Err(ProcessError::ProcessNotFound);
         }
 
         res.ok()?;
