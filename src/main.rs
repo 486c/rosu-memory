@@ -35,7 +35,7 @@ use eyre::{Report, Result};
 
 #[derive(Parser, Debug)]
 pub struct Args {
-    /// Path to osu folder
+    /// Path to osu! folder
     #[arg(short, long, env)]
     osu_path: PathBuf,
 
