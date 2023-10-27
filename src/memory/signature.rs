@@ -138,19 +138,19 @@ mod tests {
     #[test]
     fn test_signature_byte() {
         let s = SignatureByte::from_str("AB").unwrap();
-        assert!(s == 0xAB);
-        assert!(s != 0xFF);
-        assert!(s != 0x50);
-        assert!(s != 0xFF);
-        assert!(s != 0xF3);
-        assert!(s != 0xCB);
+        assert_eq!(s, 0xAB);
+        assert_ne!(s, 0xFF);
+        assert_ne!(s, 0x50);
+        assert_ne!(s, 0xFF);
+        assert_ne!(s, 0xF3);
+        assert_ne!(s, 0xCB);
 
         let s = SignatureByte::from_str("??").unwrap();
-        assert!(s == 0xAB);
-        assert!(s == 0x50);
-        assert!(s == 0xFF);
-        assert!(s == 0xF3);
-        assert!(s == 0xCB);
+        assert_eq!(s, 0xAB);
+        assert_eq!(s, 0x50);
+        assert_eq!(s, 0xFF);
+        assert_eq!(s, 0xF3);
+        assert_eq!(s, 0xCB);
     }
 
     #[test]
