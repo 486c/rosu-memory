@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::str::FromStr;
 
-#[derive(Debug, PartialEq)]
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SignatureByte {
     Byte(u8),
     Any,
@@ -72,30 +72,12 @@ impl Display for Signature {
     }
 }
 
-// Find signature inside of [u8] buffer
+/// Find signature inside of [u8] buffer
 #[inline]
 pub fn find_signature(buff: &[u8], sign: &Signature) -> Option<usize> {
-    let mut i = 0;
-    let mut found = true;
-
-    while i + sign.bytes.len() <= buff.len() {
-        for j in 0..sign.bytes.len() {
-            if sign.bytes[j] != buff[i + j] {
-                found = false;
-                break;
-            }
-        }
-
-        if found {
-            return Some(i);
-        }
-
-        found = true;
-
-        i += 1;
-    }
-
-    None
+    buff.windows(sign.bytes.len())
+        .enumerate()
+        .find_map(|(i, window)| (sign.bytes == window).then_some(i))
 }
 
 #[cfg(test)]
