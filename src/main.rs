@@ -130,10 +130,10 @@ fn process_reading_loop(
 
         if folder != values.folder 
         || beatmap_file != values.beatmap_file {
-            let full_path = args.osu_path
-                .join("Songs")
-                .join(&folder)
-                .join(&beatmap_file);
+            let mut full_path = args.osu_path.clone();
+            full_path.push("Songs");
+            full_path.push(&folder);
+            full_path.push(&beatmap_file);
 
             if full_path.exists() {
                 values.current_beatmap = match Beatmap::from_path(full_path) {
