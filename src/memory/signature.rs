@@ -1,5 +1,9 @@
-use std::fmt::{Display, Formatter, Result as FmtResult};
-use std::str::FromStr;
+use crate::memory::error::ParseSignatureError;
+
+use std::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    str::FromStr,
+};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SignatureByte {
@@ -13,7 +17,7 @@ impl FromStr for SignatureByte {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "??" => Ok(Self::Any),
-            _ => Ok(Self::Byte(u8::from_str_radix(s, 16)?)),
+            _ => u8::from_str_radix(s, 16).map(Self::Byte),
         }
     }
 }
@@ -38,21 +42,31 @@ impl Display for SignatureByte {
 
 #[derive(Debug)]
 pub struct Signature {
-    pub bytes: Vec<SignatureByte>,
+    bytes: Box<[SignatureByte]>,
 }
 
 impl FromStr for Signature {
-    type Err = std::num::ParseIntError;
+    type Err = ParseSignatureError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let mut bytes = Vec::new();
-
-        for c in value.split(' ') {
-            let b = SignatureByte::from_str(c)?;
-            bytes.push(b);
+        if value.len() % 3 != 2 {
+            return Err(ParseSignatureError::InvalidLength(value.len()));
         }
 
-        Ok(Self { bytes })
+        let capacity = (value.len() + 2) / 3;
+        let mut bytes = Vec::with_capacity(capacity);
+
+        for c in value.split(' ') {
+            bytes.push(c.parse()?);
+        }
+
+        // making sure there is no excess capacity so converting
+        // from Vec to Box does not re-allocate
+        debug_assert_eq!(bytes.len(), bytes.capacity());
+
+        Ok(Self {
+            bytes: bytes.into_boxed_slice(),
+        })
     }
 }
 
@@ -77,7 +91,7 @@ impl Display for Signature {
 pub fn find_signature(buff: &[u8], sign: &Signature) -> Option<usize> {
     buff.windows(sign.bytes.len())
         .enumerate()
-        .find_map(|(i, window)| (sign.bytes == window).then_some(i))
+        .find_map(|(i, window)| (sign.bytes.as_ref() == window).then_some(i))
 }
 
 #[cfg(test)]
