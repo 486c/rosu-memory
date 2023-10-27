@@ -1,5 +1,5 @@
+use std::fmt::{Display, Formatter, Result as FmtResult};
 use std::str::FromStr;
-use std::fmt::Write;
 
 #[derive(Debug, PartialEq)]
 pub enum SignatureByte {
@@ -18,12 +18,20 @@ impl FromStr for SignatureByte {
     }
 }
 
-
 impl PartialEq<u8> for SignatureByte {
     fn eq(&self, other: &u8) -> bool {
         match self {
             SignatureByte::Any => true,
             SignatureByte::Byte(b) => b == other,
+        }
+    }
+}
+
+impl Display for SignatureByte {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            SignatureByte::Byte(byte) => write!(f, "{byte:X}"),
+            SignatureByte::Any => f.write_str("??"),
         }
     }
 }
@@ -48,23 +56,19 @@ impl FromStr for Signature {
     }
 }
 
-impl ToString for Signature {
-    fn to_string(&self) -> String {
-        // TODO too many allocations for such simple formatting
-        // TODO implement display
+impl Display for Signature {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let mut bytes = self.bytes.iter();
 
-        let mut result = String::with_capacity(self.bytes.len() * 2);
+        if let Some(byte) = bytes.next() {
+            Display::fmt(byte, f)?;
 
-        for byte in &self.bytes {
-            match byte {
-                SignatureByte::Byte(v) => {
-                    let _ = write!(result, "{:X} ", v);
-                },
-                SignatureByte::Any => result.push_str("?? "),
+            for byte in bytes {
+                write!(f, " {byte}")?;
             }
-        };
+        }
 
-        result.trim_end().to_owned()
+        Ok(())
     }
 }
 
@@ -141,7 +145,6 @@ mod tests {
         let sig = Signature::from_str("FF 30 A3 50 12 ?? ?? CB").unwrap();
         let s = find_signature(&buff, &sig).unwrap();
         assert_eq!(s, 0);
-
     }
 
     #[test]
@@ -155,7 +158,7 @@ mod tests {
         let s = Signature::from_str("FF 30 A3 50 ?? ?? ?? FF CB FF FF ?? 10 2B 4A ?? ??").unwrap();
         assert_eq!(s.bytes.len(), 17);
     }
-    
+
     #[test]
     fn test_signature_byte() {
         let s = SignatureByte::from_str("AB").unwrap();
@@ -179,10 +182,6 @@ mod tests {
         let s = Signature::from_str("FF 30 A3 50").unwrap();
         assert_eq!(s.bytes.len(), 4);
 
-        assert_eq!(
-            "FF 30 A3 50".to_owned(), 
-            s.to_string().to_uppercase()
-        );
+        assert_eq!("FF 30 A3 50".to_owned(), s.to_string().to_uppercase());
     }
 }
-
