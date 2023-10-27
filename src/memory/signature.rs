@@ -169,9 +169,10 @@ mod tests {
 
     #[test]
     fn test_formatting() {
-        let s = Signature::from_str("FF 30 A3 50").unwrap();
+        let expected = "FF 30 A3 50";
+        let s = Signature::from_str(expected).unwrap();
         assert_eq!(s.bytes.len(), 4);
 
-        assert_eq!("FF 30 A3 50".to_owned(), s.to_string().to_uppercase());
+        assert_eq!(expected, s.to_string());
     }
 }
