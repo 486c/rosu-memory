@@ -72,12 +72,6 @@ impl Display for Signature {
     }
 }
 
-impl From<&str> for Signature {
-    fn from(value: &str) -> Self {
-        Signature::from_str(value).unwrap()
-    }
-}
-
 // Find signature inside of [u8] buffer
 #[inline]
 pub fn find_signature(buff: &[u8], sign: &Signature) -> Option<usize> {
