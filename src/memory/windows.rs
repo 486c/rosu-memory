@@ -110,11 +110,10 @@ impl ProcessTraits for Process {
         sign: &Signature
     ) -> Result<usize, ProcessError> {
         let mut buf = Vec::new();
+        let mut bytesread: usize = 0;
 
         for region in self.maps.iter() {
             buf.resize(region.size, 0);
-
-            let mut bytesread: usize = 0;
 
             let res = unsafe { ReadProcessMemory(
                 self.handle,
@@ -131,6 +130,8 @@ impl ProcessTraits for Process {
                 if error.code().0 == -2147024597 {
                     continue
                 }
+
+                return Err(error.into());
             }
 
             if let Some(offset) = find_signature(&buf[..bytesread], sign) {
