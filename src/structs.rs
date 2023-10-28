@@ -118,6 +118,10 @@ impl Values {
 
         self.current_pp = 0.0;
         self.fc_pp = 0.0;
+
+        self.passed_objects = 0;
+
+        self.unstable_rate = 0.0;
     }
 
     // TODO PR to rosu-pp to add From<u8> trait?
