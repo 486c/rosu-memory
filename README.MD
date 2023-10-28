@@ -47,8 +47,7 @@ Options:
 1. Not all osu! data is present yet. But everything that is required to make simple counter is present :)
 2. Strains graph
 3. Any tournament stuff 
-4. Unstable rate
-5. And many others :)
+4. And many others :)
 
 ## JSON Schema
 ```
@@ -58,10 +57,10 @@ Options:
   "beatmap_file": "",
   "playtime": 0,
   "status": 0,
-  "ar": 0,
-  "cs": 0,
-  "hp": 0,
-  "od": 0,
+  "ar": 0.0,
+  "cs": 0.0,
+  "hp": 0.0,
+  "od": 0.0,
   "hit_300": 0,
   "hit_100": 0,
   "hit_50": 0,
@@ -74,6 +73,7 @@ Options:
   "slider_breaks": 0,
   "current_pp": 0,
   "fc_pp": 0,
+  "unstable_rate": 0.0,
   "passed_objects": 0,
   "menu_mods": 0,
   "mods": 0,
