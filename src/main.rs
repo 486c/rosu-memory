@@ -7,6 +7,7 @@ use crate::structs::{
 };
 
 use std::{
+    borrow::Cow,
     str::FromStr, 
     collections::HashMap, net::TcpStream, path::PathBuf
 };
@@ -119,7 +120,9 @@ fn process_reading_loop(
         values.artist = p.read_string(artist_addr as usize)?;
     }
 
-    if values.status != GameStatus::PreSongSelect 
+    let mut new_map = false;
+
+    if values.status != GameStatus::PreSongSelect
     && values.status != GameStatus::MultiplayerLobby 
     && values.status != GameStatus::MultiplayerResultScreen {
         let path_addr = p.read_i32((beatmap_addr + 0x94) as usize)?;
@@ -137,7 +140,11 @@ fn process_reading_loop(
 
             if full_path.exists() {
                 values.current_beatmap = match Beatmap::from_path(full_path) {
-                    Ok(beatmap) => Some(beatmap),
+                    Ok(beatmap) => {
+                        new_map = true;
+
+                        Some(beatmap)
+                    },
                     Err(_) => {
                         println!("Failed to parse beatmap");
                         None
@@ -165,6 +172,13 @@ fn process_reading_loop(
         let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
 
         values.mode = p.read_i32(score_base + 0x64)?;
+
+        // store the converted map so it's not converted everytime it's used for pp calc
+        if let Some(map) = values.current_beatmap.as_mut().filter(|_| new_map) {
+            if let Cow::Owned(converted) = map.convert_mode(values.gamemode()) {
+                *map = converted;
+            }
+        }
 
         values.hit_300 = p.read_i16(score_base + 0x8a)?;
         values.hit_100 = p.read_i16(score_base + 0x88)?;
