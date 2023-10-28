@@ -229,6 +229,10 @@ fn process_reading_loop(
 
         values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
+        if values.mods & 64 > 0 {
+            values.unstable_rate /= 1.5
+        }
+
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
             let mode = values.gamemode();
