@@ -47,6 +47,8 @@ pub struct StaticAdresses {
 
 #[derive(Debug, Default, Serialize)]
 pub struct Values {
+    #[serde(skip)]
+    pub hit_errors: Vec<i32>,
 
     #[serde(skip)]
     pub current_beatmap: Option<Beatmap>,

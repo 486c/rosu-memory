@@ -164,6 +164,34 @@ fn process_reading_loop(
             p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
         let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
 
+
+        let hit_errors_base = (
+            p.read_i32(score_base + 0x38)?
+        ) as usize;
+
+        let hit_errors = p.read_i32_array(
+            hit_errors_base,
+            &mut values.hit_errors
+        )?;
+
+        if !values.hit_errors.is_empty() {
+            let mut total = 0;
+            for hit in &values.hit_errors {
+                total += *hit;
+            }
+
+            let average = total / values.hit_errors.len() as i32;
+
+            let mut variance = 0;
+            for hit in &values.hit_errors {
+                variance += i32::pow(*hit - average, 2)
+            }
+
+            variance = variance / values.hit_errors.len() as i32;
+
+            dbg!(f64::sqrt(variance as f64) * 10.0);
+        }
+
         values.mode = p.read_i32(score_base + 0x64)?;
 
         values.hit_300 = p.read_i16(score_base + 0x8a)?;

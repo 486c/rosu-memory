@@ -28,6 +28,37 @@ macro_rules! prim_read_impl {
     }
 }
 
+macro_rules! prim_read_array_impl {
+    ($t: ident) => {
+        paste! {
+            fn [<read_ $t _array>](
+                &self,
+                addr: usize,
+                buff: &mut Vec<$t>
+            ) -> Result<(), ProcessError> {
+                let items_ptr = self.read_i32(addr + 4)?;
+                let size = self.read_i32(addr + 12)? as usize;
+
+                buff.resize(size, 0 as $t);
+
+                let byte_buff = unsafe { std::slice::from_raw_parts_mut(
+                    buff.as_mut_ptr() as *mut u8,
+                    buff.len() * std::mem::size_of::<$t>()
+                ) };
+
+
+                self.read(
+                    items_ptr as usize + 8,
+                    size * std::mem::size_of::<$t>(),
+                    byte_buff
+                )?;
+
+                Ok(())
+            }
+        }
+    }
+}
+
 pub struct Process {
     #[cfg(target_os = "linux")]
     pub pid: i32,
@@ -102,7 +133,7 @@ pub trait ProcessTraits where Self: Sized {
 
         Ok(String::from_utf16_lossy(buff))
     }
-
+    
     prim_read_impl!(i8);
     prim_read_impl!(i16);
     prim_read_impl!(i32);
@@ -117,5 +148,20 @@ pub trait ProcessTraits where Self: Sized {
 
     prim_read_impl!(f32);
     prim_read_impl!(f64);
+
+    prim_read_array_impl!(i8);
+    prim_read_array_impl!(i16);
+    prim_read_array_impl!(i32);
+    prim_read_array_impl!(i64);
+    prim_read_array_impl!(i128);
+
+    prim_read_array_impl!(u8);
+    prim_read_array_impl!(u16);
+    prim_read_array_impl!(u32);
+    prim_read_array_impl!(u64);
+    prim_read_array_impl!(u128);
+
+    prim_read_array_impl!(f32);
+    prim_read_array_impl!(f64);
 }
 
