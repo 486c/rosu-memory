@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::Read;
-use rand::prelude::*;
+use rand::{prelude::*, distributions::Alphanumeric};
 use paste::paste;
 
 use rosu_memory::memory::process::ProcessTraits;
@@ -86,43 +86,32 @@ fn test_uleb() {
 
 #[test]
 fn test_string() {
-    // TODO rewrite this test by generating random string
+    let mut rng = thread_rng();
 
-    let mut buff: Vec<u8> = vec![0x0, 0x0, 0x0, 0x0]; // Random 4 bytes
+    for len in [0u32, 1, 2, 4, 8, 16, 32] {
+        let mut buff = vec![0x0; 4]; // Random 4 bytes
+        buff.extend_from_slice(&len.to_le_bytes());
 
-    let s = 0x08u32.to_le_bytes();
-    buff.extend_from_slice(&s);
+        let random_string: String = (0..len)
+            .map(|_| rng.sample(Alphanumeric) as char)
+            .collect();
 
-    let test_string_bytes: Vec<u8> = vec![
-        83,
-        0,
-        101,
-        0,
-        114,
-        0,
-        101,
-        0,
-        110,
-        0,
-        105,
-        0,
-        116,
-        0,
-        121,
-        0,
-    ];
+        // convert to UTF-16 bytes
+        let random_string_bytes = random_string
+            .bytes()
+            .map(|byte| [byte, 0])
+            .flatten();
 
-    buff.extend_from_slice(&test_string_bytes);
+        buff.extend(random_string_bytes);
 
-    let p = FakeProccess {
-        buff
-    };
+        let p = FakeProccess { buff };
 
-    let len = p.read_u32(0x4).unwrap();
-    assert_eq!(len, 8);
+        let read_len = p.read_u32(0x4).unwrap();
+        assert_eq!(read_len, len, "random_string={random_string:?}");
 
-    let s = p.read_string(0).unwrap();
-    assert_eq!(s, "Serenity");
+        let s = p.read_string(0).unwrap();
+        assert_eq!(s, random_string);
+    }
 }
 
 prim_read_test!(i8);
