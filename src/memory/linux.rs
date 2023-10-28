@@ -98,13 +98,15 @@ impl ProcessTraits for Process {
         &self, 
         sign: &Signature
     ) -> Result<usize, ProcessError> {
+        let mut buff = Vec::new();
+
         for region in &self.maps {
             let remote = RemoteIoVec {
                 base: region.from,
                 len: region.size
             };
 
-            let mut buff = vec![0; region.size];
+            buff.resize(region.size, 0);
 
             let slice = IoSliceMut::new(buff.as_mut_slice());
 
@@ -122,8 +124,7 @@ impl ProcessTraits for Process {
                 }
             }
 
-            let res = find_signature(buff.as_slice(), sign);
-            if let Some(offset) = res {
+            if let Some(offset) = find_signature(buff.as_slice(), sign) {
                 return Ok(remote.base + offset);
             }
         }

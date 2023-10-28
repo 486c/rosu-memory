@@ -109,39 +109,33 @@ impl ProcessTraits for Process {
         &self, 
         sign: &Signature
     ) -> Result<usize, ProcessError> {
-        for chunk in self.maps.chunks(32) {
-            let mut buffs: Vec<Vec<u8>> = chunk.iter()
-                .map(|region| vec![0; region.size])
-                .collect();
+        let mut buf = Vec::new();
+        let mut bytesread: usize = 0;
 
-            // TODO use zip?
-            for (index, region) in chunk.iter().enumerate() {
-                let mut bytesread: usize = 0;
+        for region in self.maps.iter() {
+            buf.resize(region.size, 0);
 
-                let res = unsafe { ReadProcessMemory(
-                    self.handle as HANDLE,
-                    region.from as *mut c_void,
-                    buffs[index].as_mut_ptr() as *mut c_void,
-                    region.size,
-                    Some(&mut bytesread)
-                ) };
+            let res = unsafe { ReadProcessMemory(
+                self.handle,
+                region.from as *mut c_void,
+                buf.as_mut_ptr() as *mut c_void,
+                region.size,
+                Some(&mut bytesread)
+            ) };
 
-                if let Err(error) = res.ok() {
-                    // Stupid error code that we should
-                    // ignore during memory regions
-                    // collection
-                    if error.code().0 == -2147024597 {
-                        continue
-                    } else {
-                        res.ok()?
-                    };
+            if let Err(error) = res.ok() {
+                // Stupid error code that we should
+                // ignore during memory regions
+                // collection
+                if error.code().0 == -2147024597 {
+                    continue
                 }
 
-                let res = find_signature(&buffs[index], sign);
+                return Err(error.into());
+            }
 
-                if let Some(offset) = res {
-                    return Ok(region.from + offset)
-                }
+            if let Some(offset) = find_signature(&buf[..bytesread], sign) {
+                return Ok(region.from + offset)
             }
         }
 
