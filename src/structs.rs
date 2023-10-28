@@ -166,7 +166,7 @@ impl Values {
             variance += i32::pow(*hit - average, 2)
         }
 
-        variance = variance / hit_errors_len;
+        variance /= hit_errors_len;
 
         f64::sqrt(variance as f64) * 10.0
     }
