@@ -171,6 +171,18 @@ fn process_reading_loop(
             p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
         let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
 
+
+        let hit_errors_base = (
+            p.read_i32(score_base + 0x38)?
+        ) as usize;
+
+        p.read_i32_array(
+            hit_errors_base,
+            &mut values.hit_errors
+        )?;
+
+        values.unstable_rate = values.calculate_unstable_rate();
+
         values.mode = p.read_i32(score_base + 0x64)?;
 
         // store the converted map so it's not converted 

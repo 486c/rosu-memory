@@ -47,6 +47,8 @@ pub struct StaticAdresses {
 
 #[derive(Debug, Default, Serialize)]
 pub struct Values {
+    #[serde(skip)]
+    pub hit_errors: Vec<i32>,
 
     #[serde(skip)]
     pub current_beatmap: Option<Beatmap>,
@@ -81,6 +83,7 @@ pub struct Values {
     pub max_combo: i16,
     pub mode: i32,
     pub slider_breaks: i16,
+    pub unstable_rate: f64,
 
     // Calculated each iteration
     pub current_pp: f64,
@@ -115,6 +118,10 @@ impl Values {
 
         self.current_pp = 0.0;
         self.fc_pp = 0.0;
+
+        self.passed_objects = 0;
+
+        self.unstable_rate = 0.0;
     }
 
     // TODO PR to rosu-pp to add From<u8> trait?
@@ -146,5 +153,25 @@ impl Values {
         };
 
         usize::try_from(value)
+    }
+
+    pub fn calculate_unstable_rate(&self) -> f64 {
+        if self.hit_errors.is_empty() {
+            return 0.0
+        };
+
+        let hit_errors_len = self.hit_errors.len() as i32;
+
+        let total: &i32 = &self.hit_errors.iter().sum();
+        let average = total / hit_errors_len;
+
+        let mut variance = 0;
+        for hit in &self.hit_errors {
+            variance += i32::pow(*hit - average, 2)
+        }
+
+        variance /= hit_errors_len;
+
+        f64::sqrt(variance as f64) * 10.0
     }
 }
