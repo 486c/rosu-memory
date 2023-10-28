@@ -173,10 +173,15 @@ fn process_reading_loop(
 
         values.mode = p.read_i32(score_base + 0x64)?;
 
-        // store the converted map so it's not converted everytime it's used for pp calc
-        if let Some(map) = values.current_beatmap.as_mut().filter(|_| new_map) {
-            if let Cow::Owned(converted) = map.convert_mode(values.gamemode()) {
-                *map = converted;
+        // store the converted map so it's not converted 
+        // everytime it's used for pp calc
+        if new_map {
+            if let Some(map) = &values.current_beatmap {
+                if let Cow::Owned(converted) = map
+                    .convert_mode(values.gamemode()) 
+                {
+                    values.current_beatmap = Some(converted);
+                }
             }
         }
 
