@@ -1,7 +1,11 @@
-use std::str::FromStr;
-use std::fmt::Write;
+use crate::memory::error::ParseSignatureError;
 
-#[derive(Debug, PartialEq)]
+use std::{
+    fmt::{Display, Formatter, Result as FmtResult},
+    str::FromStr,
+};
+
+#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SignatureByte {
     Byte(u8),
     Any,
@@ -13,11 +17,10 @@ impl FromStr for SignatureByte {
     fn from_str(s: &str) -> Result<Self, Self::Err> {
         match s {
             "??" => Ok(Self::Any),
-            _ => Ok(Self::Byte(u8::from_str_radix(s, 16)?)),
+            _ => u8::from_str_radix(s, 16).map(Self::Byte),
         }
     }
 }
-
 
 impl PartialEq<u8> for SignatureByte {
     fn eq(&self, other: &u8) -> bool {
@@ -28,76 +31,67 @@ impl PartialEq<u8> for SignatureByte {
     }
 }
 
+impl Display for SignatureByte {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        match self {
+            SignatureByte::Byte(byte) => write!(f, "{byte:02X}"),
+            SignatureByte::Any => f.write_str("??"),
+        }
+    }
+}
+
 #[derive(Debug)]
 pub struct Signature {
-    pub bytes: Vec<SignatureByte>,
+    bytes: Box<[SignatureByte]>,
 }
 
 impl FromStr for Signature {
-    type Err = std::num::ParseIntError;
+    type Err = ParseSignatureError;
 
     fn from_str(value: &str) -> Result<Self, Self::Err> {
-        let mut bytes = Vec::new();
+        if value.len() % 3 != 2 {
+            return Err(ParseSignatureError::InvalidLength(value.len()));
+        }
+
+        let capacity = (value.len() + 2) / 3;
+        let mut bytes = Vec::with_capacity(capacity);
 
         for c in value.split(' ') {
-            let b = SignatureByte::from_str(c)?;
-            bytes.push(b);
+            bytes.push(c.parse()?);
         }
 
-        Ok(Self { bytes })
+        // making sure there is no excess capacity so converting
+        // from Vec to Box does not re-allocate
+        debug_assert_eq!(bytes.len(), bytes.capacity());
+
+        Ok(Self {
+            bytes: bytes.into_boxed_slice(),
+        })
     }
 }
 
-impl ToString for Signature {
-    fn to_string(&self) -> String {
-        // TODO too many allocations for such simple formatting
-        // TODO implement display
+impl Display for Signature {
+    fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
+        let mut bytes = self.bytes.iter();
 
-        let mut result = String::with_capacity(self.bytes.len() * 2);
+        if let Some(byte) = bytes.next() {
+            Display::fmt(byte, f)?;
 
-        for byte in &self.bytes {
-            match byte {
-                SignatureByte::Byte(v) => {
-                    let _ = write!(result, "{:X} ", v);
-                },
-                SignatureByte::Any => result.push_str("?? "),
+            for byte in bytes {
+                write!(f, " {byte}")?;
             }
-        };
+        }
 
-        result.trim_end().to_owned()
+        Ok(())
     }
 }
 
-impl From<&str> for Signature {
-    fn from(value: &str) -> Self {
-        Signature::from_str(value).unwrap()
-    }
-}
-
-// Find signature inside of [u8] buffer
+/// Find signature inside of [u8] buffer
 #[inline]
 pub fn find_signature(buff: &[u8], sign: &Signature) -> Option<usize> {
-    let mut i = 0;
-    let mut found = true;
-
-    while i + sign.bytes.len() <= buff.len() {
-        for j in 0..sign.bytes.len() {
-            if sign.bytes[j] != buff[i + j] {
-                found = false;
-                break;
-            }
-        }
-
-        if found {
-            return Some(i);
-        }
-
-        found = true;
-
-        i += 1;
-    }
-
-    None
+    buff.windows(sign.bytes.len())
+        .enumerate()
+        .find_map(|(i, window)| (sign.bytes.as_ref() == window).then_some(i))
 }
 
 #[cfg(test)]
@@ -141,7 +135,6 @@ mod tests {
         let sig = Signature::from_str("FF 30 A3 50 12 ?? ?? CB").unwrap();
         let s = find_signature(&buff, &sig).unwrap();
         assert_eq!(s, 0);
-
     }
 
     #[test]
@@ -155,34 +148,31 @@ mod tests {
         let s = Signature::from_str("FF 30 A3 50 ?? ?? ?? FF CB FF FF ?? 10 2B 4A ?? ??").unwrap();
         assert_eq!(s.bytes.len(), 17);
     }
-    
+
     #[test]
     fn test_signature_byte() {
         let s = SignatureByte::from_str("AB").unwrap();
-        assert!(s == 0xAB);
-        assert!(s != 0xFF);
-        assert!(s != 0x50);
-        assert!(s != 0xFF);
-        assert!(s != 0xF3);
-        assert!(s != 0xCB);
+        assert_eq!(s, 0xAB);
+        assert_ne!(s, 0xFF);
+        assert_ne!(s, 0x50);
+        assert_ne!(s, 0xFF);
+        assert_ne!(s, 0xF3);
+        assert_ne!(s, 0xCB);
 
         let s = SignatureByte::from_str("??").unwrap();
-        assert!(s == 0xAB);
-        assert!(s == 0x50);
-        assert!(s == 0xFF);
-        assert!(s == 0xF3);
-        assert!(s == 0xCB);
+        assert_eq!(s, 0xAB);
+        assert_eq!(s, 0x50);
+        assert_eq!(s, 0xFF);
+        assert_eq!(s, 0xF3);
+        assert_eq!(s, 0xCB);
     }
 
     #[test]
     fn test_formatting() {
-        let s = Signature::from_str("FF 30 A3 50").unwrap();
-        assert_eq!(s.bytes.len(), 4);
+        let expected = "FF 30 A3 50 07";
+        let s = Signature::from_str(expected).unwrap();
+        assert_eq!(s.bytes.len(), 5);
 
-        assert_eq!(
-            "FF 30 A3 50".to_owned(), 
-            s.to_string().to_uppercase()
-        );
+        assert_eq!(expected, s.to_string());
     }
 }
-

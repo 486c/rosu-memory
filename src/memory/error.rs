@@ -1,7 +1,8 @@
 use std::{
     string::FromUtf8Error, 
     fmt::Display, 
-    str::Utf8Error, 
+    str::Utf8Error,
+    num::ParseIntError,
     error::Error
 };
 
@@ -118,6 +119,36 @@ impl std::error::Error for ProcessError {
             ProcessError::SignatureNotFound(_) => None,
             ProcessError::OsError { inner } => Some(inner),
             ProcessError::BadAddress(..) => None,
+        }
+    }
+}
+
+#[derive(Debug)]
+pub enum ParseSignatureError {
+    InvalidLength(usize),
+    InvalidInt { inner: ParseIntError },
+}
+
+impl From<ParseIntError> for ParseSignatureError {
+    fn from(inner: ParseIntError) -> Self {
+        Self::InvalidInt { inner }
+    }
+}
+
+impl Error for ParseSignatureError {
+    fn source(&self) -> Option<&(dyn Error + 'static)> {
+        match self {
+            ParseSignatureError::InvalidLength(_) => None,
+            ParseSignatureError::InvalidInt { inner } => Some(inner),
+        }
+    }
+}
+
+impl Display for ParseSignatureError {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            ParseSignatureError::InvalidLength(len) => write!(f, "Invalid string length {len}"),
+            ParseSignatureError::InvalidInt { .. } => f.write_str("Failed to parse integer"),
         }
     }
 }
