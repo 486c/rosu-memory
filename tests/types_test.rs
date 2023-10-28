@@ -99,8 +99,7 @@ fn test_string() {
         // convert to UTF-16 bytes
         let random_string_bytes = random_string
             .bytes()
-            .map(|byte| [byte, 0])
-            .flatten();
+            .flat_map(|byte| [byte, 0]);
 
         buff.extend(random_string_bytes);
 
