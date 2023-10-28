@@ -17,7 +17,7 @@ pub enum ProcessError {
     },
     #[error("Got error when converting bytes to string!")]
     FromUtf8Error,
-    #[error("Got error during type convertion")]
+    #[error("Got error during type conversion")]
     ConvertionError,
     #[error("Trying to read bad address\nAddress: {0:X}, Length: {1:X}")]
     BadAddress(usize, usize),
