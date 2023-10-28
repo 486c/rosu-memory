@@ -34,7 +34,7 @@ impl PartialEq<u8> for SignatureByte {
 impl Display for SignatureByte {
     fn fmt(&self, f: &mut Formatter<'_>) -> FmtResult {
         match self {
-            SignatureByte::Byte(byte) => write!(f, "{byte:X}"),
+            SignatureByte::Byte(byte) => write!(f, "{byte:02X}"),
             SignatureByte::Any => f.write_str("??"),
         }
     }
@@ -169,9 +169,9 @@ mod tests {
 
     #[test]
     fn test_formatting() {
-        let expected = "FF 30 A3 50";
+        let expected = "FF 30 A3 50 07";
         let s = Signature::from_str(expected).unwrap();
-        assert_eq!(s.bytes.len(), 4);
+        assert_eq!(s.bytes.len(), 5);
 
         assert_eq!(expected, s.to_string());
     }
