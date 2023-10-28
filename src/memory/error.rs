@@ -1,40 +1,41 @@
-use std::{
-    string::FromUtf8Error, 
-    fmt::Display, 
-    str::Utf8Error,
-    num::ParseIntError,
-    error::Error
-};
+use std::{num::ParseIntError, str::Utf8Error, string::FromUtf8Error};
 
+use thiserror::Error as ThisError;
 
-#[derive(Debug)]
+#[derive(Debug, ThisError)]
 pub enum ProcessError {
+    #[error("Process not found!")]
     ProcessNotFound,
+    #[error("Executable path not found!")]
     ExecutablePathNotFound,
+    #[error("Not enough permissions to run, please run as sudo")]
     NotEnoughPermissions,
-    IoError{
-        inner: std::io::Error
+    #[error("Got I/O error!")]
+    IoError {
+        #[from]
+        inner: std::io::Error,
     },
+    #[error("Got error when converting bytes to string!")]
     FromUtf8Error,
+    #[error("Got error during type convertion")]
     ConvertionError,
+    #[error("Trying to read bad address\nAddress: {0:X}, Length: {1:X}")]
     BadAddress(usize, usize),
+    #[error("Cannot find signature {0}")]
     SignatureNotFound(String),
-    OsError{
+    #[error("Got OS error")]
+    OsError {
         #[cfg(target_os = "linux")]
+        #[source]
         inner: nix::errno::Errno,
         #[cfg(target_os = "windows")]
-        inner: windows::core::Error,
+        #[from]
+        inner: windows::core::Error, // TODO: add code value
     },
 }
 
-impl From<std::io::Error> for ProcessError {
-    fn from(value: std::io::Error) -> Self {
-        Self::IoError{ inner: value }
-    }
-}
-
-impl From<std::num::ParseIntError> for ProcessError {
-    fn from(_: std::num::ParseIntError) -> Self {
+impl From<ParseIntError> for ProcessError {
+    fn from(_: ParseIntError) -> Self {
         Self::ConvertionError
     }
 }
@@ -62,99 +63,22 @@ impl From<Utf8Error> for ProcessError {
 impl From<nix::errno::Errno> for ProcessError {
     fn from(inner: nix::errno::Errno) -> Self {
         match inner {
-            nix::errno::Errno::EPERM => 
+            nix::errno::Errno::EPERM =>
                 Self::NotEnoughPermissions,
-            nix::errno::Errno::ESRCH => 
+            nix::errno::Errno::ESRCH =>
                 Self::ProcessNotFound,
             _ => Self::OsError { inner },
         }
     }
 }
 
-// Windows only
-#[cfg(target_os = "windows")]
-impl From<windows::core::Error> for ProcessError {
-    fn from(inner: windows::core::Error) -> Self {
-        Self::OsError{
-            inner
-        }// TODO add code value
-    }
-}
-
-impl Display for ProcessError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ProcessError::ProcessNotFound => 
-                write!(f, "Process not found!"),
-            ProcessError::IoError { .. } => 
-                write!(f, "Got I/O error!"),
-            ProcessError::FromUtf8Error => 
-                write!(f, "Got Error when converting bytes to string!"),
-            ProcessError::ConvertionError => 
-                write!(f, "Got error during type convertion"),
-            ProcessError::SignatureNotFound(v) => 
-                write!(f, "Cannot found signature {}", v),
-            ProcessError::OsError { .. } => 
-                write!(f, "Got OS error"),
-            ProcessError::NotEnoughPermissions => 
-                write!(
-                    f, 
-                    "Not enough permissions to run, please run as sudo"
-                ),
-            ProcessError::BadAddress(addr, len) => {
-                let _  = writeln!(f, "Trying to read bad address");
-                writeln!(f, "Address: {:X}, Length: {:X}", addr, len)
-            },
-            ProcessError::ExecutablePathNotFound => 
-                write!(f, "Executable path not found!"),
-        }
-    }
-}
-
-impl std::error::Error for ProcessError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            ProcessError::ProcessNotFound => None,
-            ProcessError::ExecutablePathNotFound => None,
-            ProcessError::NotEnoughPermissions => None,
-            ProcessError::IoError { inner } => Some(inner),
-            ProcessError::FromUtf8Error => None,
-            ProcessError::ConvertionError => None,
-            ProcessError::SignatureNotFound(_) => None,
-            ProcessError::OsError { inner } => Some(inner),
-            ProcessError::BadAddress(..) => None,
-        }
-    }
-}
-
-#[derive(Debug)]
+#[derive(Debug, ThisError)]
 pub enum ParseSignatureError {
+    #[error("Invalid string length {0}")]
     InvalidLength(usize),
-    InvalidInt { inner: ParseIntError },
-}
-
-impl From<ParseIntError> for ParseSignatureError {
-    fn from(inner: ParseIntError) -> Self {
-        Self::InvalidInt { inner }
-    }
-}
-
-impl Error for ParseSignatureError {
-    fn source(&self) -> Option<&(dyn Error + 'static)> {
-        match self {
-            ParseSignatureError::InvalidLength(_) => None,
-            ParseSignatureError::InvalidInt { inner } => Some(inner),
-        }
-    }
-}
-
-impl Display for ParseSignatureError {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            ParseSignatureError::InvalidLength(len) => 
-                write!(f, "Invalid string length {len}"),
-            ParseSignatureError::InvalidInt { .. } => 
-                f.write_str("Failed to parse integer"),
-        }
-    }
+    #[error("Failed to parse integer")]
+    InvalidInt {
+        #[from]
+        inner: ParseIntError,
+    },
 }
