@@ -39,11 +39,6 @@ impl ProcessTraits for Process {
 
             let mut cmd_buff = fs::read_to_string(cmd_line)?;
 
-            cmd_buff.retain(|c| c != '\0');
-            cmd_buff = cmd_buff.replace('\\', "/");
-
-            dbg!(&cmd_buff);
-
             let line = cmd_buff.split(' ').next().unwrap();
 
             if line.contains(proc_name) {
@@ -51,6 +46,9 @@ impl ProcessTraits for Process {
                 let buff = fs::read_to_string(stat)?;
 
                 // Formatting path
+                cmd_buff.retain(|c| c != '\0');
+                cmd_buff = cmd_buff.replace('\\', "/");
+
                 cmd_buff.remove(0);
                 cmd_buff.remove(0);
 
