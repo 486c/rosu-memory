@@ -12,6 +12,8 @@
 
 #![allow(clippy::size_of_in_element_count)]
 
+use std::path::PathBuf;
+
 use super::error::ProcessError;
 use super::signature::Signature;
 use paste::paste;
@@ -84,6 +86,7 @@ pub struct Process {
     pub handle: HANDLE,
 
     pub maps: Vec<MemoryRegion>,
+    pub executable_dir: Option<PathBuf>,
 }
 
 pub trait ProcessTraits where Self: Sized {

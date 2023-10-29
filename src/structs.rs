@@ -1,4 +1,4 @@
-use std::num::TryFromIntError;
+use std::{num::TryFromIntError, path::PathBuf};
 
 use rosu_pp::{Beatmap, GameMode};
 use serde::Serialize;
@@ -47,6 +47,9 @@ pub struct StaticAdresses {
 
 #[derive(Debug, Default, Serialize)]
 pub struct Values {
+    #[serde(skip)]
+    pub osu_path: PathBuf,
+
     #[serde(skip)]
     pub hit_errors: Vec<i32>,
 
