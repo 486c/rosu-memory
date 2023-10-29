@@ -31,14 +31,13 @@ use rosu_memory::{
     websockets::server_thread
 };
 
-
 use eyre::{Report, Result};
 
 #[derive(Parser, Debug)]
 pub struct Args {
     /// Path to osu! folder
     #[arg(short, long, env)]
-    osu_path: PathBuf,
+    osu_path: Option<PathBuf>,
 
     /// Interval between updates in ms
     #[clap(default_value = "300")]
@@ -83,7 +82,6 @@ fn read_static_adresses(
 
 fn process_reading_loop(
     p: &Process,
-    args: &Args,
     adresses: &StaticAdresses,
     values: &mut Values
 ) -> Result<()> {
@@ -133,13 +131,15 @@ fn process_reading_loop(
 
         if folder != values.folder 
         || beatmap_file != values.beatmap_file {
-            let mut full_path = args.osu_path.clone();
+            let mut full_path = values.osu_path.clone();
             full_path.push("Songs");
             full_path.push(&folder);
             full_path.push(&beatmap_file);
 
             if full_path.exists() {
-                values.current_beatmap = match Beatmap::from_path(full_path) {
+                values.current_beatmap = match Beatmap::from_path(
+                    full_path
+                ) {
                     Ok(beatmap) => {
                         new_map = true;
 
@@ -277,15 +277,9 @@ fn process_reading_loop(
 
 fn main() -> Result<()> {
     let args = Args::parse();
+    let mut values = Values::default();
+    
 
-    if !args.osu_path.exists() {
-        return Err(Report::msg(
-            format!(
-                "Provided osu path doesn't exists!\n Path: {}",
-                &args.osu_path.to_str().unwrap()
-            )
-        ));
-    }
 
     let (tx, rx) = bounded::<WebSocketStream<Async<TcpStream>>>(20);
 
@@ -295,7 +289,6 @@ fn main() -> Result<()> {
     let mut clients: HashMap<usize, WebSocketStream<Async<TcpStream>>> = 
         HashMap::new();
 
-    let mut values = Values::default();
     let mut static_adresses = StaticAdresses::default();
     
     // TODO ugly nesting mess
@@ -307,6 +300,39 @@ fn main() -> Result<()> {
                 continue 'init_loop
             },
         };
+
+        // OSU_PATH cli argument if provided should
+        // overwrite auto detected path
+        // else use auto detected path
+        match args.osu_path {
+            Some(ref v) => {
+                println!("Using provided osu! folder path");
+                values.osu_path = v.clone();
+            },
+            None => {
+                println!("Using auto-detected osu! folder path");
+                if let Some(ref dir) = p.executable_dir {
+                    values.osu_path = dir.clone();
+                } else {
+                    return Err(Report::msg(
+                        "Can't auto-detect osu! folder path \
+                         nor any was provided through command \
+                         line argument"
+                    ));
+                }
+            },
+        }
+        
+        // Checking if path exists
+        if !values.osu_path.exists() {
+            println!(
+                "Provided osu path doesn't exists!\n Path: {}",
+                &values.osu_path.to_str().unwrap()
+            );
+
+            continue 'init_loop
+        };
+
 
         println!("Reading static signatures...");
         match read_static_adresses(&p, &mut static_adresses) {
@@ -335,7 +361,6 @@ fn main() -> Result<()> {
 
             if let Err(e) = process_reading_loop(
                 &p,
-                &args,
                 &static_adresses,
                 &mut values
             ) {

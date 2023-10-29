@@ -10,6 +10,7 @@ use std::{
 #[derive(Debug)]
 pub enum ProcessError {
     ProcessNotFound,
+    ExecutablePathNotFound,
     NotEnoughPermissions,
     IoError{
         inner: std::io::Error
@@ -104,6 +105,8 @@ impl Display for ProcessError {
                 let _  = writeln!(f, "Trying to read bad address");
                 writeln!(f, "Address: {:X}, Length: {:X}", addr, len)
             },
+            ProcessError::ExecutablePathNotFound => 
+                write!(f, "Executable path not found!"),
         }
     }
 }
@@ -112,6 +115,7 @@ impl std::error::Error for ProcessError {
     fn source(&self) -> Option<&(dyn Error + 'static)> {
         match self {
             ProcessError::ProcessNotFound => None,
+            ProcessError::ExecutablePathNotFound => None,
             ProcessError::NotEnoughPermissions => None,
             ProcessError::IoError { inner } => Some(inner),
             ProcessError::FromUtf8Error => None,
@@ -147,8 +151,10 @@ impl Error for ParseSignatureError {
 impl Display for ParseSignatureError {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match self {
-            ParseSignatureError::InvalidLength(len) => write!(f, "Invalid string length {len}"),
-            ParseSignatureError::InvalidInt { .. } => f.write_str("Failed to parse integer"),
+            ParseSignatureError::InvalidLength(len) => 
+                write!(f, "Invalid string length {len}"),
+            ParseSignatureError::InvalidInt { .. } => 
+                f.write_str("Failed to parse integer"),
         }
     }
 }

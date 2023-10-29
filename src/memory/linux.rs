@@ -1,5 +1,6 @@
 use std::fs;
 use std::io::IoSliceMut;
+use std::path::PathBuf;
 
 use nix::errno::Errno;
 use nix::sys::uio::{RemoteIoVec, process_vm_readv};
@@ -20,11 +21,8 @@ impl ProcessTraits for Process {
     }
 
     fn find_process(proc_name: &str) -> Result<Process, ProcessError> {
-        let mut found: bool = false;
-
         let paths = fs::read_dir("/proc")?;
 
-        let mut pid: i32 = -1;
         for path in paths {
             
             let p = path?.path();
@@ -32,32 +30,45 @@ impl ProcessTraits for Process {
             if !p.is_dir() {
                 continue;
             }
-
+            
             let cmd_line = p.join("cmdline");
 
             if !cmd_line.exists() {
                 continue;
             }
 
-            let buff = fs::read_to_string(cmd_line)?;
-            let line = buff.split(' ').next().unwrap();
+            let mut cmd_buff = fs::read_to_string(cmd_line)?;
+
+            let line = cmd_buff.split(' ').next().unwrap();
 
             if line.contains(proc_name) {
                 let stat = p.join("stat");
                 let buff = fs::read_to_string(stat)?;
 
+                // Formatting path
+                cmd_buff.retain(|c| c != '\0');
+                cmd_buff = cmd_buff.replace('\\', "/");
+
+                cmd_buff.remove(0);
+                cmd_buff.remove(0);
+
+                let executable_path = PathBuf::from(cmd_buff);
+                let executable_dir = executable_path.parent()
+                    .map(|v| v.to_path_buf());
+
                 let pid_str = buff.split(' ').next().unwrap();
                 
-                pid = pid_str.parse()?;
-                found = true;
-                break;
+                let pid = pid_str.parse()?;
+
+                return Ok(Self { 
+                    pid, 
+                    maps: Vec::new(), 
+                    executable_dir
+                });
             }
         }
 
-        match found {
-            true => Ok(Self { pid, maps: Vec::new() }),
-            false => Err(ProcessError::ProcessNotFound)
-        }
+        Err(ProcessError::ProcessNotFound)
     }
 
     fn read_regions(mut self) -> Result<Process, ProcessError> {
