@@ -77,6 +77,7 @@ pub struct Values {
     
     // Gameplay info
     pub username: String,
+    pub score: i32,
     pub hit_300: i16,
     pub hit_100: i16,
     pub hit_50: i16,
@@ -105,6 +106,7 @@ impl Values {
     pub fn reset_gameplay(&mut self) {
         self.slider_breaks = 0;
         self.username = "".parse().unwrap();
+        self.score = 0;
         self.hit_300 = 0;
         self.hit_100 = 0;
         self.hit_50 = 0;
