@@ -100,6 +100,10 @@ fn process_reading_loop(
         p.read_u32(status_ptr as usize)?
     );
 
+    if beatmap_addr == 0 {
+      return Ok(())
+    }
+
     if values.status != GameStatus::MultiplayerLobby {
         let ar_addr = beatmap_addr + 0x2c;
         let cs_addr = ar_addr + 0x04;
