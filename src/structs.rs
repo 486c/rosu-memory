@@ -37,7 +37,7 @@ impl From<u32> for GameStatus {
 }
 
 #[derive(Default)]
-pub struct StaticAdresses {
+pub struct StaticAddresses {
     pub base: usize,
     pub status: usize,
     pub menu_mods: usize,

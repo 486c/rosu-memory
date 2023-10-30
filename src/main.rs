@@ -1,8 +1,8 @@
 mod structs;
 
 use crate::structs::{
-    GameStatus, 
-    StaticAdresses,
+    GameStatus,
+    StaticAddresses,
     Values,
 };
 
@@ -52,9 +52,9 @@ fn parse_interval(
     Ok(std::time::Duration::from_millis(ms))
 }
 
-fn read_static_adresses(
+fn read_static_addresses(
     p: &Process,
-    adresses: &mut StaticAdresses
+    addresses: &mut StaticAddresses
 ) -> Result<()> {
     let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
     let status_sign = Signature::from_str("48 83 F8 04 73 1E")?;
@@ -71,30 +71,30 @@ fn read_static_adresses(
     )?;
 
 
-    adresses.base = p.read_signature(&base_sign)?;
-    adresses.status = p.read_signature(&status_sign)?;
-    adresses.menu_mods = p.read_signature(&menu_mods_sign)?;
-    adresses.rulesets = p.read_signature(&rulesets_sign)?;
-    adresses.playtime = p.read_signature(&playtime_sign)?;
+    addresses.base = p.read_signature(&base_sign)?;
+    addresses.status = p.read_signature(&status_sign)?;
+    addresses.menu_mods = p.read_signature(&menu_mods_sign)?;
+    addresses.rulesets = p.read_signature(&rulesets_sign)?;
+    addresses.playtime = p.read_signature(&playtime_sign)?;
 
     Ok(())
 }
 
 fn process_reading_loop(
     p: &Process,
-    adresses: &StaticAdresses,
+    addresses: &StaticAddresses,
     values: &mut Values
 ) -> Result<()> {
-    let menu_mods_ptr = p.read_i32(adresses.menu_mods + 0x9)?;
+    let menu_mods_ptr = p.read_i32(addresses.menu_mods + 0x9)?;
     values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
 
-    let playtime_ptr = p.read_i32(adresses.playtime + 0x5)?;
+    let playtime_ptr = p.read_i32(addresses.playtime + 0x5)?;
     values.playtime = p.read_i32(playtime_ptr as usize)?;
 
-    let beatmap_ptr = p.read_i32(adresses.base - 0xC)?;
+    let beatmap_ptr = p.read_i32(addresses.base - 0xC)?;
     let beatmap_addr = p.read_i32(beatmap_ptr as usize)?;
 
-    let status_ptr = p.read_i32(adresses.status - 0x4)?;
+    let status_ptr = p.read_i32(addresses.status - 0x4)?;
 
     values.status = GameStatus::from(
         p.read_u32(status_ptr as usize)?
@@ -111,7 +111,7 @@ fn process_reading_loop(
         values.hp = p.read_f32(hp_addr as usize)?;
         values.od = p.read_f32(od_addr as usize)?;
 
-        let plays_addr = p.read_i32(adresses.base - 0x33)? + 0xC;
+        let plays_addr = p.read_i32(addresses.base - 0x33)? + 0xC;
         values.plays = p.read_i32(plays_addr as usize)?;
 
         let artist_addr = p.read_i32((beatmap_addr + 0x18) as usize)?;
@@ -157,7 +157,7 @@ fn process_reading_loop(
     }
 
     let ruleset_addr = p.read_i32(
-        (p.read_i32(adresses.rulesets - 0xb)? + 0x4) as usize
+        (p.read_i32(addresses.rulesets - 0xb)? + 0x4) as usize
     )?;
 
     if values.status == GameStatus::Playing {
@@ -289,7 +289,7 @@ fn main() -> Result<()> {
     let mut clients: HashMap<usize, WebSocketStream<Async<TcpStream>>> = 
         HashMap::new();
 
-    let mut static_adresses = StaticAdresses::default();
+    let mut static_static_addresses = StaticAddresses::default();
     
     // TODO ugly nesting mess
     'init_loop: loop {
@@ -335,7 +335,7 @@ fn main() -> Result<()> {
 
 
         println!("Reading static signatures...");
-        match read_static_adresses(&p, &mut static_adresses) {
+        match read_static_addresses(&p, &mut static_static_addresses) {
             Ok(_) => {},
             Err(e) => {
                 match e.downcast_ref::<ProcessError>() {
@@ -361,7 +361,7 @@ fn main() -> Result<()> {
 
             if let Err(e) = process_reading_loop(
                 &p,
-                &static_adresses,
+                &static_static_addresses,
                 &mut values
             ) {
                 match e.downcast_ref::<ProcessError>() {
