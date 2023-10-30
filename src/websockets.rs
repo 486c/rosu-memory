@@ -15,6 +15,8 @@ pub fn server_thread(
             let (stream, _) = server.accept()
                 .await.unwrap();
 
+            // TODO not sure if it's ok to ignore the error
+            // but it'll do for now
             if let Ok(ws) = accept_async(stream).await {
                 let _ = tx.send(ws);
             }
