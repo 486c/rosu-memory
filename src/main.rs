@@ -203,7 +203,7 @@ fn process_reading_loop(
         values.hit_100 = p.read_i16(score_base + 0x88)?;
         values.hit_50 = p.read_i16(score_base + 0x8c)?;
 
-        let username_addr = p.read_i32((score_base + 0x28))?;
+        let username_addr = p.read_i32(score_base + 0x28)?;
         values.username = p.read_string(username_addr as usize)?;
 
         values.hit_geki = p.read_i16(score_base + 0x8e)?;
