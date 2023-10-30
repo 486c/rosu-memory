@@ -15,11 +15,9 @@ pub fn server_thread(
             let (stream, _) = server.accept()
                 .await.unwrap();
 
-            let ws = accept_async(stream)
-                .await
-                .unwrap(); // TODO check res
-
-            let _ = tx.send(ws);
+            if let Ok(ws) = accept_async(stream).await {
+                let _ = tx.send(ws);
+            }
         }
     });
 }
