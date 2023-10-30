@@ -206,9 +206,9 @@ fn process_reading_loop(
         values.hit_geki = p.read_i16(score_base + 0x8e)?;
         values.hit_katu = p.read_i16(score_base + 0x90)?;
         values.hit_miss = p.read_i16(score_base + 0x92)?;
-        // Causes errors with reading ar_addr on F2
-        // TODO: ?????????
-        // values.score = p.read_i32(score_base + 0x78)?;
+
+        values.score = p.read_i32(score_base + 0x78)?;
+
         values.combo = p.read_i16(score_base + 0x94)?;
         values.max_combo = p.read_i16(score_base + 0x68)?;
 
