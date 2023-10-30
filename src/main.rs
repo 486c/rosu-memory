@@ -196,7 +196,7 @@ fn process_reading_loop(
                 }
             }
         }
-
+        values.username = p.read_string(score_base + 0x28)?;
         values.hit_300 = p.read_i16(score_base + 0x8a)?;
         values.hit_100 = p.read_i16(score_base + 0x88)?;
         values.hit_50 = p.read_i16(score_base + 0x8c)?;

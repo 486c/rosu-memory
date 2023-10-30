@@ -76,6 +76,7 @@ pub struct Values {
     pub od: f32,
     
     // Gameplay info
+    pub username: String,
     pub hit_300: i16,
     pub hit_100: i16,
     pub hit_50: i16,
