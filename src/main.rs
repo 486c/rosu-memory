@@ -237,7 +237,6 @@ fn process_reading_loop(
         if values.mods & 64 > 0 {
             values.unstable_rate /= 1.5
         }
-
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
             let mode = values.gamemode();
@@ -274,6 +273,11 @@ fn process_reading_loop(
                 .calculate();
 
             values.fc_pp = fc_pp.pp();
+
+            values.bpm = beatmap.bpm();
+            values.current_bpm = 60000.0 / beatmap
+                .timing_point_at(values.playtime as f64)
+                .beat_len;
         }
     }
 

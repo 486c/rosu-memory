@@ -90,6 +90,12 @@ pub struct Values {
     pub slider_breaks: i16,
     pub unstable_rate: f64,
 
+    // BPM, calculated during gameplay
+    // TODO: make reads for song select bpm
+    // TODO: adjust for mods
+    pub bpm: f64,
+    pub current_bpm: f64,
+
     // Calculated each iteration
     pub current_pp: f64,
     pub fc_pp: f64,
@@ -129,6 +135,9 @@ impl Values {
         self.passed_objects = 0;
 
         self.unstable_rate = 0.0;
+
+        self.bpm = 0.0;
+        self.current_bpm = 0.0;
     }
 
     // TODO PR to rosu-pp to add From<u8> trait?
