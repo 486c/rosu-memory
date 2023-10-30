@@ -89,6 +89,8 @@ pub struct Values {
     pub mode: i32,
     pub slider_breaks: i16,
     pub unstable_rate: f64,
+    pub current_hp: f64,
+    pub current_hp_smooth: f64,
 
     // BPM, calculated during gameplay
     // TODO: make reads for song select bpm
@@ -123,6 +125,8 @@ impl Values {
         self.max_combo = 0;
         self.mode = 0;
         self.slider_breaks = 0;
+        self.current_hp = 0.0;
+        self.current_hp_smooth = 0.0;
 
         self.prev_combo = 0;
         self.prev_hit_miss = 0;

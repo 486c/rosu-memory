@@ -171,6 +171,9 @@ fn process_reading_loop(
             p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
         let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
 
+        let hp_base: usize = p.read_i32(gameplay_base + 0x40)? as usize;
+        values.current_hp = p.read_f64(hp_base + 0x1C)?;
+        values.current_hp_smooth = p.read_f64(hp_base + 0x14)?;
 
         let hit_errors_base = (
             p.read_i32(score_base + 0x38)?
