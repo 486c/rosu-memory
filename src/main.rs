@@ -32,6 +32,7 @@ use rosu_memory::{
 };
 
 use eyre::{Report, Result};
+use rosu_pp::beatmap::EffectPoint;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -277,6 +278,12 @@ fn process_reading_loop(
 
             values.fc_pp = fc_pp.pp();
 
+            // TODO: get rid of extra allocation?
+            let kiai_data: Option<EffectPoint> = beatmap
+                .effect_point_at(values.playtime as f64);
+            if let Some(kiai) = kiai_data {
+                values.kiai_now = kiai.kiai;
+            }
             values.bpm = beatmap.bpm();
             values.current_bpm = 60000.0 / beatmap
                 .timing_point_at(values.playtime as f64)

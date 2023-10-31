@@ -97,6 +97,7 @@ pub struct Values {
     // TODO: adjust for mods
     pub bpm: f64,
     pub current_bpm: f64,
+    pub kiai_now: bool,
 
     // Calculated each iteration
     pub current_pp: f64,
@@ -142,6 +143,7 @@ impl Values {
 
         self.bpm = 0.0;
         self.current_bpm = 0.0;
+        self.kiai_now = false;
     }
 
     // TODO PR to rosu-pp to add From<u8> trait?
