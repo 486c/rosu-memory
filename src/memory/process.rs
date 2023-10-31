@@ -132,8 +132,9 @@ pub trait ProcessTraits where Self: Sized {
 
     fn read_string(
         &self,
-        mut addr: usize
-    ) -> Result<String, ProcessError> {
+        addr: usize
+    ) -> Result<(usize, String), ProcessError> {
+        let mut addr = self.read_i32(addr)? as usize;
         let len = self.read_u32(addr + 0x4)? as usize;
         addr += 0x8;
 
@@ -148,7 +149,7 @@ pub trait ProcessTraits where Self: Sized {
 
         self.read(addr, byte_buff.len(), byte_buff)?;
 
-        Ok(String::from_utf16_lossy(&buff))
+        Ok((len, String::from_utf16_lossy(&buff)))
     }
     
     prim_read_impl!(i8);
