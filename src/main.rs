@@ -258,6 +258,7 @@ fn process_reading_loop(
             values.current_pp = pp_current.pp();
 
             let fc_pp = AnyPP::new(beatmap)
+                .attributes(pp_current)
                 .mods(values.mods)
                 .mode(mode)
                 .n300(values.hit_300 as usize)
