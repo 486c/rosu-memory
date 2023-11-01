@@ -9,7 +9,7 @@ use crate::structs::{
 use std::{
     borrow::Cow,
     str::FromStr, 
-    collections::HashMap, net::TcpStream, path::PathBuf
+    collections::HashMap, net::TcpStream, path::PathBuf, time::Instant
 };
 
 use clap::Parser;
