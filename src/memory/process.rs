@@ -12,6 +12,7 @@
 
 #![allow(clippy::size_of_in_element_count)]
 
+use std::mem::{size_of, align_of};
 use std::path::PathBuf;
 
 use super::error::ProcessError;
@@ -105,6 +106,104 @@ pub trait ProcessTraits where Self: Sized {
         len: usize, 
         buff: &mut [u8]
     ) -> Result<(), ProcessError>;
+
+    fn read_struct<T: Sized>(
+        &self,
+        addr: usize
+    ) -> Result<T, ProcessError> {
+        let mut buff = vec![0u8; size_of::<T>()];
+
+        let byte_buff = unsafe {
+            std::slice::from_raw_parts_mut(
+                buff.as_mut_ptr() as *mut u8,
+                buff.len()
+            )
+        };
+
+        self.read(addr, byte_buff.len(), byte_buff)?;
+
+        let s: T = unsafe { std::ptr::read(buff.as_ptr() as *const _) };
+
+        Ok(s)
+    }
+
+    fn read_struct_array<T: Sized>(
+        &self,
+        addr: usize,
+        len: usize
+    ) -> Result<Vec<T>, ProcessError> {
+        let size = size_of::<T>() + align_of::<T>();
+        let mut buff = vec![0u8; size * len];
+
+        let mut byte_buff = unsafe {
+            std::slice::from_raw_parts_mut(
+                buff.as_mut_ptr() as *mut u8,
+                buff.len()
+            )
+        };
+        
+        self.read(addr, byte_buff.len(), byte_buff)?;
+
+        let mut arr = Vec::with_capacity(len);
+
+        while byte_buff.len() >= size_of::<T>() {
+            let (head, tail) = byte_buff.split_at_mut(size);
+            let s: T = unsafe { std::ptr::read(head.as_ptr() as *const T) };
+            arr.push(s);
+            byte_buff = tail;
+        }
+
+        Ok(arr)
+    }
+
+    fn read_struct_ptr_array<T: Sized + Clone>(
+        &self,
+        addr: usize
+    ) -> Result<Vec<T>, ProcessError> {
+        let mut ptrs = Vec::new();
+        self.read_u32_array(addr, &mut ptrs)?;
+
+        let mut arr = Vec::with_capacity(ptrs.len());
+        if ptrs.len() == 0 {
+            return Ok(arr)
+        }
+        let size = size_of::<T>();
+        let size_with_align = size + align_of::<T>();
+        let mut chunk: usize = 1;
+        let mut last_ptr = 0; 
+
+        // Reading all values one-by-one is slow and wasteful
+        // but List<> elements are stored in chunks
+        // so we can find those and read multiple values at once
+        for (i, ptr) in ptrs.iter().enumerate() {
+            if i == 0 { last_ptr = *ptr; continue }
+            // BRUH
+            if (ptr.overflowing_sub(last_ptr).0) as usize == size_with_align {
+                chunk += 1;
+            } else {
+                if chunk > 1 {
+                    let mut a = self.read_struct_array(last_ptr as usize - size_with_align * (chunk - 1), chunk)?;
+                    arr.append(&mut a);
+                    chunk = 1;
+                } else {
+                    let a = self.read_struct(last_ptr as usize)?;
+                    arr.push(a);
+                }
+            }
+            last_ptr = *ptr;
+        }
+
+        if chunk > 1 {
+            let mut a = self.read_struct_array(last_ptr as usize - size_with_align * (chunk - 1), chunk)?;
+            assert!(a.len() == chunk);
+            arr.append(&mut a);
+        } else {
+            let a = self.read_struct(last_ptr as usize)?;
+            arr.push(a);
+        }
+
+        Ok(arr)
+    }
 
     fn read_uleb128(
         &self,
