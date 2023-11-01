@@ -270,6 +270,35 @@ fn process_reading_loop(
 
             values.fc_pp = fc_pp.pp();
         }
+
+        let a = Instant::now();
+        let frames_addr = p.read_i32(score_base + 0x34)? as usize;
+        {
+            #[repr(C)]
+            #[derive(Debug, Clone)]
+            struct ReplayFrame {
+                v_table: u32,
+                mouse_x: f32,
+                mouse_y: f32,
+                mouse_bits: i32,
+                time: i32,
+                mouse_left: u8,
+                mouse_right: u8,
+                mouse_left1: u8,
+                mouse_right1: u8,
+                mouse_left2: u8,
+                mouse_right2: u8,
+            }
+
+            let frames = p.read_struct_ptr_array::<ReplayFrame>(frames_addr)?;
+            let b = a.elapsed();
+
+            println!("{}", b.as_millis());
+            if frames.len() > 0 {
+              let frame = frames.last().unwrap();
+              println!("{} {} {}", frame.mouse_x, frame.mouse_y, frame.mouse_bits);
+            }
+        }
     }
 
     Ok(())
