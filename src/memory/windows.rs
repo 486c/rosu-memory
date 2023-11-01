@@ -66,7 +66,7 @@ impl ProcessTraits for Process {
 
             let name = std::str::from_utf8(
                 &string_buff[0..size as usize]
-            )?.to_owned();
+            )?;
 
             if name.contains(proc_name) {
                 let executable_path = PathBuf::from(name);
