@@ -37,7 +37,7 @@ impl From<u32> for GameStatus {
 }
 
 #[derive(Default)]
-pub struct StaticAdresses {
+pub struct StaticAddresses {
     pub base: usize,
     pub status: usize,
     pub menu_mods: usize,
@@ -76,6 +76,8 @@ pub struct Values {
     pub od: f32,
     
     // Gameplay info
+    pub username: String,
+    pub score: i32,
     pub hit_300: i16,
     pub hit_100: i16,
     pub hit_50: i16,
@@ -87,6 +89,15 @@ pub struct Values {
     pub mode: i32,
     pub slider_breaks: i16,
     pub unstable_rate: f64,
+    pub current_hp: f64,
+    pub current_hp_smooth: f64,
+
+    // BPM, calculated during gameplay
+    // TODO: make reads for song select bpm
+    // TODO: adjust for mods
+    pub bpm: f64,
+    pub current_bpm: f64,
+    pub kiai_now: bool,
 
     // Calculated each iteration
     pub current_pp: f64,
@@ -103,6 +114,8 @@ pub struct Values {
 impl Values {
     pub fn reset_gameplay(&mut self) {
         self.slider_breaks = 0;
+        self.username.clear();
+        self.score = 0;
         self.hit_300 = 0;
         self.hit_100 = 0;
         self.hit_50 = 0;
@@ -113,6 +126,8 @@ impl Values {
         self.max_combo = 0;
         self.mode = 0;
         self.slider_breaks = 0;
+        self.current_hp = 0.0;
+        self.current_hp_smooth = 0.0;
 
         self.prev_combo = 0;
         self.prev_hit_miss = 0;
@@ -125,6 +140,10 @@ impl Values {
         self.passed_objects = 0;
 
         self.unstable_rate = 0.0;
+
+        self.bpm = 0.0;
+        self.current_bpm = 0.0;
+        self.kiai_now = false;
     }
 
     // TODO PR to rosu-pp to add From<u8> trait?

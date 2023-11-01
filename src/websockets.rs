@@ -15,11 +15,11 @@ pub fn server_thread(
             let (stream, _) = server.accept()
                 .await.unwrap();
 
-            let ws = accept_async(stream)
-                .await
-                .unwrap(); // TODO check res
-
-            let _ = tx.send(ws);
+            // TODO not sure if it's ok to ignore the error
+            // but it'll do for now
+            if let Ok(ws) = accept_async(stream).await {
+                let _ = tx.send(ws);
+            }
         }
     });
 }

@@ -1,14 +1,13 @@
 use std::ffi::c_void;
 use std::path::PathBuf;
 
+use windows::Win32::Foundation::HMODULE;
 use windows::Win32::System::Memory::MEMORY_BASIC_INFORMATION;
 use windows::Win32::System::Memory::VirtualQueryEx;
 use windows::Win32::System::Memory::MEM_FREE;
 use windows::Win32::System::Diagnostics::Debug::ReadProcessMemory;
 use windows::Win32::System::ProcessStatus::EnumProcesses;
-use windows::Win32::System::Threading::PROCESS_NAME_FORMAT;
-use windows::Win32::System::Threading::QueryFullProcessImageNameA;
-use windows::core::PSTR;
+use windows::Win32::System::ProcessStatus::GetModuleFileNameExA;
 
 use crate::memory::{
     process::{ Process, MemoryRegion, ProcessTraits }, 
@@ -60,26 +59,14 @@ impl ProcessTraits for Process {
             };
 
             let mut string_buff = [0u8; 256];
-            returned = string_buff.len() as u32;
 
-            let res = unsafe {
-                // oh i hate such inconsistencies in win32 api
-                // but whatever i hate windows anyway
-                QueryFullProcessImageNameA(
-                    handle,
-                    PROCESS_NAME_FORMAT(0),
-                    PSTR::from_raw(string_buff.as_mut_ptr()),
-                    &mut returned
-                )
+            let size = unsafe {
+              GetModuleFileNameExA(handle, HMODULE(0), string_buff.as_mut_slice())
             };
 
-            if let Err(error) = res.ok() {
-                return Err(error.into());
-            }
-
             let name = std::str::from_utf8(
-                &string_buff[0..returned as usize]
-            )?.to_owned();
+                &string_buff[0..size as usize]
+            )?;
 
             if name.contains(proc_name) {
                 let executable_path = PathBuf::from(name);
