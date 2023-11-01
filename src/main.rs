@@ -114,7 +114,7 @@ fn process_reading_loop(
         let plays_addr = p.read_i32(adresses.base - 0x33)? + 0xC;
         values.plays = p.read_i32(plays_addr as usize)?;
 
-        values.artist = p.read_string((beatmap_addr + 0x18) as usize)?.1;
+        values.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
     }
 
     let mut new_map = false;
@@ -122,8 +122,8 @@ fn process_reading_loop(
     if values.status != GameStatus::PreSongSelect
     && values.status != GameStatus::MultiplayerLobby 
     && values.status != GameStatus::MultiplayerResultScreen {
-        let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?.1;
-        let folder = p.read_string((beatmap_addr + 0x78) as usize)?.1;
+        let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
+        let folder = p.read_string((beatmap_addr + 0x78) as usize)?;
 
         if folder != values.folder 
         || beatmap_file != values.beatmap_file {

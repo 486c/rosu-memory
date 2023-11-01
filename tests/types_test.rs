@@ -171,9 +171,8 @@ fn test_string() {
 
         let p = FakeProccess { buff };
 
-        let (read_len, s) = p.read_string(0).unwrap();
-        assert_eq!(read_len as u32, len);
-        assert_eq!(s, random_string);
+        let read_string = p.read_string(0).unwrap();
+        assert_eq!(read_string, random_string);
     }
 }
 
