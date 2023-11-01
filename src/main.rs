@@ -129,6 +129,9 @@ fn process_reading_loop(
     && values.status != GameStatus::MultiplayerResultScreen {
         let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
         let folder = p.read_string((beatmap_addr + 0x78) as usize)?;
+        let menu_mode_addr = p.read_i32(addresses.base - 0x33)?;
+        values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
+
 
         if folder != values.folder 
         || beatmap_file != values.beatmap_file {
@@ -143,7 +146,6 @@ fn process_reading_loop(
                 ) {
                     Ok(beatmap) => {
                         new_map = true;
-
                         Some(beatmap)
                     },
                     Err(_) => {
@@ -155,6 +157,19 @@ fn process_reading_loop(
         }
         values.beatmap_file = beatmap_file;
         values.folder = folder;
+    }
+
+
+    // store the converted map so it's not converted 
+    // everytime it's used for pp calc
+    if new_map {
+        if let Some(map) = &values.current_beatmap {
+            if let Cow::Owned(converted) = map
+                .convert_mode(values.menu_gamemode()) 
+            {
+                values.current_beatmap = Some(converted);
+            }
+        }
     }
 
     let ruleset_addr = p.read_i32(
@@ -173,8 +188,12 @@ fn process_reading_loop(
         let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
 
         let hp_base: usize = p.read_i32(gameplay_base + 0x40)? as usize;
-        values.current_hp = p.read_f64(hp_base + 0x1C)?;
-        values.current_hp_smooth = p.read_f64(hp_base + 0x14)?;
+
+        // Random value but seems to work pretty well
+        if values.playtime > 150 {
+            values.current_hp = p.read_f64(hp_base + 0x1C)?;
+            values.current_hp_smooth = p.read_f64(hp_base + 0x14)?;
+        }
 
         let hit_errors_base = (
             p.read_i32(score_base + 0x38)?
@@ -189,17 +208,6 @@ fn process_reading_loop(
 
         values.mode = p.read_i32(score_base + 0x64)?;
 
-        // store the converted map so it's not converted 
-        // everytime it's used for pp calc
-        if new_map {
-            if let Some(map) = &values.current_beatmap {
-                if let Cow::Owned(converted) = map
-                    .convert_mode(values.gamemode()) 
-                {
-                    values.current_beatmap = Some(converted);
-                }
-            }
-        }
         values.hit_300 = p.read_i16(score_base + 0x8a)?;
         values.hit_100 = p.read_i16(score_base + 0x88)?;
         values.hit_50 = p.read_i16(score_base + 0x8c)?;
@@ -243,7 +251,7 @@ fn process_reading_loop(
         }
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
-            let mode = values.gamemode();
+            let mode = values.gameplay_gamemode();
             let passed_objects = values.passed_objects()?;
 
             values.passed_objects = passed_objects;
@@ -297,8 +305,6 @@ fn process_reading_loop(
 fn main() -> Result<()> {
     let args = Args::parse();
     let mut values = Values::default();
-    
-
 
     let (tx, rx) = bounded::<WebSocketStream<Async<TcpStream>>>(20);
 

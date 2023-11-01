@@ -67,6 +67,7 @@ pub struct Values {
     pub folder: String,
     pub beatmap_file: String,
     pub playtime: i32,
+    pub menu_mode: i32,
 
     pub status: GameStatus,
 
@@ -147,8 +148,19 @@ impl Values {
     }
 
     // TODO PR to rosu-pp to add From<u8> trait?
-    pub fn gamemode(&self) -> GameMode {
+    pub fn gameplay_gamemode(&self) -> GameMode {
         match self.mode {
+            0 => GameMode::Osu,
+            1 => GameMode::Taiko,
+            2 => GameMode::Catch,
+            3 => GameMode::Mania,
+            _ => GameMode::Osu // Defaulting to osu
+        }
+    }
+    
+    // Waiting for new rosu-pp version
+    pub fn menu_gamemode(&self) -> GameMode {
+        match self.menu_mode {
             0 => GameMode::Osu,
             1 => GameMode::Taiko,
             2 => GameMode::Catch,
@@ -158,7 +170,7 @@ impl Values {
     }
 
     pub fn passed_objects(&self) -> Result<usize, TryFromIntError> {
-        let value = match self.gamemode() {
+        let value = match self.gameplay_gamemode() {
             GameMode::Osu => 
                 self.hit_300 + self.hit_100 
                 + self.hit_50 + self.hit_miss,
