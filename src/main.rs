@@ -32,6 +32,7 @@ use rosu_memory::{
 };
 
 use eyre::{Report, Result};
+use rosu_pp::beatmap::EffectPoint;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -171,6 +172,9 @@ fn process_reading_loop(
             p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
         let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
 
+        let hp_base: usize = p.read_i32(gameplay_base + 0x40)? as usize;
+        values.current_hp = p.read_f64(hp_base + 0x1C)?;
+        values.current_hp_smooth = p.read_f64(hp_base + 0x14)?;
 
         let hit_errors_base = (
             p.read_i32(score_base + 0x38)?
@@ -196,14 +200,19 @@ fn process_reading_loop(
                 }
             }
         }
-
         values.hit_300 = p.read_i16(score_base + 0x8a)?;
         values.hit_100 = p.read_i16(score_base + 0x88)?;
         values.hit_50 = p.read_i16(score_base + 0x8c)?;
 
+        let username_addr = p.read_i32(score_base + 0x28)?;
+        values.username = p.read_string(username_addr as usize)?;
+
         values.hit_geki = p.read_i16(score_base + 0x8e)?;
         values.hit_katu = p.read_i16(score_base + 0x90)?;
         values.hit_miss = p.read_i16(score_base + 0x92)?;
+
+        values.score = p.read_i32(score_base + 0x78)?;
+
         values.combo = p.read_i16(score_base + 0x94)?;
         values.max_combo = p.read_i16(score_base + 0x68)?;
 
@@ -232,7 +241,6 @@ fn process_reading_loop(
         if values.mods & 64 > 0 {
             values.unstable_rate /= 1.5
         }
-
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
             let mode = values.gamemode();
@@ -269,6 +277,17 @@ fn process_reading_loop(
                 .calculate();
 
             values.fc_pp = fc_pp.pp();
+
+            // TODO: get rid of extra allocation?
+            let kiai_data: Option<EffectPoint> = beatmap
+                .effect_point_at(values.playtime as f64);
+            if let Some(kiai) = kiai_data {
+                values.kiai_now = kiai.kiai;
+            }
+            values.bpm = beatmap.bpm();
+            values.current_bpm = 60000.0 / beatmap
+                .timing_point_at(values.playtime as f64)
+                .beat_len;
         }
     }
 
