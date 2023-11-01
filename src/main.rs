@@ -128,6 +128,9 @@ fn process_reading_loop(
     if values.status != GameStatus::PreSongSelect
     && values.status != GameStatus::MultiplayerLobby 
     && values.status != GameStatus::MultiplayerResultScreen {
+        let menu_mode_addr = p.read_i32(addresses.base - 0x33)?;
+        values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
+
         let path_addr = p.read_i32((beatmap_addr + 0x94) as usize)?;
         let folder_addr = p.read_i32((beatmap_addr + 0x78) as usize)?;
 
@@ -201,7 +204,7 @@ fn process_reading_loop(
         if new_map {
             if let Some(map) = &values.current_beatmap {
                 if let Cow::Owned(converted) = map
-                    .convert_mode(values.gamemode()) 
+                    .convert_mode(values.gameplay_gamemode()) 
                 {
                     values.current_beatmap = Some(converted);
                 }
@@ -250,7 +253,7 @@ fn process_reading_loop(
         }
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
-            let mode = values.gamemode();
+            let mode = values.gameplay_gamemode();
             let passed_objects = values.passed_objects()?;
 
             values.passed_objects = passed_objects;
@@ -304,8 +307,6 @@ fn process_reading_loop(
 fn main() -> Result<()> {
     let args = Args::parse();
     let mut values = Values::default();
-    
-
 
     let (tx, rx) = bounded::<WebSocketStream<Async<TcpStream>>>(20);
 
