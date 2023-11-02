@@ -1,6 +1,7 @@
 mod structs;
 
 use crate::structs::{
+    BeatmapStatus,
     GameStatus,
     StaticAddresses,
     Values,
@@ -121,6 +122,10 @@ fn process_reading_loop(
 
         values.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
     }
+
+    values.beatmap_status = BeatmapStatus::from(
+      p.read_i16(beatmap_addr as usize + 0x130)?
+    );
 
     let mut new_map = false;
 
