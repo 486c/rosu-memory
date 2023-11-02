@@ -52,7 +52,9 @@ fn parse_interval(
     let ms = arg.parse()?;
     Ok(std::time::Duration::from_millis(ms))
 }
-
+unsafe fn extend_lifetime<T>(value: &T) -> &'static T {
+    std::mem::transmute(value)
+}
 fn read_static_addresses(
     p: &Process,
     addresses: &mut StaticAddresses
@@ -252,7 +254,6 @@ fn process_reading_loop(
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
             let mode = values.gameplay_gamemode();
-            let passed_objects = values.passed_objects()?;
             let score_state = ScoreState {
                         max_combo: values.max_combo as usize,
                         n_geki: values.hit_geki as usize,
@@ -262,46 +263,42 @@ fn process_reading_loop(
                         n50: values.hit_50 as usize,
                         n_misses: values.hit_miss as usize,
             };
+            let passed_objects = values.passed_objects()?;
             let prev_passed_objects = values.prev_passed_objects;
             let delta = passed_objects - prev_passed_objects;
-
-            values.passed_objects = passed_objects;
-
-            if let Some(gradual_performance) = &mut values.gradual_performance {
-                values.current_pp = gradual_performance.process_next_n_objects(score_state,delta).unwrap().pp();
+            let gradual_performance_current = &mut values.gradual_performance_current;
+            if gradual_performance_current.is_some() {
+                values.delta_sum += delta;
+                // Note: can't figure out how to properly satisfy the second part without storing delta_sum
+                // Note: other comparisons result in wrong pp values
+                // too sleepy to figure out
+                if (delta > 0) & (values.delta_sum <= beatmap.hit_objects.len() + 1) {
+                    values.current_pp = gradual_performance_current
+                        .as_mut()
+                        .unwrap()
+                        .process_next_n_objects(score_state,delta)
+                        .expect(&*format!("delta: {}, delta sum: {}, total objects: {}", delta, values.delta_sum, beatmap.hit_objects.len()))
+                        .pp();
+                }
             } else {
-                values.gradual_performance = Some(GradualPerformanceAttributes::new(beatmap, values.mods));
+                let static_beatmap = unsafe {
+                    extend_lifetime(beatmap)
+                };
+                values.gradual_performance_current = Some(GradualPerformanceAttributes::new(static_beatmap, values.mods));
             }
 
-            // let pp_current = AnyPP::new(beatmap)
-            //     .mods(values.mods)
-            //     .mode(mode)
-            //     .passed_objects(passed_objects)
-            //     .state(ScoreState {
-            //         max_combo: values.max_combo as usize,
-            //         n_geki: values.hit_geki as usize,
-            //         n_katu: values.hit_katu as usize,
-            //         n300: values.hit_300 as usize,
-            //         n100: values.hit_100 as usize,
-            //         n50: values.hit_50 as usize,
-            //         n_misses: values.hit_miss as usize,
-            //     })
-            //     .calculate();
-            //
-            // values.current_pp = pp_current.pp();
-            //
-            // let fc_pp = AnyPP::new(beatmap)
-            //     .mods(values.mods)
-            //     .mode(mode)
-            //     .n300(values.hit_300 as usize)
-            //     .n100(values.hit_100 as usize)
-            //     .n50(values.hit_50 as usize)
-            //     .n_geki(values.hit_geki as usize)
-            //     .n_katu(values.hit_katu as usize)
-            //     .n_misses(values.hit_miss as usize)
-            //     .calculate();
-            //
-            // values.fc_pp = fc_pp.pp();
+            let fc_pp = AnyPP::new(beatmap)
+                .mods(values.mods)
+                .mode(mode)
+                .n300(values.hit_300 as usize)
+                .n100(values.hit_100 as usize)
+                .n50(values.hit_50 as usize)
+                .n_geki(values.hit_geki as usize)
+                .n_katu(values.hit_katu as usize)
+                .n_misses(values.hit_miss as usize)
+                .calculate();
+
+            values.fc_pp = fc_pp.pp();
 
             // TODO: get rid of extra allocation?
             let kiai_data: Option<EffectPoint> = beatmap
@@ -313,6 +310,8 @@ fn process_reading_loop(
             values.current_bpm = 60000.0 / beatmap
                 .timing_point_at(values.playtime as f64)
                 .beat_len;
+
+            values.prev_passed_objects = passed_objects;
         }
     }
 

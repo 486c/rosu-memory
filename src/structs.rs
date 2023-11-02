@@ -65,7 +65,9 @@ pub struct Values {
     #[serde(skip)]
     pub prev_passed_objects: usize,
     #[serde(skip)]
-    pub gradual_performance: Option<GradualPerformanceAttributes<'static>>,
+    pub gradual_performance_current: Option<GradualPerformanceAttributes<'static>>,
+    #[serde(skip)]
+    pub delta_sum: usize,
 
     pub artist: String,
     pub folder: String,
@@ -148,6 +150,9 @@ impl Values {
 
         self.bpm = 0.0;
         self.current_bpm = 0.0;
+        self.prev_passed_objects = 0;
+        self.delta_sum = 0;
+        self.gradual_performance_current = None;
         self.kiai_now = false;
     }
 
