@@ -19,7 +19,7 @@ use crossbeam_channel::bounded;
 
 use async_tungstenite::tungstenite;
 use futures_util::sink::SinkExt;
-use rosu_pp::{Beatmap, AnyPP, ScoreState};
+use rosu_pp::{Beatmap, AnyPP, ScoreState, GradualPerformanceAttributes};
 use smol::{prelude::*, Async};
 use tungstenite::Message;
 
@@ -253,38 +253,55 @@ fn process_reading_loop(
         if let Some(beatmap) = &values.current_beatmap {
             let mode = values.gameplay_gamemode();
             let passed_objects = values.passed_objects()?;
+            let score_state = ScoreState {
+                        max_combo: values.max_combo as usize,
+                        n_geki: values.hit_geki as usize,
+                        n_katu: values.hit_katu as usize,
+                        n300: values.hit_300 as usize,
+                        n100: values.hit_100 as usize,
+                        n50: values.hit_50 as usize,
+                        n_misses: values.hit_miss as usize,
+            };
+            let prev_passed_objects = values.prev_passed_objects;
+            let delta = passed_objects - prev_passed_objects;
 
             values.passed_objects = passed_objects;
 
-            let pp_current = AnyPP::new(beatmap)
-                .mods(values.mods)
-                .mode(mode)
-                .passed_objects(passed_objects)
-                .state(ScoreState {
-                    max_combo: values.max_combo as usize,
-                    n_geki: values.hit_geki as usize,
-                    n_katu: values.hit_katu as usize,
-                    n300: values.hit_300 as usize,
-                    n100: values.hit_100 as usize,
-                    n50: values.hit_50 as usize,
-                    n_misses: values.hit_miss as usize,
-                })
-                .calculate();
+            if let Some(gradual_performance) = &mut values.gradual_performance {
+                values.current_pp = gradual_performance.process_next_n_objects(score_state,delta).unwrap().pp();
+            } else {
+                values.gradual_performance = Some(GradualPerformanceAttributes::new(beatmap, values.mods));
+            }
 
-            values.current_pp = pp_current.pp();
-
-            let fc_pp = AnyPP::new(beatmap)
-                .mods(values.mods)
-                .mode(mode)
-                .n300(values.hit_300 as usize)
-                .n100(values.hit_100 as usize)
-                .n50(values.hit_50 as usize)
-                .n_geki(values.hit_geki as usize)
-                .n_katu(values.hit_katu as usize)
-                .n_misses(values.hit_miss as usize)
-                .calculate();
-
-            values.fc_pp = fc_pp.pp();
+            // let pp_current = AnyPP::new(beatmap)
+            //     .mods(values.mods)
+            //     .mode(mode)
+            //     .passed_objects(passed_objects)
+            //     .state(ScoreState {
+            //         max_combo: values.max_combo as usize,
+            //         n_geki: values.hit_geki as usize,
+            //         n_katu: values.hit_katu as usize,
+            //         n300: values.hit_300 as usize,
+            //         n100: values.hit_100 as usize,
+            //         n50: values.hit_50 as usize,
+            //         n_misses: values.hit_miss as usize,
+            //     })
+            //     .calculate();
+            //
+            // values.current_pp = pp_current.pp();
+            //
+            // let fc_pp = AnyPP::new(beatmap)
+            //     .mods(values.mods)
+            //     .mode(mode)
+            //     .n300(values.hit_300 as usize)
+            //     .n100(values.hit_100 as usize)
+            //     .n50(values.hit_50 as usize)
+            //     .n_geki(values.hit_geki as usize)
+            //     .n_katu(values.hit_katu as usize)
+            //     .n_misses(values.hit_miss as usize)
+            //     .calculate();
+            //
+            // values.fc_pp = fc_pp.pp();
 
             // TODO: get rid of extra allocation?
             let kiai_data: Option<EffectPoint> = beatmap
