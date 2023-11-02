@@ -111,20 +111,19 @@ pub trait ProcessTraits where Self: Sized {
         &self,
         addr: usize
     ) -> Result<T, ProcessError> {
-        let mut buff = vec![0u8; size_of::<T>()];
-
+        let mut uninit = std::mem::MaybeUninit::<T>::uninit();
+        let ptr: *mut u8 = uninit.as_mut_ptr().cast();
+        
         let byte_buff = unsafe {
             std::slice::from_raw_parts_mut(
-                buff.as_mut_ptr() as *mut u8,
-                buff.len()
+                ptr,
+                std::mem::size_of::<T>()
             )
         };
 
         self.read(addr, byte_buff.len(), byte_buff)?;
 
-        let s: T = unsafe { std::ptr::read(buff.as_ptr() as *const _) };
-
-        Ok(s)
+        Ok(unsafe { uninit.assume_init() })
     }
 
     fn read_struct_array<T: Sized>(
@@ -132,28 +131,27 @@ pub trait ProcessTraits where Self: Sized {
         addr: usize,
         len: usize
     ) -> Result<Vec<T>, ProcessError> {
-        let size = size_of::<T>() + align_of::<T>();
-        let mut buff = vec![0u8; size * len];
+        let mut buff: Vec<_> = std::iter::repeat_with(std::mem::MaybeUninit::<T>::uninit)
+            .take(len)
+            .collect();
 
-        let mut byte_buff = unsafe {
+        let ptr: *mut u8 = buff.as_mut_ptr().cast();
+        let byte_buff = unsafe {
             std::slice::from_raw_parts_mut(
-                buff.as_mut_ptr() as *mut u8,
-                buff.len()
+                ptr,
+                size_of::<T>() * len
             )
         };
         
         self.read(addr, byte_buff.len(), byte_buff)?;
 
-        let mut arr = Vec::with_capacity(len);
+        let ptr: *mut T = buff.as_mut_ptr().cast();
+        let len = buff.len();
+        let cap = buff.capacity();
 
-        while byte_buff.len() >= size_of::<T>() {
-            let (head, tail) = byte_buff.split_at_mut(size);
-            let s: T = unsafe { std::ptr::read(head.as_ptr() as *const T) };
-            arr.push(s);
-            byte_buff = tail;
-        }
+        std::mem::forget(buff);
 
-        Ok(arr)
+        Ok(unsafe { Vec::from_raw_parts(ptr, len, cap) })
     }
 
     fn read_struct_ptr_array<T: Sized + Clone>(
