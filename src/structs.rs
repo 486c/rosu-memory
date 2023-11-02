@@ -91,7 +91,7 @@ pub struct Values {
     pub mode: i32,
     pub slider_breaks: i16,
     pub unstable_rate: f64,
-    pub grade: String,
+    pub grade: &'static str,
     pub current_hp: f64,
     pub current_hp_smooth: f64,
 
@@ -118,7 +118,6 @@ impl Values {
     pub fn reset_gameplay(&mut self) {
         self.slider_breaks = 0;
         self.username.clear();
-        self.grade.clear();
         self.score = 0;
         self.hit_300 = 0;
         self.hit_100 = 0;
@@ -232,7 +231,7 @@ impl Values {
         }
     }
 
-    pub fn get_current_grade(&self) -> String {
+    pub fn get_current_grade(&self) -> &'static str {
         let total_hits = self.passed_objects as f64;
         let base_grade = match self.gameplay_gamemode() {
             GameMode::Osu => {
@@ -300,7 +299,10 @@ impl Values {
             }
         };
         // Hidden | Flashlight | Fade In
-        let silver = if self.mods & (8 | 1024 | 1048576) > 0 { "H" } else { "" };
-        format!("{}{}", base_grade, silver)
+        match (base_grade, self.mods & (8 | 1024 | 1048576)) {
+            ("SS", conj) if conj > 0 => "SSH",
+            ("S", conj) if conj > 0 => "SH",
+            _ => base_grade
+        }
     }
 }
