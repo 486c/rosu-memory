@@ -277,7 +277,7 @@ fn process_reading_loop(
                         .as_mut()
                         .unwrap()
                         .process_next_n_objects(score_state,delta)
-                        .expect(&*format!("delta: {}, delta sum: {}, total objects: {}", delta, values.delta_sum, beatmap.hit_objects.len()))
+                        .expect("calculations are fine")
                         .pp();
                 }
             } else {
