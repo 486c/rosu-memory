@@ -9,7 +9,7 @@ use crate::structs::{
 use std::{
     borrow::Cow,
     str::FromStr, 
-    collections::HashMap, net::TcpStream, path::PathBuf, time::Instant
+    collections::HashMap, net::TcpStream, path::PathBuf
 };
 
 use clap::Parser;
@@ -294,7 +294,6 @@ fn process_reading_loop(
                 .beat_len;
         }
 
-        let a = Instant::now();
         let frames_addr = p.read_i32(score_base + 0x34)? as usize;
         {
             #[repr(C)]
@@ -314,13 +313,6 @@ fn process_reading_loop(
             }
 
             let frames = p.read_struct_ptr_array::<ReplayFrame>(frames_addr)?;
-            let b = a.elapsed();
-
-            println!("{}", b.as_millis());
-            if frames.len() > 0 {
-              let frame = frames.last().unwrap();
-              println!("{} {} {}", frame.mouse_x, frame.mouse_y, frame.mouse_bits);
-            }
         }
     }
 
