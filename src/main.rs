@@ -71,12 +71,14 @@ fn read_static_addresses(
         "5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04"
     )?;
 
+    let skin_sign = Signature::from_str("75 21 8B 1D")?;
 
     addresses.base = p.read_signature(&base_sign)?;
     addresses.status = p.read_signature(&status_sign)?;
     addresses.menu_mods = p.read_signature(&menu_mods_sign)?;
     addresses.rulesets = p.read_signature(&rulesets_sign)?;
     addresses.playtime = p.read_signature(&playtime_sign)?;
+    addresses.skin = p.read_signature(&skin_sign)?;
 
     Ok(())
 }
@@ -96,6 +98,10 @@ fn process_reading_loop(
     let beatmap_addr = p.read_i32(beatmap_ptr as usize)?;
 
     let status_ptr = p.read_i32(addresses.status - 0x4)?;
+
+    let skin_ptr = p.read_i32(addresses.skin + 0x4)?;
+    let skin_data = p.read_i32(skin_ptr as usize)?;
+    values.skin = p.read_string(skin_data as usize + 0x44)?;
 
     values.status = GameStatus::from(
         p.read_u32(status_ptr as usize)?
