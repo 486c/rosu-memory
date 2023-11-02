@@ -218,6 +218,11 @@ fn process_reading_loop(
         values.hit_geki = p.read_i16(score_base + 0x8e)?;
         values.hit_katu = p.read_i16(score_base + 0x90)?;
         values.hit_miss = p.read_i16(score_base + 0x92)?;
+        
+        let passed_objects = values.passed_objects()?;
+        values.passed_objects = passed_objects;
+
+        values.accuracy = values.get_accuracy();
 
         values.score = p.read_i32(score_base + 0x78)?;
 
@@ -252,9 +257,8 @@ fn process_reading_loop(
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
             let mode = values.gameplay_gamemode();
-            let passed_objects = values.passed_objects()?;
 
-            values.passed_objects = passed_objects;
+            values.grade = values.get_current_grade();
 
             let pp_current = AnyPP::new(beatmap)
                 .mods(values.mods)

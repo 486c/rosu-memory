@@ -85,11 +85,13 @@ pub struct Values {
     pub hit_geki: i16,
     pub hit_katu: i16,
     pub hit_miss: i16,
+    pub accuracy: f64,
     pub combo: i16,
     pub max_combo: i16,
     pub mode: i32,
     pub slider_breaks: i16,
     pub unstable_rate: f64,
+    pub grade: String,
     pub current_hp: f64,
     pub current_hp_smooth: f64,
 
@@ -116,6 +118,7 @@ impl Values {
     pub fn reset_gameplay(&mut self) {
         self.slider_breaks = 0;
         self.username.clear();
+        self.grade.clear();
         self.score = 0;
         self.hit_300 = 0;
         self.hit_100 = 0;
@@ -207,5 +210,97 @@ impl Values {
         variance /= hit_errors_len;
 
         f64::sqrt(variance as f64) * 10.0
+    }
+
+    pub fn get_accuracy(&self) -> f64 {
+        if self.passed_objects == 0 {
+          return 1.
+        }
+        match self.gameplay_gamemode() {
+            GameMode::Osu => 
+                (self.hit_300 as f64 * 6. + self.hit_100 as f64 * 2. + self.hit_50 as f64)
+                / ((self.hit_300 + self.hit_100 + self.hit_50 + self.hit_miss) as f64 * 6.),
+            GameMode::Taiko =>
+                (self.hit_300 as f64 * 2. + self.hit_100 as f64)
+                / ((self.hit_300 + self.hit_100 + self.hit_50 + self.hit_miss) as f64 * 2.),
+            GameMode::Catch =>
+                (self.hit_300 + self.hit_100 + self.hit_50) as f64
+                / (self.hit_300 + self.hit_100 + self.hit_50 + self.hit_katu + self.hit_miss) as f64,
+            GameMode::Mania =>
+                ((self.hit_geki + self.hit_300) as f64 * 6. + self.hit_katu as f64 * 4. + self.hit_100 as f64 * 2. + self.hit_50 as f64)
+                / ((self.hit_geki + self.hit_300 + self.hit_katu + self.hit_100 + self.hit_50 + self.hit_miss) as f64 * 6.)
+        }
+    }
+
+    pub fn get_current_grade(&self) -> String {
+        let total_hits = self.passed_objects as f64;
+        let base_grade = match self.gameplay_gamemode() {
+            GameMode::Osu => {
+                let ratio300 = self.hit_300 as f64 / total_hits;
+                let ratio50 = self.hit_50 as f64 / total_hits;
+                if self.accuracy == 1. {
+                    "SS"
+                } else if ratio300 > 0.9 && self.hit_miss == 0 && ratio50 <= 0.1 {
+                    "S"
+                } else if ratio300 > 0.8 && self.hit_miss == 0 || ratio300 > 0.9 {
+                    "A"
+                } else if ratio300 > 0.7 && self.hit_miss == 0 || ratio300 > 0.8 {
+                    "B"
+                } else if ratio300 > 0.6 {
+                    "C"
+                } else {
+                    "D"
+                }
+            },
+            GameMode::Taiko => {
+                let ratio300 = self.hit_300 as f64 / total_hits;
+                if self.accuracy == 1. {
+                    "SS"
+                } else if ratio300 > 0.9 && self.hit_miss == 0 {
+                    "S"
+                } else if ratio300 > 0.8 && self.hit_miss == 0 || ratio300 > 0.9 {
+                    "A"
+                } else if ratio300 > 0.7 && self.hit_miss == 0 || ratio300 > 0.8 {
+                    "B"
+                } else if ratio300 > 0.6 {
+                    "C"
+                } else {
+                    "D"
+                }
+            },
+            GameMode::Catch => {
+                if self.accuracy == 1. {
+                    "SS"
+                } else if self.accuracy > 0.98 {
+                    "S"
+                } else if self.accuracy > 0.94 {
+                    "A"
+                } else if self.accuracy > 0.90 {
+                    "B"
+                } else if self.accuracy > 0.85 {
+                    "C"
+                } else {
+                    "D"
+                }
+            },
+            GameMode::Mania => {
+                if self.accuracy == 1. {
+                    "SS"
+                } else if self.accuracy > 0.95 {
+                    "S"
+                } else if self.accuracy > 0.9 {
+                    "A"
+                } else if self.accuracy > 0.8 {
+                    "B"
+                } else if self.accuracy > 0.7 {
+                    "C"
+                } else {
+                    "D"
+                }
+            }
+        };
+        // Hidden | Flashlight | Fade In
+        let silver = if self.mods & (8 | 1024 | 1048576) > 0 { "H" } else { "" };
+        format!("{}{}", base_grade, silver)
     }
 }
