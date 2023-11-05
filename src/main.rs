@@ -273,12 +273,11 @@ fn process_reading_loop(
                 // Note: other comparisons result in wrong pp values
                 // too sleepy to figure out
                 if (delta > 0) & (values.delta_sum <= beatmap.hit_objects.len() + 1) {
-                    let error = format!("delta sum: {}, hit objects: {}", values.delta_sum, beatmap.hit_objects.len());
                     values.current_pp = gradual_performance_current
                         .as_mut()
                         .unwrap()
                         .process_next_n_objects(score_state,delta)
-                        .expect(&*error)
+                        .expect("delta doesn't exceed object count")
                         .pp();
                 }
             } else {
