@@ -93,10 +93,10 @@ pub struct Values {
     pub current_hp: f64,
     pub current_hp_smooth: f64,
 
-    // BPM, calculated during gameplay
-    // TODO: make reads for song select bpm
-    // TODO: adjust for mods
+    // BPM of current selected beatmap
     pub bpm: f64,
+
+    // BPM calculated during gameplay
     pub current_bpm: f64,
     pub kiai_now: bool,
 
@@ -207,5 +207,33 @@ impl Values {
         variance /= hit_errors_len;
 
         f64::sqrt(variance as f64) * 10.0
+    }
+
+    pub fn adjust_bpm(&mut self) {
+        match self.status {
+            GameStatus::Playing => {
+                if self.mods & 64 > 0 {
+                    self.unstable_rate /= 1.5;
+                    self.current_bpm *= 1.5;
+                    self.bpm *= 1.5;
+                }
+
+                if self.mods & 256 > 0 {
+                    self.unstable_rate *= 0.75;
+                    self.current_bpm *= 0.75;
+                    self.bpm *= 0.75;
+                }
+            },
+            GameStatus::SongSelect => {
+                if self.mods & 64 > 0 {
+                    self.bpm *= 1.5;
+                }
+
+                if self.mods & 256 > 0 {
+                    self.bpm *= 0.75;
+                }
+            },
+            _ => ()
+        }
     }
 }
