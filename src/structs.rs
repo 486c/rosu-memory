@@ -216,6 +216,7 @@ impl Values {
     }
 
     pub fn adjust_bpm(&mut self) {
+        let _span = tracy_client::span!("adjust bpm");
         match self.status {
             GameStatus::Playing => {
                 if self.mods & 64 > 0 {

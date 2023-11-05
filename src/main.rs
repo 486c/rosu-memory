@@ -419,6 +419,8 @@ fn main() -> Result<()> {
 
             clients.retain(|_client_id, websocket| {
                 smol::block_on(async {
+                    let _span = span!("send message to clients");
+
                     let next_future = websocket.next();
                     let msg_future = 
                         smol::future::poll_once(next_future);
