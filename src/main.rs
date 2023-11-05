@@ -292,6 +292,7 @@ fn process_reading_loop(
                 if let Some(attributes) = values.current_beatmap_perf.clone() {
                     let fc_pp = AnyPP::new(beatmap)
                         .attributes(attributes.clone())
+                        .mods(values.mods)
                         .n300(values.hit_300 as usize)
                         .n100(values.hit_100 as usize)
                         .n50(values.hit_50 as usize)
@@ -306,7 +307,6 @@ fn process_reading_loop(
                     .mods(values.mods)
                     .mode(values.gameplay_gamemode())
                     .calculate();
-                println!("{:?}", attr);
                 values.ss_pp = attr.pp();
                 values.current_beatmap_perf = Some(attr);
             }
