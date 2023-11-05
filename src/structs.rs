@@ -225,11 +225,12 @@ impl Values {
                 }
             },
             GameStatus::SongSelect => {
-                if self.mods & 64 > 0 {
+                // Using menu mods when in SongSelect
+                if self.menu_mods & 64 > 0 {
                     self.bpm *= 1.5;
                 }
 
-                if self.mods & 256 > 0 {
+                if self.menu_mods & 256 > 0 {
                     self.bpm *= 0.75;
                 }
             },
