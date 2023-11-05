@@ -318,7 +318,6 @@ fn process_reading_loop(
             values.current_bpm = 60000.0 / beatmap
                 .timing_point_at(values.playtime as f64)
                 .beat_len;
-
             values.prev_passed_objects = passed_objects;
         }
     }
