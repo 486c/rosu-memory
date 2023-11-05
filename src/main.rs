@@ -269,14 +269,12 @@ fn process_reading_loop(
             if gradual_performance_current.is_some() {
                 values.delta_sum += delta;
                 // Note: can't figure out how to properly satisfy the second part without storing delta_sum
-                // Note: other comparisons result in wrong pp values
-                // too sleepy to figure out
-                if (delta > 0) & (values.delta_sum <= beatmap.hit_objects.len() + 1) {
+                if (delta > 0) && (values.delta_sum < beatmap.hit_objects.len()) {
                     values.current_pp = gradual_performance_current
                         .as_mut()
                         .unwrap()
                         .process_next_n_objects(score_state,delta)
-                        .expect("calculations are fine")
+                        .expect("delta_sum doesn't exceed object count")
                         .pp();
                 }
             } else {
