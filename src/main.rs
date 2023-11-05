@@ -159,6 +159,9 @@ fn process_reading_loop(
         values.folder = folder;
     }
 
+    if let Some(beatmap) = &values.current_beatmap {
+        values.bpm = beatmap.bpm();
+    }
 
     // store the converted map so it's not converted 
     // everytime it's used for pp calc
@@ -248,6 +251,7 @@ fn process_reading_loop(
         if values.mods & 64 > 0 {
             values.unstable_rate /= 1.5
         }
+
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
             let mode = values.gameplay_gamemode();
@@ -291,7 +295,6 @@ fn process_reading_loop(
             if let Some(kiai) = kiai_data {
                 values.kiai_now = kiai.kiai;
             }
-            values.bpm = beatmap.bpm();
             values.current_bpm = 60000.0 / beatmap
                 .timing_point_at(values.playtime as f64)
                 .beat_len;
