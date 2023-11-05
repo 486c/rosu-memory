@@ -33,6 +33,7 @@ use rosu_memory::{
 
 use eyre::{Report, Result};
 use rosu_pp::beatmap::EffectPoint;
+use rosu_memory::memory::signature::SignatureByte::Any;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -272,11 +273,12 @@ fn process_reading_loop(
                 // Note: other comparisons result in wrong pp values
                 // too sleepy to figure out
                 if (delta > 0) & (values.delta_sum <= beatmap.hit_objects.len() + 1) {
+                    let error = format!("delta sum: {}, hit objects: {}", values.delta_sum, beatmap.hit_objects.len());
                     values.current_pp = gradual_performance_current
                         .as_mut()
                         .unwrap()
                         .process_next_n_objects(score_state,delta)
-                        .expect("calculations are fine")
+                        .expect(&*error)
                         .pp();
                 }
             } else {
@@ -286,18 +288,28 @@ fn process_reading_loop(
                 values.gradual_performance_current = Some(GradualPerformanceAttributes::new(static_beatmap, values.mods));
             }
 
-            let fc_pp = AnyPP::new(beatmap)
-                .mods(values.mods)
-                .mode(mode)
-                .n300(values.hit_300 as usize)
-                .n100(values.hit_100 as usize)
-                .n50(values.hit_50 as usize)
-                .n_geki(values.hit_geki as usize)
-                .n_katu(values.hit_katu as usize)
-                .n_misses(values.hit_miss as usize)
-                .calculate();
-
-            values.fc_pp = fc_pp.pp();
+            if values.current_beatmap_perf.is_some() {
+                if let Some(attributes) = values.current_beatmap_perf.clone() {
+                    let fc_pp = AnyPP::new(beatmap)
+                        .attributes(attributes.clone())
+                        .n300(values.hit_300 as usize)
+                        .n100(values.hit_100 as usize)
+                        .n50(values.hit_50 as usize)
+                        .n_geki(values.hit_geki as usize)
+                        .n_katu(values.hit_katu as usize)
+                        .n_misses(values.hit_miss as usize)
+                        .calculate();
+                    values.fc_pp = fc_pp.pp();
+                }
+            } else {
+                let attr = AnyPP::new(beatmap)
+                    .mods(values.mods)
+                    .mode(values.gameplay_gamemode())
+                    .calculate();
+                println!("{:?}", attr);
+                values.ss_pp = attr.pp();
+                values.current_beatmap_perf = Some(attr);
+            }
 
             // TODO: get rid of extra allocation?
             let kiai_data: Option<EffectPoint> = beatmap
@@ -309,7 +321,6 @@ fn process_reading_loop(
             values.current_bpm = 60000.0 / beatmap
                 .timing_point_at(values.playtime as f64)
                 .beat_len;
-
             values.prev_passed_objects = passed_objects;
         }
     }
