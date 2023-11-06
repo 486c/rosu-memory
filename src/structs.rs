@@ -72,6 +72,7 @@ pub struct StaticAddresses {
     pub menu_mods: usize,
     pub rulesets: usize,
     pub playtime: usize,
+    pub skin: usize,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -91,6 +92,8 @@ pub struct Values {
     pub prev_hit_miss: i16,
     #[serde(skip)]
     pub prev_playtime: i32,
+
+    pub skin: String,
 
     pub artist: String,
     pub folder: String,
@@ -149,6 +152,7 @@ impl Values {
 
         self.slider_breaks = 0;
         self.username.clear();
+        self.skin.clear();
         self.score = 0;
         self.hit_300 = 0;
         self.hit_100 = 0;
