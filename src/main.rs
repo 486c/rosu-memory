@@ -1,6 +1,9 @@
 mod structs;
 
+use tracy_client::*;
+
 use crate::structs::{
+    BeatmapStatus,
     GameStatus,
     StaticAddresses,
     Values,
@@ -57,6 +60,8 @@ fn read_static_addresses(
     p: &Process,
     addresses: &mut StaticAddresses
 ) -> Result<()> {
+    let _span = span!("static addresses");
+
     let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
     let status_sign = Signature::from_str("48 83 F8 04 73 1E")?;
     let menu_mods_sign = Signature::from_str(
@@ -71,12 +76,14 @@ fn read_static_addresses(
         "5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04"
     )?;
 
+    let skin_sign = Signature::from_str("75 21 8B 1D")?;
 
     addresses.base = p.read_signature(&base_sign)?;
     addresses.status = p.read_signature(&status_sign)?;
     addresses.menu_mods = p.read_signature(&menu_mods_sign)?;
     addresses.rulesets = p.read_signature(&rulesets_sign)?;
     addresses.playtime = p.read_signature(&playtime_sign)?;
+    addresses.skin = p.read_signature(&skin_sign)?;
 
     Ok(())
 }
@@ -86,6 +93,8 @@ fn process_reading_loop(
     addresses: &StaticAddresses,
     values: &mut Values
 ) -> Result<()> {
+    let _span = span!("reading loop");
+
     let menu_mods_ptr = p.read_i32(addresses.menu_mods + 0x9)?;
     values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
 
@@ -96,6 +105,10 @@ fn process_reading_loop(
     let beatmap_addr = p.read_i32(beatmap_ptr as usize)?;
 
     let status_ptr = p.read_i32(addresses.status - 0x4)?;
+
+    let skin_ptr = p.read_i32(addresses.skin + 0x4)?;
+    let skin_data = p.read_i32(skin_ptr as usize)?;
+    values.skin = p.read_string(skin_data as usize + 0x44)?;
 
     values.status = GameStatus::from(
         p.read_u32(status_ptr as usize)?
@@ -121,6 +134,10 @@ fn process_reading_loop(
 
         values.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
     }
+
+    values.beatmap_status = BeatmapStatus::from(
+      p.read_i16(beatmap_addr as usize + 0x130)?
+    );
 
     let mut new_map = false;
 
@@ -159,6 +176,9 @@ fn process_reading_loop(
         values.folder = folder;
     }
 
+    if let Some(beatmap) = &values.current_beatmap {
+        values.bpm = beatmap.bpm();
+    }
 
     // store the converted map so it's not converted 
     // everytime it's used for pp calc
@@ -177,6 +197,7 @@ fn process_reading_loop(
     )?;
 
     if values.status == GameStatus::Playing {
+        let _span = span!("Gameplay data");
         if values.prev_playtime > values.playtime {
             values.reset_gameplay();
         }
@@ -212,8 +233,7 @@ fn process_reading_loop(
         values.hit_100 = p.read_i16(score_base + 0x88)?;
         values.hit_50 = p.read_i16(score_base + 0x8c)?;
 
-        let username_addr = p.read_i32(score_base + 0x28)?;
-        values.username = p.read_string(username_addr as usize)?;
+        values.username = p.read_string(score_base + 0x28)?;
 
         values.hit_geki = p.read_i16(score_base + 0x8e)?;
         values.hit_katu = p.read_i16(score_base + 0x90)?;
@@ -251,11 +271,10 @@ fn process_reading_loop(
 
         values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
-        if values.mods & 64 > 0 {
-            values.unstable_rate /= 1.5
-        }
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
+            let _span = span!("Calculating pp");
+
             let mode = values.gameplay_gamemode();
 
             values.grade = values.get_current_grade();
@@ -296,17 +315,67 @@ fn process_reading_loop(
             if let Some(kiai) = kiai_data {
                 values.kiai_now = kiai.kiai;
             }
-            values.bpm = beatmap.bpm();
+
             values.current_bpm = 60000.0 / beatmap
                 .timing_point_at(values.playtime as f64)
                 .beat_len;
         }
+        
+        // Placing at the very end cuz we should
+        // keep up with current_bpm & unstable rate 
+        // updates
+        values.adjust_bpm();
     }
 
     Ok(())
 }
 
+fn handle_clients(
+    values: &Values,
+    clients: &mut HashMap<usize, WebSocketStream<Async<TcpStream>>>
+) {
+    let _span = span!("handle clients");
+    clients.retain(|_client_id, websocket| {
+        smol::block_on(async {
+            let _span = span!("send message to clients");
+
+            let next_future = websocket.next();
+            let msg_future = 
+                smol::future::poll_once(next_future);
+
+            #[allow(clippy::collapsible_match)]
+            let msg = match msg_future.await {
+                Some(v) => {
+                    match v {
+                        Some(Ok(v)) => Some(v),
+                        Some(Err(_)) => return false,
+                        None => None,
+                    }
+                },
+                None => None,
+            };
+
+
+            if let Some(tungstenite::Message::Close(_)) = msg {
+                return false;
+            };
+
+            let _ = websocket.send(
+                Message::Text(
+                    serde_json::to_string(&values)
+                    .unwrap() 
+                    ) // No way serialization gonna fail so
+                      // using unwrap
+                ).await;
+
+            true
+        })
+    });
+}
+
 fn main() -> Result<()> {
+    let _client = tracy_client::Client::start();
+
     let args = Args::parse();
     let mut values = Values::default();
 
@@ -406,41 +475,8 @@ fn main() -> Result<()> {
                 }
             }
 
-            clients.retain(|_client_id, websocket| {
-                smol::block_on(async {
-                    let next_future = websocket.next();
-                    let msg_future = 
-                        smol::future::poll_once(next_future);
+            handle_clients(&values, &mut clients);
 
-                    #[allow(clippy::collapsible_match)]
-                    let msg = match msg_future.await {
-                        Some(v) => {
-                            match v {
-                                Some(Ok(v)) => Some(v),
-                                Some(Err(_)) => return false,
-                                None => None,
-                            }
-                        },
-                        None => None,
-                    };
-                    
-
-                    if let Some(tungstenite::Message::Close(_)) = msg {
-                        return false;
-                    };
-
-                    let _ = websocket.send(
-                        Message::Text(
-                            serde_json::to_string(&values)
-                                .unwrap() 
-                        ) // No way serialization gonna fail so
-                          // using unwrap
-                    ).await;
-
-                    true
-                })
-            });
-            
             std::thread::sleep(args.interval);
         }
     };
