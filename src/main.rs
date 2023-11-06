@@ -1,5 +1,7 @@
 mod structs;
 
+use tracy_client::*;
+
 use crate::structs::{
     GameStatus,
     StaticAddresses,
@@ -57,6 +59,8 @@ fn read_static_addresses(
     p: &Process,
     addresses: &mut StaticAddresses
 ) -> Result<()> {
+    let _span = span!("static addresses");
+
     let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
     let status_sign = Signature::from_str("48 83 F8 04 73 1E")?;
     let menu_mods_sign = Signature::from_str(
@@ -86,6 +90,8 @@ fn process_reading_loop(
     addresses: &StaticAddresses,
     values: &mut Values
 ) -> Result<()> {
+    let _span = span!("reading loop");
+
     let menu_mods_ptr = p.read_i32(addresses.menu_mods + 0x9)?;
     values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
 
@@ -180,6 +186,7 @@ fn process_reading_loop(
     )?;
 
     if values.status == GameStatus::Playing {
+        let _span = span!("Gameplay data");
         if values.prev_playtime > values.playtime {
             values.reset_gameplay();
         }
@@ -250,6 +257,8 @@ fn process_reading_loop(
 
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
+            let _span = span!("Calculating pp");
+
             let mode = values.gameplay_gamemode();
             let passed_objects = values.passed_objects()?;
 
@@ -291,6 +300,7 @@ fn process_reading_loop(
             if let Some(kiai) = kiai_data {
                 values.kiai_now = kiai.kiai;
             }
+
             values.current_bpm = 60000.0 / beatmap
                 .timing_point_at(values.playtime as f64)
                 .beat_len;
@@ -305,7 +315,52 @@ fn process_reading_loop(
     Ok(())
 }
 
+fn handle_clients(
+    values: &Values,
+    clients: &mut HashMap<usize, WebSocketStream<Async<TcpStream>>>
+) {
+    let _span = span!("handle clients");
+    clients.retain(|_client_id, websocket| {
+        smol::block_on(async {
+            let _span = span!("send message to clients");
+
+            let next_future = websocket.next();
+            let msg_future = 
+                smol::future::poll_once(next_future);
+
+            #[allow(clippy::collapsible_match)]
+            let msg = match msg_future.await {
+                Some(v) => {
+                    match v {
+                        Some(Ok(v)) => Some(v),
+                        Some(Err(_)) => return false,
+                        None => None,
+                    }
+                },
+                None => None,
+            };
+
+
+            if let Some(tungstenite::Message::Close(_)) = msg {
+                return false;
+            };
+
+            let _ = websocket.send(
+                Message::Text(
+                    serde_json::to_string(&values)
+                    .unwrap() 
+                    ) // No way serialization gonna fail so
+                      // using unwrap
+                ).await;
+
+            true
+        })
+    });
+}
+
 fn main() -> Result<()> {
+    let _client = tracy_client::Client::start();
+
     let args = Args::parse();
     let mut values = Values::default();
 
@@ -405,41 +460,8 @@ fn main() -> Result<()> {
                 }
             }
 
-            clients.retain(|_client_id, websocket| {
-                smol::block_on(async {
-                    let next_future = websocket.next();
-                    let msg_future = 
-                        smol::future::poll_once(next_future);
+            handle_clients(&values, &mut clients);
 
-                    #[allow(clippy::collapsible_match)]
-                    let msg = match msg_future.await {
-                        Some(v) => {
-                            match v {
-                                Some(Ok(v)) => Some(v),
-                                Some(Err(_)) => return false,
-                                None => None,
-                            }
-                        },
-                        None => None,
-                    };
-                    
-
-                    if let Some(tungstenite::Message::Close(_)) = msg {
-                        return false;
-                    };
-
-                    let _ = websocket.send(
-                        Message::Text(
-                            serde_json::to_string(&values)
-                                .unwrap() 
-                        ) // No way serialization gonna fail so
-                          // using unwrap
-                    ).await;
-
-                    true
-                })
-            });
-            
             std::thread::sleep(args.interval);
         }
     };

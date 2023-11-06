@@ -114,6 +114,8 @@ pub struct Values {
 
 impl Values {
     pub fn reset_gameplay(&mut self) {
+        let _span = tracy_client::span!("reset gameplay!");
+
         self.slider_breaks = 0;
         self.username.clear();
         self.score = 0;
@@ -170,6 +172,8 @@ impl Values {
     }
 
     pub fn passed_objects(&self) -> Result<usize, TryFromIntError> {
+        let _span = tracy_client::span!("passed objects");
+
         let value = match self.gameplay_gamemode() {
             GameMode::Osu => 
                 self.hit_300 + self.hit_100 
@@ -190,6 +194,8 @@ impl Values {
     }
 
     pub fn calculate_unstable_rate(&self) -> f64 {
+        let _span = tracy_client::span!("calculate ur");
+
         if self.hit_errors.is_empty() {
             return 0.0
         };
@@ -210,6 +216,7 @@ impl Values {
     }
 
     pub fn adjust_bpm(&mut self) {
+        let _span = tracy_client::span!("adjust bpm");
         match self.status {
             GameStatus::Playing => {
                 if self.mods & 64 > 0 {
