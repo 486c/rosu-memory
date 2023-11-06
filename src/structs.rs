@@ -36,6 +36,35 @@ impl From<u32> for GameStatus {
     }
 }
 
+#[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
+#[repr(i16)]
+pub enum BeatmapStatus {
+    #[default]
+    Unknown = 0,
+    Unsubmitted = 1,
+    Unranked = 2,
+    Unused = 3,
+    Ranked = 4,
+    Approved = 5,
+    Qualified = 6,
+    Loved = 7,
+}
+
+impl From<i16> for BeatmapStatus {
+    fn from(value: i16) -> Self {
+        match value {
+            1 => Self::Unsubmitted,
+            2 => Self::Unranked,
+            3 => Self::Unused,
+            4 => Self::Ranked,
+            5 => Self::Approved,
+            6 => Self::Qualified,
+            7 => Self::Loved,
+            _ => Self::Unknown,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct StaticAddresses {
     pub base: usize,
@@ -75,6 +104,8 @@ pub struct Values {
     pub cs: f32,
     pub hp: f32,
     pub od: f32,
+
+    pub beatmap_status: BeatmapStatus,
     
     // Gameplay info
     pub username: String,
