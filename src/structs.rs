@@ -253,6 +253,7 @@ impl Values {
     }
 
     pub fn get_accuracy(&self) -> f64 {
+        let _span = tracy_client::span!("calculate accuracy");
         if self.passed_objects == 0 {
           return 1.
         }
@@ -273,6 +274,7 @@ impl Values {
     }
 
     pub fn get_current_grade(&self) -> &'static str {
+        let _span = tracy_client::span!("calculate current grade");
         let total_hits = self.passed_objects as f64;
         let base_grade = match self.gameplay_gamemode() {
             GameMode::Osu => {
