@@ -65,6 +65,22 @@ impl From<i16> for BeatmapStatus {
     }
 }
 
+#[repr(C)]
+#[derive(Debug, Clone)]
+pub struct ReplayFrame {
+    pub v_table: u32,
+    pub mouse_x: f32,
+    pub mouse_y: f32,
+    pub mouse_bits: i32,
+    pub time: i32,
+    pub mouse_left: u8,
+    pub mouse_right: u8,
+    pub mouse_left1: u8,
+    pub mouse_right1: u8,
+    pub mouse_left2: u8,
+    pub mouse_right2: u8,
+}
+
 #[derive(Default)]
 pub struct StaticAddresses {
     pub base: usize,
@@ -136,6 +152,9 @@ pub struct Values {
     pub current_bpm: f64,
     pub kiai_now: bool,
 
+    #[serde(skip)]
+    pub frames: Vec<ReplayFrame>,
+
     // Calculated each iteration
     pub current_pp: f64,
     pub fc_pp: f64,
@@ -184,6 +203,8 @@ impl Values {
         self.bpm = 0.0;
         self.current_bpm = 0.0;
         self.kiai_now = false;
+
+        self.frames.clear();
     }
 
     // TODO PR to rosu-pp to add From<u8> trait?

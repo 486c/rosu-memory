@@ -1,5 +1,6 @@
 mod structs;
 
+use structs::ReplayFrame;
 use tracy_client::*;
 
 use crate::structs::{
@@ -319,6 +320,14 @@ fn process_reading_loop(
             values.current_bpm = 60000.0 / beatmap
                 .timing_point_at(values.playtime as f64)
                 .beat_len;
+        }
+
+        let frames_addr = p.read_i32(score_base + 0x34)? as usize;
+        {
+            let _span = span!("reading replay frames");
+
+            let mut frames = p.read_struct_ptr_array::<ReplayFrame>(frames_addr, values.frames.len())?;
+            values.frames.append(&mut frames);
         }
         
         // Placing at the very end cuz we should
