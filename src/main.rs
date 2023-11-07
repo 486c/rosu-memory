@@ -246,11 +246,6 @@ fn process_reading_loop(
 
         values.accuracy = values.get_accuracy();
 
-        let passed_objects = values.passed_objects()?;
-        values.passed_objects = passed_objects;
-
-        values.accuracy = values.get_accuracy();
-
         values.score = p.read_i32(score_base + 0x78)?;
 
         values.combo = p.read_i16(score_base + 0x94)?;
