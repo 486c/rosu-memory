@@ -1,6 +1,9 @@
 mod structs;
 
+use tracy_client::*;
+
 use crate::structs::{
+    BeatmapStatus,
     GameStatus,
     StaticAddresses,
     Values,
@@ -57,6 +60,8 @@ fn read_static_addresses(
     p: &Process,
     addresses: &mut StaticAddresses
 ) -> Result<()> {
+    let _span = span!("static addresses");
+
     let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
     let status_sign = Signature::from_str("48 83 F8 04 73 1E")?;
     let menu_mods_sign = Signature::from_str(
@@ -71,12 +76,14 @@ fn read_static_addresses(
         "5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04"
     )?;
 
+    let skin_sign = Signature::from_str("75 21 8B 1D")?;
 
     addresses.base = p.read_signature(&base_sign)?;
     addresses.status = p.read_signature(&status_sign)?;
     addresses.menu_mods = p.read_signature(&menu_mods_sign)?;
     addresses.rulesets = p.read_signature(&rulesets_sign)?;
     addresses.playtime = p.read_signature(&playtime_sign)?;
+    addresses.skin = p.read_signature(&skin_sign)?;
 
     Ok(())
 }
@@ -86,6 +93,8 @@ fn process_reading_loop(
     addresses: &StaticAddresses,
     values: &mut Values
 ) -> Result<()> {
+    let _span = span!("reading loop");
+
     let menu_mods_ptr = p.read_i32(addresses.menu_mods + 0x9)?;
     values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
 
@@ -96,6 +105,10 @@ fn process_reading_loop(
     let beatmap_addr = p.read_i32(beatmap_ptr as usize)?;
 
     let status_ptr = p.read_i32(addresses.status - 0x4)?;
+
+    let skin_ptr = p.read_i32(addresses.skin + 0x4)?;
+    let skin_data = p.read_i32(skin_ptr as usize)?;
+    values.skin = p.read_string(skin_data as usize + 0x44)?;
 
     values.status = GameStatus::from(
         p.read_u32(status_ptr as usize)?
@@ -119,20 +132,23 @@ fn process_reading_loop(
         let plays_addr = p.read_i32(addresses.base - 0x33)? + 0xC;
         values.plays = p.read_i32(plays_addr as usize)?;
 
-        let artist_addr = p.read_i32((beatmap_addr + 0x18) as usize)?;
-        values.artist = p.read_string(artist_addr as usize)?;
+        values.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
     }
+
+    values.beatmap_status = BeatmapStatus::from(
+      p.read_i16(beatmap_addr as usize + 0x130)?
+    );
 
     let mut new_map = false;
 
     if values.status != GameStatus::PreSongSelect
     && values.status != GameStatus::MultiplayerLobby 
     && values.status != GameStatus::MultiplayerResultScreen {
-        let path_addr = p.read_i32((beatmap_addr + 0x94) as usize)?;
-        let folder_addr = p.read_i32((beatmap_addr + 0x78) as usize)?;
+        let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
+        let folder = p.read_string((beatmap_addr + 0x78) as usize)?;
+        let menu_mode_addr = p.read_i32(addresses.base - 0x33)?;
+        values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
 
-        let beatmap_file = p.read_string(path_addr as usize)?;
-        let folder = p.read_string(folder_addr as usize)?;
 
         if folder != values.folder 
         || beatmap_file != values.beatmap_file {
@@ -147,7 +163,6 @@ fn process_reading_loop(
                 ) {
                     Ok(beatmap) => {
                         new_map = true;
-
                         Some(beatmap)
                     },
                     Err(_) => {
@@ -161,11 +176,28 @@ fn process_reading_loop(
         values.folder = folder;
     }
 
+    if let Some(beatmap) = &values.current_beatmap {
+        values.bpm = beatmap.bpm();
+    }
+
+    // store the converted map so it's not converted 
+    // everytime it's used for pp calc
+    if new_map {
+        if let Some(map) = &values.current_beatmap {
+            if let Cow::Owned(converted) = map
+                .convert_mode(values.menu_gamemode()) 
+            {
+                values.current_beatmap = Some(converted);
+            }
+        }
+    }
+
     let ruleset_addr = p.read_i32(
         (p.read_i32(addresses.rulesets - 0xb)? + 0x4) as usize
     )?;
 
     if values.status == GameStatus::Playing {
+        let _span = span!("Gameplay data");
         if values.prev_playtime > values.playtime {
             values.reset_gameplay();
         }
@@ -177,8 +209,12 @@ fn process_reading_loop(
         let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
 
         let hp_base: usize = p.read_i32(gameplay_base + 0x40)? as usize;
-        values.current_hp = p.read_f64(hp_base + 0x1C)?;
-        values.current_hp_smooth = p.read_f64(hp_base + 0x14)?;
+
+        // Random value but seems to work pretty well
+        if values.playtime > 150 {
+            values.current_hp = p.read_f64(hp_base + 0x1C)?;
+            values.current_hp_smooth = p.read_f64(hp_base + 0x14)?;
+        }
 
         let hit_errors_base = (
             p.read_i32(score_base + 0x38)?
@@ -193,23 +229,11 @@ fn process_reading_loop(
 
         values.mode = p.read_i32(score_base + 0x64)?;
 
-        // store the converted map so it's not converted 
-        // everytime it's used for pp calc
-        if new_map {
-            if let Some(map) = &values.current_beatmap {
-                if let Cow::Owned(converted) = map
-                    .convert_mode(values.gamemode()) 
-                {
-                    values.current_beatmap = Some(converted);
-                }
-            }
-        }
         values.hit_300 = p.read_i16(score_base + 0x8a)?;
         values.hit_100 = p.read_i16(score_base + 0x88)?;
         values.hit_50 = p.read_i16(score_base + 0x8c)?;
 
-        let username_addr = p.read_i32(score_base + 0x28)?;
-        values.username = p.read_string(username_addr as usize)?;
+        values.username = p.read_string(score_base + 0x28)?;
 
         values.hit_geki = p.read_i16(score_base + 0x8e)?;
         values.hit_katu = p.read_i16(score_base + 0x90)?;
@@ -242,12 +266,11 @@ fn process_reading_loop(
 
         values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
-        if values.mods & 64 > 0 {
-            values.unstable_rate /= 1.5
-        }
         // Calculate pp
         if let Some(beatmap) = &values.current_beatmap {
-            let mode = values.gamemode();
+            let _span = span!("Calculating pp");
+
+            let mode = values.gameplay_gamemode();
             let passed_objects = values.passed_objects()?;
 
             values.passed_objects = passed_objects;
@@ -288,7 +311,7 @@ fn process_reading_loop(
             if let Some(kiai) = kiai_data {
                 values.kiai_now = kiai.kiai;
             }
-            values.bpm = beatmap.bpm();
+
             values.current_bpm = 60000.0 / beatmap
                 .timing_point_at(values.playtime as f64)
                 .beat_len;
@@ -314,16 +337,64 @@ fn process_reading_loop(
 
             let frames = p.read_struct_ptr_array::<ReplayFrame>(frames_addr)?;
         }
+        
+        // Placing at the very end cuz we should
+        // keep up with current_bpm & unstable rate 
+        // updates
+        values.adjust_bpm();
     }
 
     Ok(())
 }
 
+fn handle_clients(
+    values: &Values,
+    clients: &mut HashMap<usize, WebSocketStream<Async<TcpStream>>>
+) {
+    let _span = span!("handle clients");
+    clients.retain(|_client_id, websocket| {
+        smol::block_on(async {
+            let _span = span!("send message to clients");
+
+            let next_future = websocket.next();
+            let msg_future = 
+                smol::future::poll_once(next_future);
+
+            #[allow(clippy::collapsible_match)]
+            let msg = match msg_future.await {
+                Some(v) => {
+                    match v {
+                        Some(Ok(v)) => Some(v),
+                        Some(Err(_)) => return false,
+                        None => None,
+                    }
+                },
+                None => None,
+            };
+
+
+            if let Some(tungstenite::Message::Close(_)) = msg {
+                return false;
+            };
+
+            let _ = websocket.send(
+                Message::Text(
+                    serde_json::to_string(&values)
+                    .unwrap() 
+                    ) // No way serialization gonna fail so
+                      // using unwrap
+                ).await;
+
+            true
+        })
+    });
+}
+
 fn main() -> Result<()> {
+    let _client = tracy_client::Client::start();
+
     let args = Args::parse();
     let mut values = Values::default();
-    
-
 
     let (tx, rx) = bounded::<WebSocketStream<Async<TcpStream>>>(20);
 
@@ -421,41 +492,8 @@ fn main() -> Result<()> {
                 }
             }
 
-            clients.retain(|_client_id, websocket| {
-                smol::block_on(async {
-                    let next_future = websocket.next();
-                    let msg_future = 
-                        smol::future::poll_once(next_future);
+            handle_clients(&values, &mut clients);
 
-                    #[allow(clippy::collapsible_match)]
-                    let msg = match msg_future.await {
-                        Some(v) => {
-                            match v {
-                                Some(Ok(v)) => Some(v),
-                                Some(Err(_)) => return false,
-                                None => None,
-                            }
-                        },
-                        None => None,
-                    };
-                    
-
-                    if let Some(tungstenite::Message::Close(_)) = msg {
-                        return false;
-                    };
-
-                    let _ = websocket.send(
-                        Message::Text(
-                            serde_json::to_string(&values)
-                                .unwrap() 
-                        ) // No way serialization gonna fail so
-                          // using unwrap
-                    ).await;
-
-                    true
-                })
-            });
-            
             std::thread::sleep(args.interval);
         }
     };

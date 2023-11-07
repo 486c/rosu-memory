@@ -36,6 +36,35 @@ impl From<u32> for GameStatus {
     }
 }
 
+#[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
+#[repr(i16)]
+pub enum BeatmapStatus {
+    #[default]
+    Unknown = 0,
+    Unsubmitted = 1,
+    Unranked = 2,
+    Unused = 3,
+    Ranked = 4,
+    Approved = 5,
+    Qualified = 6,
+    Loved = 7,
+}
+
+impl From<i16> for BeatmapStatus {
+    fn from(value: i16) -> Self {
+        match value {
+            1 => Self::Unsubmitted,
+            2 => Self::Unranked,
+            3 => Self::Unused,
+            4 => Self::Ranked,
+            5 => Self::Approved,
+            6 => Self::Qualified,
+            7 => Self::Loved,
+            _ => Self::Unknown,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct StaticAddresses {
     pub base: usize,
@@ -43,6 +72,7 @@ pub struct StaticAddresses {
     pub menu_mods: usize,
     pub rulesets: usize,
     pub playtime: usize,
+    pub skin: usize,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -63,10 +93,13 @@ pub struct Values {
     #[serde(skip)]
     pub prev_playtime: i32,
 
+    pub skin: String,
+
     pub artist: String,
     pub folder: String,
     pub beatmap_file: String,
     pub playtime: i32,
+    pub menu_mode: i32,
 
     pub status: GameStatus,
 
@@ -74,6 +107,8 @@ pub struct Values {
     pub cs: f32,
     pub hp: f32,
     pub od: f32,
+
+    pub beatmap_status: BeatmapStatus,
     
     // Gameplay info
     pub username: String,
@@ -92,10 +127,10 @@ pub struct Values {
     pub current_hp: f64,
     pub current_hp_smooth: f64,
 
-    // BPM, calculated during gameplay
-    // TODO: make reads for song select bpm
-    // TODO: adjust for mods
+    // BPM of current selected beatmap
     pub bpm: f64,
+
+    // BPM calculated during gameplay
     pub current_bpm: f64,
     pub kiai_now: bool,
 
@@ -113,8 +148,11 @@ pub struct Values {
 
 impl Values {
     pub fn reset_gameplay(&mut self) {
+        let _span = tracy_client::span!("reset gameplay!");
+
         self.slider_breaks = 0;
         self.username.clear();
+        self.skin.clear();
         self.score = 0;
         self.hit_300 = 0;
         self.hit_100 = 0;
@@ -147,8 +185,19 @@ impl Values {
     }
 
     // TODO PR to rosu-pp to add From<u8> trait?
-    pub fn gamemode(&self) -> GameMode {
+    pub fn gameplay_gamemode(&self) -> GameMode {
         match self.mode {
+            0 => GameMode::Osu,
+            1 => GameMode::Taiko,
+            2 => GameMode::Catch,
+            3 => GameMode::Mania,
+            _ => GameMode::Osu // Defaulting to osu
+        }
+    }
+    
+    // Waiting for new rosu-pp version
+    pub fn menu_gamemode(&self) -> GameMode {
+        match self.menu_mode {
             0 => GameMode::Osu,
             1 => GameMode::Taiko,
             2 => GameMode::Catch,
@@ -158,7 +207,9 @@ impl Values {
     }
 
     pub fn passed_objects(&self) -> Result<usize, TryFromIntError> {
-        let value = match self.gamemode() {
+        let _span = tracy_client::span!("passed objects");
+
+        let value = match self.gameplay_gamemode() {
             GameMode::Osu => 
                 self.hit_300 + self.hit_100 
                 + self.hit_50 + self.hit_miss,
@@ -178,6 +229,8 @@ impl Values {
     }
 
     pub fn calculate_unstable_rate(&self) -> f64 {
+        let _span = tracy_client::span!("calculate ur");
+
         if self.hit_errors.is_empty() {
             return 0.0
         };
@@ -195,5 +248,35 @@ impl Values {
         variance /= hit_errors_len;
 
         f64::sqrt(variance as f64) * 10.0
+    }
+
+    pub fn adjust_bpm(&mut self) {
+        let _span = tracy_client::span!("adjust bpm");
+        match self.status {
+            GameStatus::Playing => {
+                if self.mods & 64 > 0 {
+                    self.unstable_rate /= 1.5;
+                    self.current_bpm *= 1.5;
+                    self.bpm *= 1.5;
+                }
+
+                if self.mods & 256 > 0 {
+                    self.unstable_rate *= 0.75;
+                    self.current_bpm *= 0.75;
+                    self.bpm *= 0.75;
+                }
+            },
+            GameStatus::SongSelect => {
+                // Using menu mods when in SongSelect
+                if self.menu_mods & 64 > 0 {
+                    self.bpm *= 1.5;
+                }
+
+                if self.menu_mods & 256 > 0 {
+                    self.bpm *= 0.75;
+                }
+            },
+            _ => ()
+        }
     }
 }

@@ -229,8 +229,9 @@ pub trait ProcessTraits where Self: Sized {
 
     fn read_string(
         &self,
-        mut addr: usize
+        addr: usize
     ) -> Result<String, ProcessError> {
+        let mut addr = self.read_i32(addr)? as usize;
         // C# string structure: 4B obj header, 4B str len, str itself
         let len = self.read_u32(addr + 0x4)? as usize;
         addr += 0x8;
