@@ -36,6 +36,35 @@ impl From<u32> for GameStatus {
     }
 }
 
+#[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
+#[repr(i16)]
+pub enum BeatmapStatus {
+    #[default]
+    Unknown = 0,
+    Unsubmitted = 1,
+    Unranked = 2,
+    Unused = 3,
+    Ranked = 4,
+    Approved = 5,
+    Qualified = 6,
+    Loved = 7,
+}
+
+impl From<i16> for BeatmapStatus {
+    fn from(value: i16) -> Self {
+        match value {
+            1 => Self::Unsubmitted,
+            2 => Self::Unranked,
+            3 => Self::Unused,
+            4 => Self::Ranked,
+            5 => Self::Approved,
+            6 => Self::Qualified,
+            7 => Self::Loved,
+            _ => Self::Unknown,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct StaticAddresses {
     pub base: usize,
@@ -43,6 +72,7 @@ pub struct StaticAddresses {
     pub menu_mods: usize,
     pub rulesets: usize,
     pub playtime: usize,
+    pub skin: usize,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -69,6 +99,8 @@ pub struct Values {
     #[serde(skip)]
     pub delta_sum: usize,
 
+    pub skin: String,
+
     pub artist: String,
     pub folder: String,
     pub beatmap_file: String,
@@ -81,6 +113,8 @@ pub struct Values {
     pub cs: f32,
     pub hp: f32,
     pub od: f32,
+
+    pub beatmap_status: BeatmapStatus,
     
     // Gameplay info
     pub username: String,
@@ -91,18 +125,20 @@ pub struct Values {
     pub hit_geki: i16,
     pub hit_katu: i16,
     pub hit_miss: i16,
+    pub accuracy: f64,
     pub combo: i16,
     pub max_combo: i16,
     pub mode: i32,
     pub slider_breaks: i16,
     pub unstable_rate: f64,
+    pub grade: &'static str,
     pub current_hp: f64,
     pub current_hp_smooth: f64,
 
-    // BPM, calculated during gameplay
-    // TODO: make reads for song select bpm
-    // TODO: adjust for mods
+    // BPM of current selected beatmap
     pub bpm: f64,
+
+    // BPM calculated during gameplay
     pub current_bpm: f64,
     pub kiai_now: bool,
 
@@ -123,8 +159,11 @@ pub struct Values {
 
 impl Values {
     pub fn reset_gameplay(&mut self) {
+        let _span = tracy_client::span!("reset gameplay!");
+
         self.slider_breaks = 0;
         self.username.clear();
+        self.skin.clear();
         self.score = 0;
         self.hit_300 = 0;
         self.hit_100 = 0;
@@ -183,6 +222,8 @@ impl Values {
     }
 
     pub fn passed_objects(&self) -> Result<usize, TryFromIntError> {
+        let _span = tracy_client::span!("passed objects");
+
         let value = match self.gameplay_gamemode() {
             GameMode::Osu => 
                 self.hit_300 + self.hit_100 
@@ -203,6 +244,8 @@ impl Values {
     }
 
     pub fn calculate_unstable_rate(&self) -> f64 {
+        let _span = tracy_client::span!("calculate ur");
+
         if self.hit_errors.is_empty() {
             return 0.0
         };
@@ -220,5 +263,132 @@ impl Values {
         variance /= hit_errors_len;
 
         f64::sqrt(variance as f64) * 10.0
+    }
+
+    pub fn get_accuracy(&self) -> f64 {
+        let _span = tracy_client::span!("calculate accuracy");
+        if self.passed_objects == 0 {
+          return 1.
+        }
+        match self.gameplay_gamemode() {
+            GameMode::Osu => 
+                (self.hit_300 as f64 * 6. + self.hit_100 as f64 * 2. + self.hit_50 as f64)
+                / ((self.hit_300 + self.hit_100 + self.hit_50 + self.hit_miss) as f64 * 6.),
+            GameMode::Taiko =>
+                (self.hit_300 as f64 * 2. + self.hit_100 as f64)
+                / ((self.hit_300 + self.hit_100 + self.hit_50 + self.hit_miss) as f64 * 2.),
+            GameMode::Catch =>
+                (self.hit_300 + self.hit_100 + self.hit_50) as f64
+                / (self.hit_300 + self.hit_100 + self.hit_50 + self.hit_katu + self.hit_miss) as f64,
+            GameMode::Mania =>
+                ((self.hit_geki + self.hit_300) as f64 * 6. + self.hit_katu as f64 * 4. + self.hit_100 as f64 * 2. + self.hit_50 as f64)
+                / ((self.hit_geki + self.hit_300 + self.hit_katu + self.hit_100 + self.hit_50 + self.hit_miss) as f64 * 6.)
+        }
+    }
+
+    pub fn get_current_grade(&self) -> &'static str {
+        let _span = tracy_client::span!("calculate current grade");
+        let total_hits = self.passed_objects as f64;
+        let base_grade = match self.gameplay_gamemode() {
+            GameMode::Osu => {
+                let ratio300 = self.hit_300 as f64 / total_hits;
+                let ratio50 = self.hit_50 as f64 / total_hits;
+                if self.accuracy == 1. {
+                    "SS"
+                } else if ratio300 > 0.9 && self.hit_miss == 0 && ratio50 <= 0.1 {
+                    "S"
+                } else if ratio300 > 0.8 && self.hit_miss == 0 || ratio300 > 0.9 {
+                    "A"
+                } else if ratio300 > 0.7 && self.hit_miss == 0 || ratio300 > 0.8 {
+                    "B"
+                } else if ratio300 > 0.6 {
+                    "C"
+                } else {
+                    "D"
+                }
+            },
+            GameMode::Taiko => {
+                let ratio300 = self.hit_300 as f64 / total_hits;
+                if self.accuracy == 1. {
+                    "SS"
+                } else if ratio300 > 0.9 && self.hit_miss == 0 {
+                    "S"
+                } else if ratio300 > 0.8 && self.hit_miss == 0 || ratio300 > 0.9 {
+                    "A"
+                } else if ratio300 > 0.7 && self.hit_miss == 0 || ratio300 > 0.8 {
+                    "B"
+                } else if ratio300 > 0.6 {
+                    "C"
+                } else {
+                    "D"
+                }
+            },
+            GameMode::Catch => {
+                if self.accuracy == 1. {
+                    "SS"
+                } else if self.accuracy > 0.98 {
+                    "S"
+                } else if self.accuracy > 0.94 {
+                    "A"
+                } else if self.accuracy > 0.90 {
+                    "B"
+                } else if self.accuracy > 0.85 {
+                    "C"
+                } else {
+                    "D"
+                }
+            },
+            GameMode::Mania => {
+                if self.accuracy == 1. {
+                    "SS"
+                } else if self.accuracy > 0.95 {
+                    "S"
+                } else if self.accuracy > 0.9 {
+                    "A"
+                } else if self.accuracy > 0.8 {
+                    "B"
+                } else if self.accuracy > 0.7 {
+                    "C"
+                } else {
+                    "D"
+                }
+            }
+        };
+        // Hidden | Flashlight | Fade In
+        match (base_grade, self.mods & (8 | 1024 | 1048576)) {
+            ("SS", conj) if conj > 0 => "SSH",
+            ("S", conj) if conj > 0 => "SH",
+            _ => base_grade
+        }
+    }
+
+    pub fn adjust_bpm(&mut self) {
+        let _span = tracy_client::span!("adjust bpm");
+        match self.status {
+            GameStatus::Playing => {
+                if self.mods & 64 > 0 {
+                    self.unstable_rate /= 1.5;
+                    self.current_bpm *= 1.5;
+                    self.bpm *= 1.5;
+                }
+
+                if self.mods & 256 > 0 {
+                    self.unstable_rate *= 0.75;
+                    self.current_bpm *= 0.75;
+                    self.bpm *= 0.75;
+                }
+            },
+            GameStatus::SongSelect => {
+                // Using menu mods when in SongSelect
+                if self.menu_mods & 64 > 0 {
+                    self.bpm *= 1.5;
+                }
+
+                if self.menu_mods & 256 > 0 {
+                    self.bpm *= 0.75;
+                }
+            },
+            _ => ()
+        }
     }
 }
