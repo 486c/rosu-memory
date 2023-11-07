@@ -291,22 +291,18 @@ fn process_reading_loop(
             let prev_passed_objects = values.prev_passed_objects;
             let delta = passed_objects - prev_passed_objects;
             let gradual_performance_current = &mut values.gradual_performance_current;
-            if gradual_performance_current.is_some() {
-                values.delta_sum += delta;
-                // Note: can't figure out how to properly satisfy the second part without storing delta_sum
-                if (delta > 0) && (values.delta_sum < beatmap.hit_objects.len()) {
-                    values.current_pp = gradual_performance_current
-                        .as_mut()
-                        .unwrap()
-                        .process_next_n_objects(score_state,delta)
-                        .expect("delta_sum doesn't exceed object count")
-                        .pp();
-                }
-            } else {
-                let static_beatmap = unsafe {
-                    extend_lifetime(beatmap)
-                };
-                values.gradual_performance_current = Some(GradualPerformanceAttributes::new(static_beatmap, values.mods));
+            let gradual = values
+                .gradual_performance_current
+                .get_or_insert_with(|| {
+                    let static_beatmap = unsafe {
+                        extend_lifetime(beatmap)
+                    };
+                    GradualPerformanceAttributes::new(static_beatmap, values.mods)
+                });
+            if (delta > 0) && (values.passed_objects < beatmap.hit_objects.len()) {
+                values.current_pp = gradual.process_next_n_objects(score_state, delta)
+                    .expect("process isn't called after the objects ended")
+                    .pp();
             }
 
             let fc_pp = AnyPP::new(beatmap)
