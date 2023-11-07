@@ -320,6 +320,7 @@ fn process_reading_loop(
 
         let frames_addr = p.read_i32(score_base + 0x34)? as usize;
         {
+            let _span = span!("reading replay frames");
 
             let mut frames = p.read_struct_ptr_array::<ReplayFrame>(frames_addr, values.frames.len())?;
             values.frames.append(&mut frames);
