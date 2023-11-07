@@ -1,5 +1,6 @@
 mod structs;
 
+use structs::ReplayFrame;
 use tracy_client::*;
 
 use crate::structs::{
@@ -319,23 +320,9 @@ fn process_reading_loop(
 
         let frames_addr = p.read_i32(score_base + 0x34)? as usize;
         {
-            #[repr(C)]
-            #[derive(Debug, Clone)]
-            struct ReplayFrame {
-                v_table: u32,
-                mouse_x: f32,
-                mouse_y: f32,
-                mouse_bits: i32,
-                time: i32,
-                mouse_left: u8,
-                mouse_right: u8,
-                mouse_left1: u8,
-                mouse_right1: u8,
-                mouse_left2: u8,
-                mouse_right2: u8,
-            }
 
-            let frames = p.read_struct_ptr_array::<ReplayFrame>(frames_addr)?;
+            let mut frames = p.read_struct_ptr_array::<ReplayFrame>(frames_addr, values.frames.len())?;
+            values.frames.append(&mut frames);
         }
         
         // Placing at the very end cuz we should

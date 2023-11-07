@@ -156,24 +156,27 @@ pub trait ProcessTraits where Self: Sized {
 
     fn read_struct_ptr_array<T: Sized + Clone>(
         &self,
-        addr: usize
+        addr: usize,
+        skip: usize
     ) -> Result<Vec<T>, ProcessError> {
         let mut ptrs = Vec::new();
         self.read_u32_array(addr, &mut ptrs)?;
 
-        let mut arr = Vec::with_capacity(ptrs.len());
-        if ptrs.len() == 0 {
+        let len = ptrs.len() - skip;
+
+        let mut arr = Vec::with_capacity(len);
+        if len == 0 {
             return Ok(arr)
         }
         let size = size_of::<T>();
         let size_with_align = size + align_of::<T>();
         let mut chunk: usize = 1;
-        let mut last_ptr = 0; 
+        let mut last_ptr = 0;
 
         // Reading all values one-by-one is slow and wasteful
         // but List<> elements are stored in chunks
         // so we can find those and read multiple values at once
-        for (i, ptr) in ptrs.iter().enumerate() {
+        for (i, ptr) in ptrs.iter().skip(skip).enumerate() {
             if i == 0 { last_ptr = *ptr; continue }
             // BRUH
             if (ptr.overflowing_sub(last_ptr).0) as usize == size_with_align {
