@@ -296,18 +296,28 @@ fn process_reading_loop(
 
             values.current_pp = pp_current.pp();
 
-            let fc_pp = AnyPP::new(beatmap)
-                .mods(values.mods)
-                .mode(mode)
-                .n300(values.hit_300 as usize)
-                .n100(values.hit_100 as usize)
-                .n50(values.hit_50 as usize)
-                .n_geki(values.hit_geki as usize)
-                .n_katu(values.hit_katu as usize)
-                .n_misses(values.hit_miss as usize)
-                .calculate();
-
-            values.fc_pp = fc_pp.pp();
+            if values.current_beatmap_perf.is_some() {
+                if let Some(attributes) = values.current_beatmap_perf.clone() {
+                    let fc_pp = AnyPP::new(beatmap)
+                        .attributes(attributes.clone())
+                        .mods(values.mods)
+                        .n300(values.hit_300 as usize)
+                        .n100(values.hit_100 as usize)
+                        .n50(values.hit_50 as usize)
+                        .n_geki(values.hit_geki as usize)
+                        .n_katu(values.hit_katu as usize)
+                        .n_misses(values.hit_miss as usize)
+                        .calculate();
+                    values.fc_pp = fc_pp.pp();
+                }
+            } else {
+                let attr = AnyPP::new(beatmap)
+                    .mods(values.mods)
+                    .mode(values.gameplay_gamemode())
+                    .calculate();
+                values.ss_pp = attr.pp();
+                values.current_beatmap_perf = Some(attr);
+            }
 
             // TODO: get rid of extra allocation?
             let kiai_data: Option<EffectPoint> = beatmap
