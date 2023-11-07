@@ -101,8 +101,6 @@ pub struct Values {
 
     pub skin: String,
 
-    pub skin: String,
-
     pub artist: String,
     pub folder: String,
     pub beatmap_file: String,
