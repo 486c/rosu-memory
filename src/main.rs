@@ -240,6 +240,11 @@ fn process_reading_loop(
         values.hit_geki = p.read_i16(score_base + 0x8e)?;
         values.hit_katu = p.read_i16(score_base + 0x90)?;
         values.hit_miss = p.read_i16(score_base + 0x92)?;
+        
+        let passed_objects = values.passed_objects()?;
+        values.passed_objects = passed_objects;
+
+        values.accuracy = values.get_accuracy();
 
         let passed_objects = values.passed_objects()?;
         values.passed_objects = passed_objects;
@@ -362,9 +367,9 @@ fn process_reading_loop(
 
             values.prev_passed_objects = passed_objects;
         }
-
+        
         // Placing at the very end cuz we should
-        // keep up with current_bpm & unstable rate
+        // keep up with current_bpm & unstable rate 
         // updates
         values.adjust_bpm();
     }
@@ -382,7 +387,7 @@ fn handle_clients(
             let _span = span!("send message to clients");
 
             let next_future = websocket.next();
-            let msg_future =
+            let msg_future = 
                 smol::future::poll_once(next_future);
 
             #[allow(clippy::collapsible_match)]
@@ -405,7 +410,7 @@ fn handle_clients(
             let _ = websocket.send(
                 Message::Text(
                     serde_json::to_string(&values)
-                    .unwrap()
+                    .unwrap() 
                     ) // No way serialization gonna fail so
                       // using unwrap
                 ).await;
