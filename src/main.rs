@@ -335,6 +335,9 @@ fn handle_clients(
     clients: &mut HashMap<usize, WebSocketStream<Async<TcpStream>>>
 ) {
     let _span = span!("handle clients");
+    let serizalized_values = serde_json::to_string(&values)
+        .unwrap();
+
     clients.retain(|_client_id, websocket| {
         smol::block_on(async {
             let _span = span!("send message to clients");
@@ -362,11 +365,9 @@ fn handle_clients(
 
             let _ = websocket.send(
                 Message::Text(
-                    serde_json::to_string(&values)
-                    .unwrap() 
-                    ) // No way serialization gonna fail so
-                      // using unwrap
-                ).await;
+                    serizalized_values.clone()
+                )
+            ).await;
 
             true
         })
