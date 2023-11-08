@@ -145,6 +145,8 @@ pub struct Values {
     pub fc_pp: f64,
 
     pub passed_objects: usize,
+    #[serde(skip)]
+    pub delta_sum: usize,
 
     pub menu_mods: u32,
     pub mods: u32,
@@ -188,6 +190,7 @@ impl Values {
         self.bpm = 0.0;
         self.current_bpm = 0.0;
         self.prev_passed_objects = 0;
+        self.delta_sum = 0;
         self.gradual_performance_current = None;
         self.kiai_now = false;
     }

@@ -241,8 +241,8 @@ fn process_reading_loop(
         values.hit_katu = p.read_i16(score_base + 0x90)?;
         values.hit_miss = p.read_i16(score_base + 0x92)?;
 
-        // let passed_objects = values.passed_objects()?;
-        // values.passed_objects = passed_objects;
+        let passed_objects = values.passed_objects()?;
+        values.passed_objects = passed_objects;
 
         values.accuracy = values.get_accuracy();
 
@@ -290,17 +290,18 @@ fn process_reading_loop(
             let passed_objects = values.passed_objects;
             let prev_passed_objects = values.prev_passed_objects;
             let delta = passed_objects - prev_passed_objects;
-            let gradual_performance_current = &mut values.gradual_performance_current;
             let gradual = values
                 .gradual_performance_current
                 .get_or_insert_with(|| {
                     let static_beatmap = unsafe {
-                        extend_lifetime(beatmap)
+                        extend_lifetime(beatmap) // required until we rework the struct
                     };
                     GradualPerformanceAttributes::new(static_beatmap, values.mods)
                 });
-            println!("delta: {}, prev vs current: {}-{}, {}, {}", delta, passed_objects, prev_passed_objects, (delta > 0), passed_objects < beatmap.hit_objects.len());
-            if (delta > 0) && (passed_objects < beatmap.hit_objects.len()) {
+            // delta can't be 0 as processing 0 actually processes 1 object
+            // delta_sum < prev because delta_sum becomes equal to prev only after running this but it's always <= passed_objects
+            if (delta > 0) && (values.delta_sum < prev_passed_objects) {
+                values.delta_sum += delta;
                 values.current_pp = gradual.process_next_n_objects(score_state, delta)
                     .expect("process isn't called after the objects ended")
                     .pp();
@@ -330,7 +331,6 @@ fn process_reading_loop(
                 .timing_point_at(values.playtime as f64)
                 .beat_len;
 
-            values.passed_objects = values.passed_objects()?;
             values.prev_passed_objects = passed_objects;
         }
 
