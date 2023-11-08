@@ -287,48 +287,6 @@ fn process_reading_loop(
 
     Ok(())
 }
-fn handle_clients(
-    values: &Values,
-    clients: &mut HashMap<usize, WebSocketStream<Async<TcpStream>>>
-) {
-    let _span = span!("handle clients");
-    clients.retain(|_client_id, websocket| {
-        smol::block_on(async {
-            let _span = span!("send message to clients");
-
-            let next_future = websocket.next();
-            let msg_future =
-                smol::future::poll_once(next_future);
-
-            #[allow(clippy::collapsible_match)]
-            let msg = match msg_future.await {
-                Some(v) => {
-                    match v {
-                        Some(Ok(v)) => Some(v),
-                        Some(Err(_)) => return false,
-                        None => None,
-                    }
-                },
-                None => None,
-            };
-
-
-            if let Some(tungstenite::Message::Close(_)) = msg {
-                return false;
-            };
-
-            let _ = websocket.send(
-                Message::Text(
-                    serde_json::to_string(&values)
-                    .unwrap()
-                    ) // No way serialization gonna fail so
-                      // using unwrap
-                ).await;
-
-            true
-        })
-    });
-}
 
 fn main() -> Result<()> {
     let _client = tracy_client::Client::start();
