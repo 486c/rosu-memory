@@ -16,7 +16,7 @@ pub async fn websocket_handle(ctx: Arc<Context>) {
 
     let mut clients = ctx.clients.lock().unwrap();
 
-    clients.retain(|_client_id, websocket| {
+    clients.retain_mut(|websocket| {
         future::block_on(async {
             let next_future = websocket.next();
             let msg_future = future::poll_once(next_future);
@@ -57,7 +57,7 @@ pub fn server_thread(
                 let ctx = req.state();
 
                 let mut clients = ctx.clients.lock().unwrap();
-                clients.insert(1, stream);
+                clients.push(stream);
 
                 Ok(())
             })

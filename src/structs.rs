@@ -1,4 +1,8 @@
-use std::{num::TryFromIntError, path::PathBuf, sync::Mutex, collections::HashMap};
+use std::{
+    num::TryFromIntError, 
+    path::PathBuf, 
+    sync::Mutex, 
+};
 
 use rosu_pp::{Beatmap, GameMode, beatmap::EffectPoint};
 use serde::Serialize;
@@ -10,7 +14,7 @@ pub struct Context {
     // theoretically can happen in any time so we wanna
     // avoid any dataraces (TODO maybe consider using SSE in the future?)
     pub values: Mutex<Values>,
-    pub clients: Mutex<HashMap<usize, WebSocketConnection>>
+    pub clients: Mutex<Vec<WebSocketConnection>>,
 }
 
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]

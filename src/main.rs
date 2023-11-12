@@ -330,7 +330,7 @@ fn main() -> Result<()> {
     let values = Values::default();
 
     let ctx = Arc::new(Context {
-        clients: Mutex::new(HashMap::new()),
+        clients: Mutex::new(Vec::new()),
         values: Mutex::new(values)
     });
 
