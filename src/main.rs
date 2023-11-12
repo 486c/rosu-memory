@@ -272,7 +272,7 @@ fn process_reading_loop(
 
             let mode = values.gameplay_gamemode();
 
-            let pp_current = AnyPP::new(beatmap)
+            let current_pp = AnyPP::new(beatmap)
                 .mods(values.mods)
                 .mode(mode)
                 .passed_objects(passed_objects)
@@ -287,9 +287,7 @@ fn process_reading_loop(
                 })
                 .calculate();
 
-            //values.current_pp = pp_current.pp();
-
-            let pp_fc = AnyPP::new(beatmap)
+            let fc_pp = AnyPP::new(beatmap)
                 .mods(values.mods)
                 .mode(mode)
                 .n300(values.hit_300 as usize)
@@ -300,12 +298,11 @@ fn process_reading_loop(
                 .n_misses(values.hit_miss as usize)
                 .calculate();
 
-            (pp_current.pp(), pp_fc.pp())
+            (current_pp.pp(), fc_pp.pp())
         } else {
             (values.current_pp, values.fc_pp)
         };
         
-        // TODO fix names
         values.current_pp = pp_current;
         values.fc_pp = pp_fc;
 
