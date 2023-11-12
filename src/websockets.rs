@@ -51,15 +51,17 @@ pub fn server_thread(
     let mut app = tide::with_state(ctx.clone());
 
     app.at("/")
-        .with(WebSocket::new(|req: Request<Arc<Context>>, stream| async move {
-            let _span = tracy_client::span!("websocket connection");
-            let ctx = req.state();
+        .with(WebSocket::new(
+            |req: Request<Arc<Context>>, stream| async move {
+                let _span = tracy_client::span!("websocket connection");
+                let ctx = req.state();
 
-            let mut clients = ctx.clients.lock().unwrap();
-            clients.insert(1, stream);
+                let mut clients = ctx.clients.lock().unwrap();
+                clients.insert(1, stream);
 
-            Ok(())
-        }))
+                Ok(())
+            })
+        )
     .get(|_| async move { 
         Ok("not a websocket request! ")
     });
