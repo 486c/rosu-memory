@@ -134,6 +134,8 @@ pub struct Values {
     pub mode: i32,
     pub slider_breaks: i16,
     pub unstable_rate: f64,
+
+    #[serde(default = "SS")]
     pub grade: &'static str,
     pub current_hp: f64,
     pub current_hp_smooth: f64,

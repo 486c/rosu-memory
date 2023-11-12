@@ -277,7 +277,6 @@ fn process_reading_loop(
         if let Some(beatmap) = &values.current_beatmap {
             let _span = span!("Calculating pp");
 
-            let mode = values.gameplay_gamemode();
             let score_state = ScoreState {
                         max_combo: values.max_combo as usize,
                         n_geki: values.hit_geki as usize,
@@ -355,7 +354,8 @@ fn process_reading_loop(
 
             values.prev_passed_objects = passed_objects;
         }
-
+        
+        values.grade = values.get_current_grade();
         // Placing at the very end cuz we should
         // keep up with current_bpm & unstable rate
         // updates
