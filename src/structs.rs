@@ -1,6 +1,6 @@
 use std::{num::TryFromIntError, path::PathBuf};
 
-use rosu_pp::{Beatmap, GameMode};
+use rosu_pp::{Beatmap, GameMode, GradualPerformanceAttributes};
 use serde::Serialize;
 use serde_repr::Serialize_repr;
 
@@ -92,6 +92,10 @@ pub struct Values {
     pub prev_hit_miss: i16,
     #[serde(skip)]
     pub prev_playtime: i32,
+    #[serde(skip)]
+    pub prev_passed_objects: usize,
+    #[serde(skip)]
+    pub gradual_performance_current: Option<GradualPerformanceAttributes<'static>>,
 
     pub skin: String,
 
@@ -141,6 +145,8 @@ pub struct Values {
     pub fc_pp: f64,
 
     pub passed_objects: usize,
+    #[serde(skip)]
+    pub delta_sum: usize,
 
     pub menu_mods: u32,
     pub mods: u32,
@@ -183,6 +189,9 @@ impl Values {
 
         self.bpm = 0.0;
         self.current_bpm = 0.0;
+        self.prev_passed_objects = 0;
+        self.delta_sum = 0;
+        self.gradual_performance_current = None;
         self.kiai_now = false;
     }
 

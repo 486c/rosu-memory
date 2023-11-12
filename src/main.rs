@@ -22,7 +22,7 @@ use crossbeam_channel::bounded;
 
 use async_tungstenite::tungstenite;
 use futures_util::sink::SinkExt;
-use rosu_pp::{Beatmap, AnyPP, ScoreState};
+use rosu_pp::{Beatmap, AnyPP, ScoreState, GradualPerformanceAttributes};
 use smol::{prelude::*, Async};
 use tungstenite::Message;
 
@@ -55,7 +55,9 @@ fn parse_interval(
     let ms = arg.parse()?;
     Ok(std::time::Duration::from_millis(ms))
 }
-
+unsafe fn extend_lifetime<T>(value: &T) -> &'static T {
+    std::mem::transmute(value)
+}
 fn read_static_addresses(
     p: &Process,
     addresses: &mut StaticAddresses
@@ -238,7 +240,7 @@ fn process_reading_loop(
         values.hit_geki = p.read_i16(score_base + 0x8e)?;
         values.hit_katu = p.read_i16(score_base + 0x90)?;
         values.hit_miss = p.read_i16(score_base + 0x92)?;
-        
+
         let passed_objects = values.passed_objects()?;
         values.passed_objects = passed_objects;
 
@@ -276,25 +278,34 @@ fn process_reading_loop(
             let _span = span!("Calculating pp");
 
             let mode = values.gameplay_gamemode();
-
-            values.grade = values.get_current_grade();
-
-            let pp_current = AnyPP::new(beatmap)
-                .mods(values.mods)
-                .mode(mode)
-                .passed_objects(passed_objects)
-                .state(ScoreState {
-                    max_combo: values.max_combo as usize,
-                    n_geki: values.hit_geki as usize,
-                    n_katu: values.hit_katu as usize,
-                    n300: values.hit_300 as usize,
-                    n100: values.hit_100 as usize,
-                    n50: values.hit_50 as usize,
-                    n_misses: values.hit_miss as usize,
-                })
-                .calculate();
-
-            values.current_pp = pp_current.pp();
+            let score_state = ScoreState {
+                        max_combo: values.max_combo as usize,
+                        n_geki: values.hit_geki as usize,
+                        n_katu: values.hit_katu as usize,
+                        n300: values.hit_300 as usize,
+                        n100: values.hit_100 as usize,
+                        n50: values.hit_50 as usize,
+                        n_misses: values.hit_miss as usize,
+            };
+            let passed_objects = values.passed_objects;
+            let prev_passed_objects = values.prev_passed_objects;
+            let delta = passed_objects - prev_passed_objects;
+            let gradual = values
+                .gradual_performance_current
+                .get_or_insert_with(|| {
+                    let static_beatmap = unsafe {
+                        extend_lifetime(beatmap) // required until we rework the struct
+                    };
+                    GradualPerformanceAttributes::new(static_beatmap, values.mods)
+                });
+            // delta can't be 0 as processing 0 actually processes 1 object
+            // delta_sum < prev because delta_sum becomes equal to prev only after running this but it's always <= passed_objects
+            if (delta > 0) && (values.delta_sum < prev_passed_objects) {
+                values.delta_sum += delta;
+                values.current_pp = gradual.process_next_n_objects(score_state, delta)
+                    .expect("process isn't called after the objects ended")
+                    .pp();
+            }
 
             let fc_pp = AnyPP::new(beatmap)
                 .mods(values.mods)
@@ -319,10 +330,12 @@ fn process_reading_loop(
             values.current_bpm = 60000.0 / beatmap
                 .timing_point_at(values.playtime as f64)
                 .beat_len;
+
+            values.prev_passed_objects = passed_objects;
         }
-        
+
         // Placing at the very end cuz we should
-        // keep up with current_bpm & unstable rate 
+        // keep up with current_bpm & unstable rate
         // updates
         values.adjust_bpm();
     }
@@ -340,7 +353,7 @@ fn handle_clients(
             let _span = span!("send message to clients");
 
             let next_future = websocket.next();
-            let msg_future = 
+            let msg_future =
                 smol::future::poll_once(next_future);
 
             #[allow(clippy::collapsible_match)]
@@ -363,7 +376,7 @@ fn handle_clients(
             let _ = websocket.send(
                 Message::Text(
                     serde_json::to_string(&values)
-                    .unwrap() 
+                    .unwrap()
                     ) // No way serialization gonna fail so
                       // using unwrap
                 ).await;
