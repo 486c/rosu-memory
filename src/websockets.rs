@@ -1,4 +1,5 @@
 use tide::Request;
+use futures_lite::StreamExt;
 use std::sync::Arc;
 use tide_websockets::{Message, WebSocket};
 use futures_lite::future;
@@ -17,6 +18,19 @@ pub async fn websocket_handle(ctx: Arc<Context>) {
 
     clients.retain(|_client_id, websocket| {
         future::block_on(async {
+            let next_future = websocket.next();
+            let msg_future = future::poll_once(next_future);
+
+            let msg = match msg_future.await {
+                Some(Some(Ok(v))) => Some(v),
+                Some(Some(Err(_))) => return false,
+                Some(None) | None => None,
+            };
+
+            if let Some(Message::Close(_)) = msg {
+                return false;
+            }
+
             let _ = websocket.send(
                 Message::Text(
                     serizalized_values.clone()
