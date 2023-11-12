@@ -1,6 +1,7 @@
 use std::{num::TryFromIntError, path::PathBuf};
 
-use rosu_pp::{Beatmap, GameMode, GradualPerformanceAttributes};
+
+use rosu_pp::{Beatmap, GameMode, PerformanceAttributes, GradualPerformanceAttributes};
 use serde::Serialize;
 use serde_repr::Serialize_repr;
 
@@ -143,6 +144,9 @@ pub struct Values {
     // Calculated each iteration
     pub current_pp: f64,
     pub fc_pp: f64,
+    pub ss_pp: f64,
+    #[serde(skip)]
+    pub current_beatmap_perf: Option<PerformanceAttributes>,
 
     pub passed_objects: usize,
     #[serde(skip)]
@@ -182,6 +186,8 @@ impl Values {
 
         self.current_pp = 0.0;
         self.fc_pp = 0.0;
+        self.ss_pp = 0.0;
+        self.current_beatmap_perf = None;
 
         self.passed_objects = 0;
 
