@@ -1,25 +1,58 @@
-use async_tungstenite::{WebSocketStream, accept_async};
-use std::net::{ TcpListener, TcpStream };
-use smol::Async;
+use tide::Request;
+use std::sync::Arc;
+use tide_websockets::{Message, WebSocket};
+use futures_lite::future;
 
-use crossbeam_channel::Sender;
+use crate::structs::Context;
+
+pub async fn websocket_handle(ctx: Arc<Context>) {
+    let _span = tracy_client::span!("websocket loop");
+
+    let values = ctx.values.lock().unwrap();
+    let serizalized_values = serde_json::to_string(&(*values))
+        .unwrap();
+    drop(values);
+
+    let mut clients = ctx.clients.lock().unwrap();
+
+    clients.retain(|_client_id, websocket| {
+        future::block_on(async {
+            let _ = websocket.send(
+                Message::Text(
+                    serizalized_values.clone()
+                    )
+                ).await;
+
+            true
+        })
+    });
+
+    drop(clients);
+}
 
 pub fn server_thread(
-    tx: Sender<WebSocketStream<Async<TcpStream>>>
+    ctx: Arc<Context>
 ) {
-    smol::block_on(async {
-        let server = Async::<TcpListener>::bind(([127, 0, 0, 1], 9001))
-            .unwrap();
+    tracy_client::set_thread_name!("server thread");
+    let mut app = tide::with_state(ctx.clone());
 
-        loop {
-            let (stream, _) = server.accept()
-                .await.unwrap();
+    app.at("/")
+        .with(WebSocket::new(|req: Request<Arc<Context>>, stream| async move {
+            let _span = tracy_client::span!("websocket connection");
+            let ctx = req.state();
 
-            // TODO not sure if it's ok to ignore the error
-            // but it'll do for now
-            if let Ok(ws) = accept_async(stream).await {
-                let _ = tx.send(ws);
-            }
-        }
+            let mut clients = ctx.clients.lock().unwrap();
+            clients.insert(1, stream);
+
+            Ok(())
+        }))
+    .get(|_| async move { 
+        Ok("not a websocket request! ")
     });
+
+    let server = app.listen("127.0.0.1:9001");
+
+    future::block_on(async {
+        server.await.unwrap();
+    })
 }

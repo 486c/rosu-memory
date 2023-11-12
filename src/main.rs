@@ -1,5 +1,8 @@
 mod structs;
+mod websockets;
 
+use futures_lite::future;
+use structs::Context;
 use tracy_client::*;
 
 use crate::structs::{
@@ -8,34 +11,25 @@ use crate::structs::{
     StaticAddresses,
     Values,
 };
+use crate::websockets::{server_thread, websocket_handle};
 
+use std::sync::{Mutex, Arc};
 use std::{
     borrow::Cow,
     str::FromStr, 
-    collections::HashMap, net::TcpStream, path::PathBuf
+    collections::HashMap, path::PathBuf
 };
 
 use clap::Parser;
 
-use async_tungstenite::WebSocketStream;
-use crossbeam_channel::bounded;
-
-use async_tungstenite::tungstenite;
-use futures_util::sink::SinkExt;
 use rosu_pp::{Beatmap, AnyPP, ScoreState};
-use smol::{prelude::*, Async};
-use tungstenite::Message;
 
-use rosu_memory::{
-    memory::{
-        process::{Process, ProcessTraits}, 
-        signature::Signature, error::ProcessError
-    }, 
-    websockets::server_thread
+use rosu_memory::memory::{
+    process::{Process, ProcessTraits}, 
+    signature::Signature, error::ProcessError
 };
 
 use eyre::{Report, Result};
-use rosu_pp::beatmap::EffectPoint;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -91,9 +85,10 @@ fn read_static_addresses(
 fn process_reading_loop(
     p: &Process,
     addresses: &StaticAddresses,
-    values: &mut Values
+    ctx: Arc<Context>
 ) -> Result<()> {
     let _span = span!("reading loop");
+    let mut values = ctx.values.lock().unwrap();
 
     let menu_mods_ptr = p.read_i32(addresses.menu_mods + 0x9)?;
     values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
@@ -272,12 +267,10 @@ fn process_reading_loop(
         values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
         // Calculate pp
-        if let Some(beatmap) = &values.current_beatmap {
+        let (pp_current, pp_fc) = if let Some(beatmap) = &values.current_beatmap {
             let _span = span!("Calculating pp");
 
             let mode = values.gameplay_gamemode();
-
-            values.grade = values.get_current_grade();
 
             let pp_current = AnyPP::new(beatmap)
                 .mods(values.mods)
@@ -294,9 +287,9 @@ fn process_reading_loop(
                 })
                 .calculate();
 
-            values.current_pp = pp_current.pp();
+            //values.current_pp = pp_current.pp();
 
-            let fc_pp = AnyPP::new(beatmap)
+            let pp_fc = AnyPP::new(beatmap)
                 .mods(values.mods)
                 .mode(mode)
                 .n300(values.hit_300 as usize)
@@ -307,91 +300,49 @@ fn process_reading_loop(
                 .n_misses(values.hit_miss as usize)
                 .calculate();
 
-            values.fc_pp = fc_pp.pp();
+            (pp_current.pp(), pp_fc.pp())
+        } else {
+            (values.current_pp, values.fc_pp)
+        };
+        
+        // TODO fix names
+        values.current_pp = pp_current;
+        values.fc_pp = pp_fc;
 
-            // TODO: get rid of extra allocation?
-            let kiai_data: Option<EffectPoint> = beatmap
-                .effect_point_at(values.playtime as f64);
-            if let Some(kiai) = kiai_data {
-                values.kiai_now = kiai.kiai;
-            }
-
-            values.current_bpm = 60000.0 / beatmap
-                .timing_point_at(values.playtime as f64)
-                .beat_len;
-        }
+        values.grade = values.get_current_grade();
+        values.current_bpm = values.get_current_bpm();
+        values.kiai_now = values.get_kiai();
         
         // Placing at the very end cuz we should
         // keep up with current_bpm & unstable rate 
         // updates
         values.adjust_bpm();
+
     }
 
     Ok(())
-}
-
-fn handle_clients(
-    values: &Values,
-    clients: &mut HashMap<usize, WebSocketStream<Async<TcpStream>>>
-) {
-    let _span = span!("handle clients");
-    let serizalized_values = serde_json::to_string(&values)
-        .unwrap();
-
-    clients.retain(|_client_id, websocket| {
-        smol::block_on(async {
-            let _span = span!("send message to clients");
-
-            let next_future = websocket.next();
-            let msg_future = 
-                smol::future::poll_once(next_future);
-
-            #[allow(clippy::collapsible_match)]
-            let msg = match msg_future.await {
-                Some(v) => {
-                    match v {
-                        Some(Ok(v)) => Some(v),
-                        Some(Err(_)) => return false,
-                        None => None,
-                    }
-                },
-                None => None,
-            };
-
-
-            if let Some(tungstenite::Message::Close(_)) = msg {
-                return false;
-            };
-
-            let _ = websocket.send(
-                Message::Text(
-                    serizalized_values.clone()
-                )
-            ).await;
-
-            true
-        })
-    });
 }
 
 fn main() -> Result<()> {
     let _client = tracy_client::Client::start();
 
     let args = Args::parse();
-    let mut values = Values::default();
+    let values = Values::default();
 
-    let (tx, rx) = bounded::<WebSocketStream<Async<TcpStream>>>(20);
+    let ctx = Arc::new(Context {
+        clients: Mutex::new(HashMap::new()),
+        values: Mutex::new(values)
+    });
 
-    std::thread::spawn(move || server_thread(tx.clone()));
-
-    let mut client_id = 0;
-    let mut clients: HashMap<usize, WebSocketStream<Async<TcpStream>>> = 
-        HashMap::new();
+    let server_ctx = ctx.clone();
+    std::thread::spawn(move || server_thread(server_ctx.clone()));
 
     let mut static_static_addresses = StaticAddresses::default();
     
     // TODO ugly nesting mess
     'init_loop: loop {
+        let mut values = ctx.values.lock().unwrap();
+
         let p = match Process::initialize("osu!.exe") {
             Ok(p) => p,
             Err(e) => {
@@ -451,17 +402,15 @@ fn main() -> Result<()> {
             },
         };
 
+        // Droping lock
+        drop(values);
+
         println!("Starting reading loop");
         'main_loop: loop {
-            while let Ok(client) = rx.try_recv() {
-                clients.insert(client_id, client);
-                client_id += 1;
-            }
-
             if let Err(e) = process_reading_loop(
                 &p,
                 &static_static_addresses,
-                &mut values
+                ctx.clone()
             ) {
                 match e.downcast_ref::<ProcessError>() {
                     Some(&ProcessError::ProcessNotFound) => 
@@ -476,7 +425,10 @@ fn main() -> Result<()> {
                 }
             }
 
-            handle_clients(&values, &mut clients);
+            // Send info to websocket clients
+            future::block_on(async {
+                websocket_handle(ctx.clone()).await;
+            });
 
             std::thread::sleep(args.interval);
         }

@@ -1,8 +1,17 @@
-use std::{num::TryFromIntError, path::PathBuf};
+use std::{num::TryFromIntError, path::PathBuf, sync::Mutex, collections::HashMap};
 
-use rosu_pp::{Beatmap, GameMode};
+use rosu_pp::{Beatmap, GameMode, beatmap::EffectPoint};
 use serde::Serialize;
 use serde_repr::Serialize_repr;
+use tide_websockets::WebSocketConnection;
+
+pub struct Context {
+    // Values struct in Mutex<T> because of HTTP endpoint that
+    // theoretically can happen in any time so we wanna
+    // avoid any dataraces (TODO maybe consider using SSE in the future?)
+    pub values: Mutex<Values>,
+    pub clients: Mutex<HashMap<usize, WebSocketConnection>>
+}
 
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
 #[repr(u32)]
@@ -376,6 +385,34 @@ impl Values {
                 }
             },
             _ => ()
+        }
+    }
+
+    pub fn get_current_bpm(&self) -> f64 {
+        let _span = tracy_client::span!("get current bpm");
+        if let Some(beatmap) = &self.current_beatmap {
+            60000.0 / beatmap
+                .timing_point_at(self.playtime as f64)
+                .beat_len
+        } else {
+            self.current_bpm
+        }
+    }
+
+    pub fn get_kiai(&self) -> bool {
+        let _span = tracy_client::span!("get kiai");
+        if let Some(beatmap) = &self.current_beatmap {
+            // TODO: get rid of extra allocation?
+            let kiai_data: Option<EffectPoint> = beatmap
+                .effect_point_at(self.playtime as f64);
+
+            if let Some(kiai) = kiai_data {
+                kiai.kiai
+            } else {
+                self.kiai_now
+            }
+        } else {
+            self.kiai_now
         }
     }
 }
