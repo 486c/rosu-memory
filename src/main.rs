@@ -17,7 +17,7 @@ use std::sync::{Mutex, Arc};
 use std::{
     borrow::Cow,
     str::FromStr, 
-    collections::HashMap, path::PathBuf
+    path::PathBuf
 };
 
 use clap::Parser;
