@@ -1,6 +1,9 @@
 mod structs;
+mod network;
 
 use tracy_client::*;
+
+use crate::network::server_thread;
 
 use crate::structs::{
     BeatmapStatus,
@@ -26,13 +29,11 @@ use rosu_pp::Beatmap;
 use smol::{prelude::*, Async};
 use tungstenite::Message;
 
-use rosu_memory::{
+use rosu_memory::
     memory::{
         process::{Process, ProcessTraits}, 
         signature::Signature, error::ProcessError
-    }, 
-    websockets::server_thread
-};
+    };
 
 use eyre::{Report, Result};
 
@@ -294,13 +295,9 @@ fn main() -> Result<()> {
     let args = Args::parse();
     let mut values = Values::default();
 
-    let (tx, rx) = bounded::<WebSocketStream<Async<TcpStream>>>(20);
+    let (tx, rx) = bounded::<()>(1);
 
-    std::thread::spawn(move || server_thread(tx.clone()));
-
-    let mut client_id = 0;
-    let mut clients: HashMap<usize, WebSocketStream<Async<TcpStream>>> = 
-        HashMap::new();
+    std::thread::spawn(move || server_thread());
 
     let mut static_static_addresses = StaticAddresses::default();
     
@@ -367,11 +364,6 @@ fn main() -> Result<()> {
 
         println!("Starting reading loop");
         'main_loop: loop {
-            while let Ok(client) = rx.try_recv() {
-                clients.insert(client_id, client);
-                client_id += 1;
-            }
-
             if let Err(e) = process_reading_loop(
                 &p,
                 &static_static_addresses,
@@ -390,7 +382,9 @@ fn main() -> Result<()> {
                 }
             }
 
-            handle_clients(&values, &mut clients);
+            let _ = tx.send(());
+
+            //handle_clients(&values, &mut clients);
 
             std::thread::sleep(args.interval);
         }
