@@ -1,7 +1,10 @@
 use std::{num::TryFromIntError, path::PathBuf};
 
+use rosu_pp::{
+    Beatmap, GameMode, 
+    PerformanceAttributes, GradualPerformanceAttributes
+};
 
-use rosu_pp::{Beatmap, GameMode, PerformanceAttributes, GradualPerformanceAttributes};
 use serde::Serialize;
 use serde_repr::Serialize_repr;
 
@@ -96,7 +99,8 @@ pub struct Values {
     #[serde(skip)]
     pub prev_passed_objects: usize,
     #[serde(skip)]
-    pub gradual_performance_current: Option<GradualPerformanceAttributes<'static>>,
+    pub gradual_performance_current: 
+        Option<GradualPerformanceAttributes<'static>>,
 
     pub skin: String,
 
@@ -274,17 +278,40 @@ impl Values {
         }
         match self.gameplay_gamemode() {
             GameMode::Osu => 
-                (self.hit_300 as f64 * 6. + self.hit_100 as f64 * 2. + self.hit_50 as f64)
-                / ((self.hit_300 + self.hit_100 + self.hit_50 + self.hit_miss) as f64 * 6.),
+                (self.hit_300 as f64 * 6. 
+                 + self.hit_100 as f64 * 2. 
+                 + self.hit_50 as f64)
+                / 
+                ((self.hit_300 
+                 + self.hit_100 
+                 + self.hit_50 
+                 + self.hit_miss) as f64 * 6.
+            ),
             GameMode::Taiko =>
                 (self.hit_300 as f64 * 2. + self.hit_100 as f64)
-                / ((self.hit_300 + self.hit_100 + self.hit_50 + self.hit_miss) as f64 * 2.),
+                / 
+                ((self.hit_300 
+                 + self.hit_100 
+                 + self.hit_50 
+                 + self.hit_miss) as f64 * 2.),
             GameMode::Catch =>
                 (self.hit_300 + self.hit_100 + self.hit_50) as f64
-                / (self.hit_300 + self.hit_100 + self.hit_50 + self.hit_katu + self.hit_miss) as f64,
+                / 
+                (self.hit_300 + self.hit_100 + self.hit_50 
+                 + self.hit_katu + self.hit_miss) as f64,
             GameMode::Mania =>
-                ((self.hit_geki + self.hit_300) as f64 * 6. + self.hit_katu as f64 * 4. + self.hit_100 as f64 * 2. + self.hit_50 as f64)
-                / ((self.hit_geki + self.hit_300 + self.hit_katu + self.hit_100 + self.hit_50 + self.hit_miss) as f64 * 6.)
+                ((self.hit_geki + self.hit_300) as f64 
+                 * 6. + self.hit_katu as f64 
+                 * 4. + self.hit_100 as f64 
+                 * 2. + self.hit_50 as f64)
+                / 
+                ((self.hit_geki 
+                 + self.hit_300 
+                 + self.hit_katu 
+                 + self.hit_100 
+                 + self.hit_50 
+                 + self.hit_miss) as f64 * 6.
+            )
         }
     }
 
@@ -297,11 +324,16 @@ impl Values {
                 let ratio50 = self.hit_50 as f64 / total_hits;
                 if self.accuracy == 1. {
                     "SS"
-                } else if ratio300 > 0.9 && self.hit_miss == 0 && ratio50 <= 0.1 {
+                } else if ratio300 > 0.9 
+                    && self.hit_miss == 0 
+                    && ratio50 <= 0.1 {
                     "S"
-                } else if ratio300 > 0.8 && self.hit_miss == 0 || ratio300 > 0.9 {
+                } else if ratio300 > 0.8 
+                    && self.hit_miss == 0 || ratio300 > 0.9 {
                     "A"
-                } else if ratio300 > 0.7 && self.hit_miss == 0 || ratio300 > 0.8 {
+                } else if ratio300 > 0.7 
+                    && self.hit_miss == 0 
+                    || ratio300 > 0.8 {
                     "B"
                 } else if ratio300 > 0.6 {
                     "C"
@@ -315,9 +347,13 @@ impl Values {
                     "SS"
                 } else if ratio300 > 0.9 && self.hit_miss == 0 {
                     "S"
-                } else if ratio300 > 0.8 && self.hit_miss == 0 || ratio300 > 0.9 {
+                } else if ratio300 > 0.8 
+                    && self.hit_miss == 0 
+                    || ratio300 > 0.9 {
                     "A"
-                } else if ratio300 > 0.7 && self.hit_miss == 0 || ratio300 > 0.8 {
+                } else if ratio300 > 0.7 
+                    && self.hit_miss == 0 
+                    || ratio300 > 0.8 {
                     "B"
                 } else if ratio300 > 0.6 {
                     "C"

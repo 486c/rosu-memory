@@ -294,21 +294,33 @@ fn process_reading_loop(
                 .gradual_performance_current
                 .get_or_insert_with(|| {
                     let static_beatmap = unsafe {
-                        extend_lifetime(beatmap) // required until we rework the struct
+                        // required until we rework the struct
+                        extend_lifetime(beatmap) 
                     };
-                    GradualPerformanceAttributes::new(static_beatmap, values.mods)
+                    GradualPerformanceAttributes::new(
+                        static_beatmap, 
+                        values.mods
+                    )
                 });
+
             // delta can't be 0 as processing 0 actually processes 1 object
-            // delta_sum < prev because delta_sum becomes equal to prev only after running this but it's always <= passed_objects
+            // delta_sum < prev because delta_sum becomes equal to 
+            // prev only after running this but it's 
+            // always <= passed_objects
             if (delta > 0) && (values.delta_sum < prev_passed_objects) {
                 values.delta_sum += delta;
-                values.current_pp = gradual.process_next_n_objects(score_state, delta)
-                    .expect("process isn't called after the objects ended")
-                    .pp();
+                values.current_pp = gradual.process_next_n_objects(
+                    score_state, 
+                    delta
+                )
+                .expect("process isn't called after the objects ended")
+                .pp();
             }
 
             if values.current_beatmap_perf.is_some() {
-                if let Some(attributes) = values.current_beatmap_perf.clone() {
+                if let Some(attributes) = 
+                    values.current_beatmap_perf.clone() 
+                {
                     let fc_pp = AnyPP::new(beatmap)
                         .attributes(attributes.clone())
                         .mods(values.mods)
