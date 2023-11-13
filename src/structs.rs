@@ -465,7 +465,7 @@ impl Values {
                     .pp();
             }
         }
-        return current_pp;
+        current_pp
     }
 
     pub fn get_fc_pp(&mut self) -> f64 {
@@ -483,10 +483,10 @@ impl Values {
                         .n_katu(self.hit_katu as usize)
                         .n_misses(self.hit_miss as usize)
                         .calculate();
-                    return fc_pp.pp()
+                    fc_pp.pp()
                 }
                 else {
-                    return 0.0
+                    0.0
                 }
             } else {
                 let attr = AnyPP::new(beatmap)
@@ -496,10 +496,10 @@ impl Values {
                 let ss_pp = attr.pp();
                 self.ss_pp = ss_pp;
                 self.current_beatmap_perf = Some(attr);
-                return ss_pp
+                ss_pp
             }
         } else {
-            return 0.0
+            0.0
         }
 
     }

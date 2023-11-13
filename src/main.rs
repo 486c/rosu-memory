@@ -22,7 +22,7 @@ use crossbeam_channel::bounded;
 
 use async_tungstenite::tungstenite;
 use futures_util::sink::SinkExt;
-use rosu_pp::{Beatmap, AnyPP, ScoreState, GradualPerformanceAttributes};
+use rosu_pp::Beatmap;
 use smol::{prelude::*, Async};
 use tungstenite::Message;
 
@@ -35,7 +35,6 @@ use rosu_memory::{
 };
 
 use eyre::{Report, Result};
-use rosu_pp::beatmap::EffectPoint;
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -271,13 +270,10 @@ fn process_reading_loop(
         values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
         // Calculate pp
-        if let Some(beatmap) = &values.current_beatmap {
-            let _span = span!("Calculating pp");
+        values.current_pp = values.get_current_pp();
+        values.fc_pp = values.get_fc_pp();
 
-            values.current_pp = values.get_current_pp();
-            values.fc_pp = values.get_fc_pp();
-            values.prev_passed_objects = passed_objects;
-        }
+        values.prev_passed_objects = passed_objects;
         
         values.grade = values.get_current_grade();
         values.current_bpm = values.get_current_bpm();
