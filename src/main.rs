@@ -1,9 +1,10 @@
 mod structs;
 mod network;
 
+use network::Context;
 use tracy_client::*;
 
-use crate::network::server_thread;
+use crate::network::{server_thread, handle_clients};
 
 use crate::structs::{
     BeatmapStatus,
@@ -12,10 +13,11 @@ use crate::structs::{
     Values,
 };
 
+use std::sync::{Arc, Mutex};
 use std::{
     borrow::Cow,
     str::FromStr, 
-    collections::HashMap, net::TcpStream, path::PathBuf
+    collections::HashMap, path::PathBuf
 };
 
 use clap::Parser;
@@ -25,9 +27,9 @@ use crossbeam_channel::bounded;
 
 use async_tungstenite::tungstenite;
 use futures_util::sink::SinkExt;
-use rosu_pp::Beatmap;
 use smol::{prelude::*, Async};
 use tungstenite::Message;
+use rosu_pp::{Beatmap, AnyPP, ScoreState, GradualPerformanceAttributes};
 
 use rosu_memory::
     memory::{
@@ -135,7 +137,7 @@ fn process_reading_loop(
     }
 
     values.beatmap_status = BeatmapStatus::from(
-      p.read_i16(beatmap_addr as usize + 0x130)?
+        p.read_i16(beatmap_addr as usize + 0x130)?
     );
 
     let mut new_map = false;
@@ -295,9 +297,12 @@ fn main() -> Result<()> {
     let args = Args::parse();
     let mut values = Values::default();
 
-    let (tx, rx) = bounded::<()>(1);
-
-    std::thread::spawn(move || server_thread());
+    let ctx = Arc::new(Context {
+        clients: Mutex::new(HashMap::new())
+    });
+    
+    let server_ctx = ctx.clone();
+    std::thread::spawn(move || server_thread(server_ctx));
 
     let mut static_static_addresses = StaticAddresses::default();
     
@@ -382,9 +387,9 @@ fn main() -> Result<()> {
                 }
             }
 
-            let _ = tx.send(());
-
-            //handle_clients(&values, &mut clients);
+            smol::block_on(async {
+                handle_clients(ctx.clone()).await;
+            });
 
             std::thread::sleep(args.interval);
         }
