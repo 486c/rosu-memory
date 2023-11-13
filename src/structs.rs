@@ -1,9 +1,6 @@
 use std::{num::TryFromIntError, path::PathBuf};
 
-use rosu_pp::{
-    Beatmap, GameMode, 
-    PerformanceAttributes, GradualPerformanceAttributes, beatmap::EffectPoint
-};
+use rosu_pp::{Beatmap, GameMode, PerformanceAttributes, GradualPerformanceAttributes, beatmap::EffectPoint, ScoreState, AnyPP};
 
 use serde::Serialize;
 use serde_repr::Serialize_repr;
@@ -427,6 +424,85 @@ impl Values {
             self.kiai_now
         }
     }
+    pub fn get_current_pp(&mut self) -> f64 {
+        let mut current_pp = self.current_pp;
+        let score_state = ScoreState {
+            max_combo: self.max_combo as usize,
+            n_geki: self.hit_geki as usize,
+            n_katu: self.hit_katu as usize,
+            n300: self.hit_300 as usize,
+            n100: self.hit_100 as usize,
+            n50: self.hit_50 as usize,
+            n_misses: self.hit_miss as usize,
+        };
+        let passed_objects = self.passed_objects;
+        let prev_passed_objects = self.prev_passed_objects;
+        let delta = passed_objects - prev_passed_objects;
+        if let Some(beatmap) = &self.current_beatmap {
+            let gradual = &mut self
+                .gradual_performance_current
+                .get_or_insert_with(|| {
+                    let static_beatmap = unsafe {
+                        // required until we rework the struct
+                        extend_lifetime(beatmap)
+                    };
+                    GradualPerformanceAttributes::new(
+                        static_beatmap,
+                        self.mods
+                    )
+                });
+            // delta can't be 0 as processing 0 actually processes 1 object
+            // delta_sum < prev because delta_sum becomes equal to
+            // prev only after running this but it's
+            // always <= passed_objects
+            if (delta > 0) && (self.delta_sum < prev_passed_objects) {
+                self.delta_sum += delta;
+                current_pp = gradual.process_next_n_objects(
+                    score_state,
+                    delta
+                )
+                    .expect("process isn't called after the objects ended")
+                    .pp();
+            }
+        }
+        return current_pp;
+    }
+
+    pub fn get_fc_pp(&mut self) -> f64 {
+        if let Some(beatmap) = &self.current_beatmap {
+            if self.current_beatmap_perf.is_some() {
+                if let Some(attributes) =
+                    self.current_beatmap_perf.clone() {
+                    let fc_pp = AnyPP::new(beatmap)
+                        .attributes(attributes.clone())
+                        .mods(self.mods)
+                        .n300(self.hit_300 as usize)
+                        .n100(self.hit_100 as usize)
+                        .n50(self.hit_50 as usize)
+                        .n_geki(self.hit_geki as usize)
+                        .n_katu(self.hit_katu as usize)
+                        .n_misses(self.hit_miss as usize)
+                        .calculate();
+                    return fc_pp.pp()
+                }
+                else {
+                    return 0.0
+                }
+            } else {
+                let attr = AnyPP::new(beatmap)
+                    .mods(self.mods)
+                    .mode(self.gameplay_gamemode())
+                    .calculate();
+                let ss_pp = attr.pp();
+                self.ss_pp = ss_pp;
+                self.current_beatmap_perf = Some(attr);
+                return ss_pp
+            }
+        } else {
+            return 0.0
+        }
+
+    }
 
     pub fn adjust_bpm(&mut self) {
         let _span = tracy_client::span!("adjust bpm");
@@ -457,4 +533,7 @@ impl Values {
             _ => ()
         }
     }
+}
+unsafe fn extend_lifetime<T>(value: &T) -> &'static T {
+    std::mem::transmute(value)
 }
