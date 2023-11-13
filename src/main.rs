@@ -55,9 +55,6 @@ fn parse_interval(
     let ms = arg.parse()?;
     Ok(std::time::Duration::from_millis(ms))
 }
-unsafe fn extend_lifetime<T>(value: &T) -> &'static T {
-    std::mem::transmute(value)
-}
 fn read_static_addresses(
     p: &Process,
     addresses: &mut StaticAddresses
@@ -277,70 +274,8 @@ fn process_reading_loop(
         if let Some(beatmap) = &values.current_beatmap {
             let _span = span!("Calculating pp");
 
-            let score_state = ScoreState {
-                        max_combo: values.max_combo as usize,
-                        n_geki: values.hit_geki as usize,
-                        n_katu: values.hit_katu as usize,
-                        n300: values.hit_300 as usize,
-                        n100: values.hit_100 as usize,
-                        n50: values.hit_50 as usize,
-                        n_misses: values.hit_miss as usize,
-            };
-            let passed_objects = values.passed_objects;
-            let prev_passed_objects = values.prev_passed_objects;
-            let delta = passed_objects - prev_passed_objects;
-            let gradual = values
-                .gradual_performance_current
-                .get_or_insert_with(|| {
-                    let static_beatmap = unsafe {
-                        // required until we rework the struct
-                        extend_lifetime(beatmap) 
-                    };
-                    GradualPerformanceAttributes::new(
-                        static_beatmap, 
-                        values.mods
-                    )
-                });
-
-            // delta can't be 0 as processing 0 actually processes 1 object
-            // delta_sum < prev because delta_sum becomes equal to 
-            // prev only after running this but it's 
-            // always <= passed_objects
-            if (delta > 0) && (values.delta_sum < prev_passed_objects) {
-                values.delta_sum += delta;
-                values.current_pp = gradual.process_next_n_objects(
-                    score_state, 
-                    delta
-                )
-                .expect("process isn't called after the objects ended")
-                .pp();
-            }
-
-            if values.current_beatmap_perf.is_some() {
-                if let Some(attributes) = 
-                    values.current_beatmap_perf.clone() 
-                {
-                    let fc_pp = AnyPP::new(beatmap)
-                        .attributes(attributes.clone())
-                        .mods(values.mods)
-                        .n300(values.hit_300 as usize)
-                        .n100(values.hit_100 as usize)
-                        .n50(values.hit_50 as usize)
-                        .n_geki(values.hit_geki as usize)
-                        .n_katu(values.hit_katu as usize)
-                        .n_misses(values.hit_miss as usize)
-                        .calculate();
-                    values.fc_pp = fc_pp.pp();
-                }
-            } else {
-                let attr = AnyPP::new(beatmap)
-                    .mods(values.mods)
-                    .mode(values.gameplay_gamemode())
-                    .calculate();
-                values.ss_pp = attr.pp();
-                values.current_beatmap_perf = Some(attr);
-            }
-
+            values.current_pp = values.get_current_pp();
+            values.fc_pp = values.get_fc_pp();
             values.prev_passed_objects = passed_objects;
         }
         
@@ -356,7 +291,6 @@ fn process_reading_loop(
 
     Ok(())
 }
-
 fn handle_clients(
     values: &Values,
     clients: &mut HashMap<usize, WebSocketStream<Async<TcpStream>>>
