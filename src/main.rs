@@ -341,21 +341,13 @@ fn process_reading_loop(
                 values.current_beatmap_perf = Some(attr);
             }
 
-            // TODO: get rid of extra allocation?
-            let kiai_data: Option<EffectPoint> = beatmap
-                .effect_point_at(values.playtime as f64);
-            if let Some(kiai) = kiai_data {
-                values.kiai_now = kiai.kiai;
-            }
-
-            values.current_bpm = 60000.0 / beatmap
-                .timing_point_at(values.playtime as f64)
-                .beat_len;
-
             values.prev_passed_objects = passed_objects;
         }
         
         values.grade = values.get_current_grade();
+        values.current_bpm = values.get_current_bpm();
+        values.kiai_now = values.get_kiai();
+
         // Placing at the very end cuz we should
         // keep up with current_bpm & unstable rate
         // updates

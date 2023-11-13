@@ -2,7 +2,7 @@ use std::{num::TryFromIntError, path::PathBuf};
 
 use rosu_pp::{
     Beatmap, GameMode, 
-    PerformanceAttributes, GradualPerformanceAttributes
+    PerformanceAttributes, GradualPerformanceAttributes, beatmap::EffectPoint
 };
 
 use serde::Serialize;
@@ -399,6 +399,32 @@ impl Values {
             ("SS", conj) if conj > 0 => "SSH",
             ("S", conj) if conj > 0 => "SH",
             _ => base_grade
+        }
+    }
+
+    pub fn get_current_bpm(&self) -> f64 {
+        let _span = tracy_client::span!("get current bpm");
+        if let Some(beatmap) = &self.current_beatmap {
+            60000.0 / beatmap
+                .timing_point_at(self.playtime as f64)
+                .beat_len
+        } else {
+            self.current_bpm
+        }
+    }
+
+    pub fn get_kiai(&self) -> bool {
+        if let Some(beatmap) = &self.current_beatmap {
+            // TODO: get rid of extra allocation?
+            let kiai_data: Option<EffectPoint> = beatmap
+                .effect_point_at(self.playtime as f64);
+            if let Some(kiai) = kiai_data {
+                kiai.kiai
+            } else {
+                self.kiai_now
+            }
+        } else {
+            self.kiai_now
         }
     }
 
