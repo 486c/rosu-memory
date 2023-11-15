@@ -2,6 +2,7 @@ mod structs;
 mod network;
 
 use network::Context;
+use structs::InnerValues;
 use tracy_client::*;
 
 use crate::network::{server_thread, handle_clients};
@@ -17,7 +18,7 @@ use std::sync::{Arc, Mutex};
 use std::{
     borrow::Cow,
     str::FromStr, 
-    collections::HashMap, path::PathBuf
+    path::PathBuf
 };
 
 use clap::Parser;
@@ -57,57 +58,26 @@ fn parse_interval(
     let ms = arg.parse()?;
     Ok(std::time::Duration::from_millis(ms))
 }
-fn read_static_addresses(
-    p: &Process,
-    addresses: &mut StaticAddresses
-) -> Result<()> {
-    let _span = span!("static addresses");
-
-    let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
-    let status_sign = Signature::from_str("48 83 F8 04 73 1E")?;
-    let menu_mods_sign = Signature::from_str(
-        "C8 FF ?? ?? ?? ?? ?? 81 0D ?? ?? ?? ?? 00 08 00 00"
-    )?;
-
-    let rulesets_sign = Signature::from_str(
-        "7D 15 A1 ?? ?? ?? ?? 85 C0"
-    )?;
-
-    let playtime_sign = Signature::from_str(
-        "5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04"
-    )?;
-
-    let skin_sign = Signature::from_str("75 21 8B 1D")?;
-
-    addresses.base = p.read_signature(&base_sign)?;
-    addresses.status = p.read_signature(&status_sign)?;
-    addresses.menu_mods = p.read_signature(&menu_mods_sign)?;
-    addresses.rulesets = p.read_signature(&rulesets_sign)?;
-    addresses.playtime = p.read_signature(&playtime_sign)?;
-    addresses.skin = p.read_signature(&skin_sign)?;
-
-    Ok(())
-}
 
 fn process_reading_loop(
     p: &Process,
-    addresses: &StaticAddresses,
+    ivalues: &mut InnerValues,
     values: &mut Values
 ) -> Result<()> {
     let _span = span!("reading loop");
 
-    let menu_mods_ptr = p.read_i32(addresses.menu_mods + 0x9)?;
+    let menu_mods_ptr = p.read_i32(ivalues.addresses.menu_mods + 0x9)?;
     values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
 
-    let playtime_ptr = p.read_i32(addresses.playtime + 0x5)?;
+    let playtime_ptr = p.read_i32(ivalues.addresses.playtime + 0x5)?;
     values.playtime = p.read_i32(playtime_ptr as usize)?;
 
-    let beatmap_ptr = p.read_i32(addresses.base - 0xC)?;
+    let beatmap_ptr = p.read_i32(ivalues.addresses.base - 0xC)?;
     let beatmap_addr = p.read_i32(beatmap_ptr as usize)?;
 
-    let status_ptr = p.read_i32(addresses.status - 0x4)?;
+    let status_ptr = p.read_i32(ivalues.addresses.status - 0x4)?;
 
-    let skin_ptr = p.read_i32(addresses.skin + 0x4)?;
+    let skin_ptr = p.read_i32(ivalues.addresses.skin + 0x4)?;
     let skin_data = p.read_i32(skin_ptr as usize)?;
     values.skin = p.read_string(skin_data as usize + 0x44)?;
 
@@ -130,7 +100,7 @@ fn process_reading_loop(
         values.hp = p.read_f32(hp_addr as usize)?;
         values.od = p.read_f32(od_addr as usize)?;
 
-        let plays_addr = p.read_i32(addresses.base - 0x33)? + 0xC;
+        let plays_addr = p.read_i32(ivalues.addresses.base - 0x33)? + 0xC;
         values.plays = p.read_i32(plays_addr as usize)?;
 
         values.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
@@ -147,7 +117,7 @@ fn process_reading_loop(
     && values.status != GameStatus::MultiplayerResultScreen {
         let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
         let folder = p.read_string((beatmap_addr + 0x78) as usize)?;
-        let menu_mode_addr = p.read_i32(addresses.base - 0x33)?;
+        let menu_mode_addr = p.read_i32(ivalues.addresses.base - 0x33)?;
         values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
 
 
@@ -194,7 +164,7 @@ fn process_reading_loop(
     }
 
     let ruleset_addr = p.read_i32(
-        (p.read_i32(addresses.rulesets - 0xb)? + 0x4) as usize
+        (p.read_i32(ivalues.addresses.rulesets - 0xb)? + 0x4) as usize
     )?;
 
     if values.status == GameStatus::Playing {
@@ -296,17 +266,17 @@ fn main() -> Result<()> {
 
     let args = Args::parse();
     let mut values = Values::default();
+    let mut inner_values = InnerValues::default();
 
     let ctx = Arc::new(Context {
-        clients: Mutex::new(HashMap::new())
+        values: Mutex::new(values),
+        clients: Mutex::new(Vec::new())
     });
     
+    // Spawning Hyper server
     let server_ctx = ctx.clone();
     std::thread::spawn(move || server_thread(server_ctx));
 
-    let mut static_static_addresses = StaticAddresses::default();
-    
-    // TODO ugly nesting mess
     'init_loop: loop {
         let p = match Process::initialize("osu!.exe") {
             Ok(p) => p,
@@ -315,28 +285,6 @@ fn main() -> Result<()> {
                 continue 'init_loop
             },
         };
-
-        // OSU_PATH cli argument if provided should
-        // overwrite auto detected path
-        // else use auto detected path
-        match args.osu_path {
-            Some(ref v) => {
-                println!("Using provided osu! folder path");
-                values.osu_path = v.clone();
-            },
-            None => {
-                println!("Using auto-detected osu! folder path");
-                if let Some(ref dir) = p.executable_dir {
-                    values.osu_path = dir.clone();
-                } else {
-                    return Err(Report::msg(
-                        "Can't auto-detect osu! folder path \
-                         nor any was provided through command \
-                         line argument"
-                    ));
-                }
-            },
-        }
         
         // Checking if path exists
         if !values.osu_path.exists() {
@@ -350,8 +298,8 @@ fn main() -> Result<()> {
 
 
         println!("Reading static signatures...");
-        match read_static_addresses(&p, &mut static_static_addresses) {
-            Ok(_) => {},
+        match StaticAddresses::new(&p) {
+            Ok(v) => inner_values.addresses = v,
             Err(e) => {
                 match e.downcast_ref::<ProcessError>() {
                     Some(&ProcessError::ProcessNotFound) => 
@@ -371,7 +319,7 @@ fn main() -> Result<()> {
         'main_loop: loop {
             if let Err(e) = process_reading_loop(
                 &p,
-                &static_static_addresses,
+                &mut inner_values,
                 &mut values
             ) {
                 match e.downcast_ref::<ProcessError>() {
