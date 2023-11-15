@@ -118,7 +118,19 @@ impl StaticAddresses {
 // shared between any threads
 #[derive(Default)]
 pub struct InnerValues {
+    pub gradual_performance_current: 
+        Option<GradualPerformanceAttributes<'static>>,
+
+    pub current_beatmap_perf: Option<PerformanceAttributes>,
+
     pub addresses: StaticAddresses
+}
+
+impl InnerValues {
+    pub fn reset(&mut self) { 
+        self.current_beatmap_perf = None;
+        self.gradual_performance_current = None;
+    }
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -140,9 +152,6 @@ pub struct Values {
     pub prev_playtime: i32,
     #[serde(skip)]
     pub prev_passed_objects: usize,
-    #[serde(skip)]
-    pub gradual_performance_current: 
-        Option<GradualPerformanceAttributes<'static>>,
 
     pub skin: String,
 
@@ -193,8 +202,6 @@ pub struct Values {
     pub current_pp: f64,
     pub fc_pp: f64,
     pub ss_pp: f64,
-    #[serde(skip)]
-    pub current_beatmap_perf: Option<PerformanceAttributes>,
 
     pub passed_objects: usize,
     #[serde(skip)]
@@ -235,7 +242,6 @@ impl Values {
         self.current_pp = 0.0;
         self.fc_pp = 0.0;
         self.ss_pp = 0.0;
-        self.current_beatmap_perf = None;
 
         self.passed_objects = 0;
 
@@ -245,7 +251,6 @@ impl Values {
         self.current_bpm = 0.0;
         self.prev_passed_objects = 0;
         self.delta_sum = 0;
-        self.gradual_performance_current = None;
         self.kiai_now = false;
     }
 
@@ -471,7 +476,7 @@ impl Values {
         }
     }
 
-    pub fn get_current_pp(&mut self) -> f64 {
+    pub fn get_current_pp(&mut self, ivalues: &mut InnerValues) -> f64 {
         if let Some(beatmap) = &self.current_beatmap {
             let score_state = ScoreState {
                 max_combo: self.max_combo as usize,
@@ -487,7 +492,7 @@ impl Values {
             let prev_passed_objects = self.prev_passed_objects;
             let delta = passed_objects - prev_passed_objects;
 
-            let gradual = &mut self
+            let gradual = ivalues
                 .gradual_performance_current
                 .get_or_insert_with(|| {
                     // TODO: required until we rework the struct
@@ -520,11 +525,11 @@ impl Values {
         self.current_pp
     }
 
-    pub fn get_fc_pp(&mut self) -> f64 {
+    pub fn get_fc_pp(&mut self, ivalues: &mut InnerValues) -> f64 {
         if let Some(beatmap) = &self.current_beatmap {
-            if self.current_beatmap_perf.is_some() {
+            if ivalues.current_beatmap_perf.is_some() {
                 if let Some(attributes) =
-                    self.current_beatmap_perf.clone() {
+                    ivalues.current_beatmap_perf.clone() {
                     let fc_pp = AnyPP::new(beatmap)
                         .attributes(attributes.clone())
                         .mods(self.mods)
@@ -548,7 +553,7 @@ impl Values {
 
                 let ss_pp = attr.pp();
                 self.ss_pp = ss_pp;
-                self.current_beatmap_perf = Some(attr);
+                ivalues.current_beatmap_perf = Some(attr);
                 ss_pp
             }
         } else {

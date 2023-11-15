@@ -17,25 +17,16 @@ use crate::structs::{
 use std::sync::{Arc, Mutex};
 use std::{
     borrow::Cow,
-    str::FromStr, 
     path::PathBuf
 };
 
 use clap::Parser;
-
-use async_tungstenite::WebSocketStream;
-use crossbeam_channel::bounded;
-
-use async_tungstenite::tungstenite;
-use futures_util::sink::SinkExt;
-use smol::{prelude::*, Async};
-use tungstenite::Message;
-use rosu_pp::{Beatmap, AnyPP, ScoreState, GradualPerformanceAttributes};
+use rosu_pp::Beatmap;
 
 use rosu_memory::
     memory::{
         process::{Process, ProcessTraits}, 
-        signature::Signature, error::ProcessError
+        error::ProcessError
     };
 
 use eyre::{Report, Result};
@@ -171,6 +162,7 @@ fn process_reading_loop(
         let _span = span!("Gameplay data");
         if values.prev_playtime > values.playtime {
             values.reset_gameplay();
+            ivalues.reset();
         }
 
         values.prev_playtime = values.playtime;
@@ -243,8 +235,8 @@ fn process_reading_loop(
         values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
         // Calculate pp
-        values.current_pp = values.get_current_pp();
-        values.fc_pp = values.get_fc_pp();
+        values.current_pp = values.get_current_pp(ivalues);
+        values.fc_pp = values.get_fc_pp(ivalues);
 
         values.prev_passed_objects = passed_objects;
         
@@ -265,7 +257,7 @@ fn main() -> Result<()> {
     let _client = tracy_client::Client::start();
 
     let args = Args::parse();
-    let mut values = Values::default();
+    let values = Values::default();
     let mut inner_values = InnerValues::default();
 
     let ctx = Arc::new(Context {
@@ -278,6 +270,8 @@ fn main() -> Result<()> {
     std::thread::spawn(move || server_thread(server_ctx));
 
     'init_loop: loop {
+        let values = ctx.values.lock().unwrap();
+
         let p = match Process::initialize("osu!.exe") {
             Ok(p) => p,
             Err(e) => {
@@ -296,6 +290,7 @@ fn main() -> Result<()> {
             continue 'init_loop
         };
 
+        drop(values);
 
         println!("Reading static signatures...");
         match StaticAddresses::new(&p) {
@@ -317,6 +312,7 @@ fn main() -> Result<()> {
 
         println!("Starting reading loop");
         'main_loop: loop {
+            let mut values = ctx.values.lock().unwrap();
             if let Err(e) = process_reading_loop(
                 &p,
                 &mut inner_values,
@@ -334,6 +330,7 @@ fn main() -> Result<()> {
                     },
                 }
             }
+            drop(values);
 
             smol::block_on(async {
                 handle_clients(ctx.clone()).await;
