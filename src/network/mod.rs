@@ -1,6 +1,9 @@
 mod smol_executor;
 
 use std::{net::TcpListener, sync::{Arc, Mutex}};
+
+use crate::structs::Values;
+
 use self::smol_executor::*;
 use async_compat::*;
 use futures_util::sink::SinkExt;
@@ -11,17 +14,18 @@ use async_tungstenite::{
     WebSocketStream
 };
 
+use hyper::upgrade::Upgraded;
 use eyre::{Result, Error};
 use hyper::{
     Server, service::{make_service_fn, service_fn}, 
     Request, Body, Response, StatusCode, 
     header::{
         HeaderValue, 
-        CONNECTION, UPGRADE, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY}, 
-    upgrade::Upgraded
+        CONNECTION, UPGRADE, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY}
 };
 
 pub struct Context {
+    pub values: Mutex<Values>,
     pub clients: Mutex<Vec<WebSocketStream<Compat<Upgraded>>>>,
 }
 
