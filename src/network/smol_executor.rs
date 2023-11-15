@@ -1,12 +1,10 @@
-use std::net::{Shutdown, TcpListener, TcpStream};
+use std::net::{TcpListener, TcpStream};
 use std::pin::Pin;
 use std::task::{Context, Poll};
 
 use async_compat::Compat;
 use eyre::Error;
-use hyper::service::{make_service_fn, service_fn};
-use hyper::{Body, Request, Response, Server};
-use smol::{future, io, prelude::*, Async};
+use smol::{io, prelude::*, Async};
 
 pub struct SmolListener<'a> {
     incoming: Pin<Box<dyn Stream<Item = io::Result<Async<TcpStream>>> + Send + 'a>>,
