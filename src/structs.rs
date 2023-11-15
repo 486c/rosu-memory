@@ -456,6 +456,7 @@ impl Values {
     }
 
     pub fn get_kiai(&self) -> bool {
+        let _span = tracy_client::span!("get_kiai");
         if let Some(beatmap) = &self.current_beatmap {
             // TODO: get rid of extra allocation?
             let kiai_data: Option<EffectPoint> = beatmap
@@ -469,48 +470,54 @@ impl Values {
             self.kiai_now
         }
     }
+
     pub fn get_current_pp(&mut self) -> f64 {
-        let mut current_pp = self.current_pp;
-        let score_state = ScoreState {
-            max_combo: self.max_combo as usize,
-            n_geki: self.hit_geki as usize,
-            n_katu: self.hit_katu as usize,
-            n300: self.hit_300 as usize,
-            n100: self.hit_100 as usize,
-            n50: self.hit_50 as usize,
-            n_misses: self.hit_miss as usize,
-        };
-        let passed_objects = self.passed_objects;
-        let prev_passed_objects = self.prev_passed_objects;
-        let delta = passed_objects - prev_passed_objects;
         if let Some(beatmap) = &self.current_beatmap {
+            let score_state = ScoreState {
+                max_combo: self.max_combo as usize,
+                n_geki: self.hit_geki as usize,
+                n_katu: self.hit_katu as usize,
+                n300: self.hit_300 as usize,
+                n100: self.hit_100 as usize,
+                n50: self.hit_50 as usize,
+                n_misses: self.hit_miss as usize,
+            };
+
+            let passed_objects = self.passed_objects;
+            let prev_passed_objects = self.prev_passed_objects;
+            let delta = passed_objects - prev_passed_objects;
+
             let gradual = &mut self
                 .gradual_performance_current
                 .get_or_insert_with(|| {
+                    // TODO: required until we rework the struct
                     let static_beatmap = unsafe {
-                        // required until we rework the struct
                         extend_lifetime(beatmap)
                     };
+
                     GradualPerformanceAttributes::new(
                         static_beatmap,
                         self.mods
                     )
                 });
+
             // delta can't be 0 as processing 0 actually processes 1 object
             // delta_sum < prev because delta_sum becomes equal to
             // prev only after running this but it's
             // always <= passed_objects
             if (delta > 0) && (self.delta_sum < prev_passed_objects) {
                 self.delta_sum += delta;
-                current_pp = gradual.process_next_n_objects(
+
+                return gradual.process_next_n_objects(
                     score_state,
                     delta
                 )
-                    .expect("process isn't called after the objects ended")
-                    .pp();
+                .expect("process isn't called after the objects ended")
+                .pp()
             }
         }
-        current_pp
+
+        self.current_pp
     }
 
     pub fn get_fc_pp(&mut self) -> f64 {
@@ -538,6 +545,7 @@ impl Values {
                     .mods(self.mods)
                     .mode(self.gameplay_gamemode())
                     .calculate();
+
                 let ss_pp = attr.pp();
                 self.ss_pp = ss_pp;
                 self.current_beatmap_perf = Some(attr);
