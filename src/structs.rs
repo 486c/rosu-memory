@@ -4,7 +4,7 @@ use rosu_memory::memory::{process::{Process, ProcessTraits}, signature::Signatur
 use rosu_pp::{
     Beatmap, GameMode, 
     PerformanceAttributes, GradualPerformanceAttributes, 
-    beatmap::EffectPoint
+    beatmap::EffectPoint, ScoreState, AnyPP
 };
 
 use serde::Serialize;
