@@ -1,9 +1,15 @@
-use std::{num::TryFromIntError, path::PathBuf};
+use std::{num::TryFromIntError, path::PathBuf, str::FromStr};
 
-use rosu_pp::{Beatmap, GameMode, PerformanceAttributes, GradualPerformanceAttributes, beatmap::EffectPoint, ScoreState, AnyPP};
+use rosu_memory::memory::{process::{Process, ProcessTraits}, signature::Signature};
+use rosu_pp::{
+    Beatmap, GameMode, 
+    PerformanceAttributes, GradualPerformanceAttributes, 
+    beatmap::EffectPoint
+};
 
 use serde::Serialize;
 use serde_repr::Serialize_repr;
+use eyre::Result;
 
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
 #[repr(u32)]
@@ -74,6 +80,45 @@ pub struct StaticAddresses {
     pub rulesets: usize,
     pub playtime: usize,
     pub skin: usize,
+}
+
+impl StaticAddresses {
+    pub fn new(p: &Process) -> Result<Self> {
+        let _span = tracy_client::span!("static addresses");
+
+        let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
+        let status_sign = Signature::from_str("48 83 F8 04 73 1E")?;
+        let menu_mods_sign = Signature::from_str(
+            "C8 FF ?? ?? ?? ?? ?? 81 0D ?? ?? ?? ?? 00 08 00 00"
+        )?;
+
+        let rulesets_sign = Signature::from_str(
+            "7D 15 A1 ?? ?? ?? ?? 85 C0"
+        )?;
+
+        let playtime_sign = Signature::from_str(
+            "5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04"
+        )?;
+
+        let skin_sign = Signature::from_str("75 21 8B 1D")?;
+        
+        Ok(Self {
+            base: p.read_signature(&base_sign)?,
+            status: p.read_signature(&status_sign)?,
+            menu_mods: p.read_signature(&menu_mods_sign)?,
+            rulesets: p.read_signature(&rulesets_sign)?,
+            playtime: p.read_signature(&playtime_sign)?,
+            skin: p.read_signature(&skin_sign)?,
+        })
+    }
+}
+
+// Inner values that used only inside
+// reading loop and shouldn't be
+// shared between any threads
+#[derive(Default)]
+pub struct InnerValues {
+    pub addresses: StaticAddresses
 }
 
 #[derive(Debug, Default, Serialize)]
