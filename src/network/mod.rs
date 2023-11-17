@@ -2,7 +2,7 @@ mod smol_executor;
 
 use std::{net::TcpListener, sync::{Arc, Mutex}};
 
-use crate::structs::Values;
+use crate::structs::{Values, OutputValues, Clients};
 
 use self::smol_executor::*;
 use async_compat::*;
@@ -24,13 +24,9 @@ use hyper::{
         CONNECTION, UPGRADE, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY}
 };
 
-pub struct Context {
-    pub values: Mutex<Values>,
-    pub clients: Mutex<Vec<WebSocketStream<Compat<Upgraded>>>>,
-}
 
-pub async fn handle_clients(ctx: Arc<Context>) {
-    let mut clients = ctx.clients.lock().unwrap();
+pub async fn handle_clients(values: Arc<Mutex<OutputValues>>, clients: Clients) {
+    let mut clients = clients.lock().unwrap();
     clients.retain_mut(|websocket| {
         smol::block_on(async {
             let next_future = websocket.next();
@@ -65,7 +61,7 @@ pub async fn handle_clients(ctx: Arc<Context>) {
     })
 }
 
-pub fn server_thread(ctx: Arc<Context>) {
+pub fn server_thread(ctx: Clients) {
     smol::block_on(async {
         let tcp = TcpListener::bind("127.0.0.1:9001").unwrap();
         let listener = Async::new(tcp)
@@ -87,7 +83,7 @@ pub fn server_thread(ctx: Arc<Context>) {
 }
 
 async fn serve_ws(
-    ctx: Arc<Context>, 
+    clients: Clients, 
     mut req: Request<Body>
 ) -> Result<Response<Body>> {
     let headers = req.headers();
@@ -106,7 +102,7 @@ async fn serve_ws(
             None,
         ).await;
 
-        let mut clients = ctx.clients.lock().unwrap();
+        let mut clients = clients.lock().unwrap();
 
         clients.insert(1, client);
     }).detach();
@@ -130,16 +126,16 @@ async fn serve_ws(
 }
 
 async fn serve_http(
-    ctx: Arc<Context>, 
+    clients: Clients, 
     mut req: Request<Body>
 ) -> Result<Response<Body>> {
     Ok(Response::new(Body::from("hello http request!")))
 }
 
-async fn serve(ctx: Arc<Context>, req: Request<Body>) -> Result<Response<Body>> {
+async fn serve(clients: Clients, req: Request<Body>) -> Result<Response<Body>> {
     if req.uri() != "/ws" {
-        return serve_http(ctx, req).await
+        return serve_http(clients, req).await
     } else {
-        return serve_ws(ctx, req).await
+        return serve_ws(clients, req).await
     }
 }
