@@ -56,10 +56,11 @@ fn process_reading_loop(
     let _span = span!("reading loop");
 
     let values = state.values.clone();
+    println!("reading loop lock");
     let mut values = values.lock().unwrap();
 
     let menu_mods_ptr = p.read_i32(
-        state.ivalues.addresses.menu_mods + 0x9
+        state.addresses.menu_mods + 0x9
     )?;
 
     values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
@@ -254,6 +255,7 @@ fn process_reading_loop(
         values.adjust_bpm();
     }
 
+    println!("reading loop drop");
     Ok(())
 }
 
@@ -276,6 +278,7 @@ fn main() -> Result<()> {
     std::thread::spawn(move || server_thread(server_clients));
 
     'init_loop: loop {
+        println!("init loop lock");
         let mut values = state.values.lock().unwrap();
 
         let p = match Process::initialize("osu!.exe") {
@@ -318,6 +321,7 @@ fn main() -> Result<()> {
             continue 'init_loop
         };
 
+        println!("init loop drop");
         drop(values);
 
         println!("Reading static signatures...");

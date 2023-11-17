@@ -37,6 +37,6 @@ pub struct SmolExecutor;
 
 impl<F: Future + Send + 'static> hyper::rt::Executor<F> for SmolExecutor {
     fn execute(&self, fut: F) {
-        smol::block_on(async { drop(fut.await) });
+        smol::spawn(async { drop(fut.await) }).detach();
     }
 }

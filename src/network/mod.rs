@@ -26,6 +26,7 @@ use hyper::{
 
 
 pub async fn handle_clients(values: Arc<Mutex<OutputValues>>, clients: Clients) {
+    println!("handle clients lock");
     let mut clients = clients.lock().unwrap();
     clients.retain_mut(|websocket| {
         smol::block_on(async {
@@ -58,7 +59,9 @@ pub async fn handle_clients(values: Arc<Mutex<OutputValues>>, clients: Clients) 
 
             true
         })
-    })
+    });
+
+    println!("handle clients drop lock");
 }
 
 pub fn server_thread(ctx: Clients) {
@@ -78,7 +81,9 @@ pub fn server_thread(ctx: Clients) {
                     })) }
                 }));
         
-        server.await.unwrap();
+        if let Err(_) = server.await {
+            println!("server error");
+        }
     })
 }
 
@@ -101,10 +106,12 @@ async fn serve_ws(
             Role::Server,
             None,
         ).await;
-
+        
+        println!("upgrade lock()");
         let mut clients = clients.lock().unwrap();
 
-        clients.insert(1, client);
+        clients.push(client);
+        println!("upgrade lock drop");
     }).detach();
     
     let mut res = Response::new(Body::empty());
@@ -136,6 +143,7 @@ async fn serve(clients: Clients, req: Request<Body>) -> Result<Response<Body>> {
     if req.uri() != "/ws" {
         return serve_http(clients, req).await
     } else {
+        dbg!("ws");
         return serve_ws(clients, req).await
     }
 }
