@@ -1,5 +1,8 @@
-use std::{num::TryFromIntError, path::PathBuf, str::FromStr};
+use std::{num::TryFromIntError, path::PathBuf, str::FromStr, sync::{Arc, Mutex}};
 
+use async_compat::Compat;
+use async_tungstenite::WebSocketStream;
+use hyper::upgrade::Upgraded;
 use rosu_memory::memory::{process::{Process, ProcessTraits}, signature::Signature};
 use rosu_pp::{
     Beatmap, GameMode, 
@@ -113,6 +116,15 @@ impl StaticAddresses {
     }
 }
 
+pub type Clients = Arc<Mutex<Vec<WebSocketStream<Compat<Upgraded>>>>>;
+
+pub struct Values {
+    pub addresses: StaticAddresses,
+    pub clients: Clients,
+    pub values: Arc<Mutex<OutputValues>>,
+    pub ivalues: InnerValues,
+}
+
 // Inner values that used only inside
 // reading loop and shouldn't be
 // shared between any threads
@@ -134,7 +146,7 @@ impl InnerValues {
 }
 
 #[derive(Debug, Default, Serialize)]
-pub struct Values {
+pub struct OutputValues {
     #[serde(skip)]
     pub osu_path: PathBuf,
 
@@ -213,7 +225,7 @@ pub struct Values {
     pub plays: i32,
 }
 
-impl Values {
+impl OutputValues {
     pub fn reset_gameplay(&mut self) {
         let _span = tracy_client::span!("reset gameplay!");
 

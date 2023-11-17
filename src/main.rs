@@ -1,8 +1,7 @@
 mod structs;
 mod network;
 
-use network::Context;
-use structs::InnerValues;
+use structs::{InnerValues, OutputValues, Clients};
 use tracy_client::*;
 
 use crate::network::{server_thread, handle_clients};
@@ -52,23 +51,28 @@ fn parse_interval(
 
 fn process_reading_loop(
     p: &Process,
-    ivalues: &mut InnerValues,
-    values: &mut Values
+    state: &mut Values
 ) -> Result<()> {
     let _span = span!("reading loop");
 
-    let menu_mods_ptr = p.read_i32(ivalues.addresses.menu_mods + 0x9)?;
+    let values = state.values.clone();
+    let mut values = values.lock().unwrap();
+
+    let menu_mods_ptr = p.read_i32(
+        state.ivalues.addresses.menu_mods + 0x9
+    )?;
+
     values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
 
-    let playtime_ptr = p.read_i32(ivalues.addresses.playtime + 0x5)?;
+    let playtime_ptr = p.read_i32(state.addresses.playtime + 0x5)?;
     values.playtime = p.read_i32(playtime_ptr as usize)?;
 
-    let beatmap_ptr = p.read_i32(ivalues.addresses.base - 0xC)?;
+    let beatmap_ptr = p.read_i32(state.addresses.base - 0xC)?;
     let beatmap_addr = p.read_i32(beatmap_ptr as usize)?;
 
-    let status_ptr = p.read_i32(ivalues.addresses.status - 0x4)?;
+    let status_ptr = p.read_i32(state.addresses.status - 0x4)?;
 
-    let skin_ptr = p.read_i32(ivalues.addresses.skin + 0x4)?;
+    let skin_ptr = p.read_i32(state.addresses.skin + 0x4)?;
     let skin_data = p.read_i32(skin_ptr as usize)?;
     values.skin = p.read_string(skin_data as usize + 0x44)?;
 
@@ -91,7 +95,7 @@ fn process_reading_loop(
         values.hp = p.read_f32(hp_addr as usize)?;
         values.od = p.read_f32(od_addr as usize)?;
 
-        let plays_addr = p.read_i32(ivalues.addresses.base - 0x33)? + 0xC;
+        let plays_addr = p.read_i32(state.addresses.base - 0x33)? + 0xC;
         values.plays = p.read_i32(plays_addr as usize)?;
 
         values.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
@@ -108,7 +112,7 @@ fn process_reading_loop(
     && values.status != GameStatus::MultiplayerResultScreen {
         let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
         let folder = p.read_string((beatmap_addr + 0x78) as usize)?;
-        let menu_mode_addr = p.read_i32(ivalues.addresses.base - 0x33)?;
+        let menu_mode_addr = p.read_i32(state.addresses.base - 0x33)?;
         values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
 
 
@@ -155,14 +159,14 @@ fn process_reading_loop(
     }
 
     let ruleset_addr = p.read_i32(
-        (p.read_i32(ivalues.addresses.rulesets - 0xb)? + 0x4) as usize
+        (p.read_i32(state.addresses.rulesets - 0xb)? + 0x4) as usize
     )?;
 
     if values.status == GameStatus::Playing {
         let _span = span!("Gameplay data");
         if values.prev_playtime > values.playtime {
             values.reset_gameplay();
-            ivalues.reset();
+            state.ivalues.reset();
         }
 
         values.prev_playtime = values.playtime;
@@ -235,8 +239,8 @@ fn process_reading_loop(
         values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
         // Calculate pp
-        values.current_pp = values.get_current_pp(ivalues);
-        values.fc_pp = values.get_fc_pp(ivalues);
+        values.current_pp = values.get_current_pp(&mut state.ivalues);
+        values.fc_pp = values.get_fc_pp(&mut state.ivalues);
 
         values.prev_passed_objects = passed_objects;
         
@@ -257,20 +261,22 @@ fn main() -> Result<()> {
     let _client = tracy_client::Client::start();
 
     let args = Args::parse();
-    let values = Values::default();
-    let mut inner_values = InnerValues::default();
+    let output_values = Arc::new(Mutex::new(OutputValues::default()));
+    let inner_values = InnerValues::default();
 
-    let ctx = Arc::new(Context {
-        values: Mutex::new(values),
-        clients: Mutex::new(Vec::new())
-    });
+    let mut state = Values {
+        addresses: StaticAddresses::default(),
+        clients: Clients::default(),
+        ivalues: inner_values,
+        values: output_values,
+    };
     
     // Spawning Hyper server
-    let server_ctx = ctx.clone();
-    std::thread::spawn(move || server_thread(server_ctx));
+    let server_clients = state.clients.clone();
+    std::thread::spawn(move || server_thread(server_clients));
 
     'init_loop: loop {
-        let values = ctx.values.lock().unwrap();
+        let mut values = state.values.lock().unwrap();
 
         let p = match Process::initialize("osu!.exe") {
             Ok(p) => p,
@@ -279,6 +285,28 @@ fn main() -> Result<()> {
                 continue 'init_loop
             },
         };
+
+        // OSU_PATH cli argument if provided should
+        // overwrite auto detected path
+        // else use auto detected path
+        match args.osu_path {
+            Some(ref v) => {
+                println!("Using provided osu! folder path");
+                values.osu_path = v.clone();
+            },
+            None => {
+                println!("Using auto-detected osu! folder path");
+                if let Some(ref dir) = p.executable_dir {
+                    values.osu_path = dir.clone();
+                } else {
+                    return Err(Report::msg(
+                        "Can't auto-detect osu! folder path \
+                         nor any was provided through command \
+                         line argument"
+                    ));
+                }
+            },
+        }
         
         // Checking if path exists
         if !values.osu_path.exists() {
@@ -294,7 +322,7 @@ fn main() -> Result<()> {
 
         println!("Reading static signatures...");
         match StaticAddresses::new(&p) {
-            Ok(v) => inner_values.addresses = v,
+            Ok(v) => state.addresses = v,
             Err(e) => {
                 match e.downcast_ref::<ProcessError>() {
                     Some(&ProcessError::ProcessNotFound) => 
@@ -312,11 +340,9 @@ fn main() -> Result<()> {
 
         println!("Starting reading loop");
         'main_loop: loop {
-            let mut values = ctx.values.lock().unwrap();
             if let Err(e) = process_reading_loop(
                 &p,
-                &mut inner_values,
-                &mut values
+                &mut state
             ) {
                 match e.downcast_ref::<ProcessError>() {
                     Some(&ProcessError::ProcessNotFound) => 
@@ -330,10 +356,9 @@ fn main() -> Result<()> {
                     },
                 }
             }
-            drop(values);
 
             smol::block_on(async {
-                handle_clients(ctx.clone()).await;
+                handle_clients(state.values.clone(), state.clients.clone()).await;
             });
 
             std::thread::sleep(args.interval);
