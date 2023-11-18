@@ -120,10 +120,10 @@ impl StaticAddresses {
 }
 
 
-pub struct Values {
+pub struct State {
     pub addresses: StaticAddresses,
     pub clients: Clients,
-    pub values: Arc<Mutex<OutputValues>>,
+    pub values: Arm<OutputValues>,
     pub ivalues: InnerValues,
 }
 

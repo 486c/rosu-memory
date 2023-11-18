@@ -6,11 +6,11 @@ use eyre::Result;
 
 use rosu_memory::memory::process::{Process, ProcessTraits};
 
-use crate::structs::{Values, GameStatus, BeatmapStatus};
+use crate::structs::{State, GameStatus, BeatmapStatus};
 
 pub fn process_reading_loop(
     p: &Process,
-    state: &mut Values
+    state: &mut State
 ) -> Result<()> {
     let _span = span!("reading loop");
 
