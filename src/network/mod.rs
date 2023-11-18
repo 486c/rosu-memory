@@ -25,6 +25,7 @@ use hyper::{
 
 
 pub async fn handle_clients(values: Arc<Mutex<OutputValues>>, clients: Clients) {
+    let _span = tracy_client::span!("handle clients");
     let mut clients = clients.lock().unwrap();
     let serialized_values = serde_json::to_string(
         &(*values.lock().unwrap())
@@ -80,7 +81,7 @@ pub fn server_thread(ctx: Clients) {
                     })) }
                 }));
         
-        server.await.unwrap()
+        server.await.unwrap();
     })
 }
 
