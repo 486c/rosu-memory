@@ -22,7 +22,7 @@ use crossbeam_channel::bounded;
 
 use async_tungstenite::tungstenite;
 use futures_util::sink::SinkExt;
-use rosu_pp::Beatmap;
+use rosu_pp::{Beatmap, BeatmapExt};
 use smol::{prelude::*, Async};
 use tungstenite::Message;
 
@@ -94,7 +94,9 @@ fn process_reading_loop(
     let _span = span!("reading loop");
 
     let menu_mods_ptr = p.read_i32(addresses.menu_mods + 0x9)?;
-    values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
+    let menu_mods = p.read_u32(menu_mods_ptr as usize)?;
+    let mods_updated = menu_mods != values.menu_mods;
+    values.menu_mods = menu_mods;
 
     let playtime_ptr = p.read_i32(addresses.playtime + 0x5)?;
     values.playtime = p.read_i32(playtime_ptr as usize)?;
@@ -161,13 +163,15 @@ fn process_reading_loop(
                 ) {
                     Ok(beatmap) => {
                         new_map = true;
+                        values.stars = beatmap.stars().calculate().stars();
+                        values.stars_mods = beatmap.stars().mods(values.menu_mods).calculate().stars();
                         Some(beatmap)
                     },
                     Err(_) => {
                         println!("Failed to parse beatmap");
                         None
                     },
-                }
+                };
             }
         }
         values.beatmap_file = beatmap_file;
@@ -175,6 +179,9 @@ fn process_reading_loop(
     }
 
     if let Some(beatmap) = &values.current_beatmap {
+        if mods_updated {
+            values.stars_mods = beatmap.stars().mods(values.menu_mods).calculate().stars();
+        }
         values.bpm = beatmap.bpm();
     }
 
@@ -270,7 +277,7 @@ fn process_reading_loop(
         values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
         // Calculate pp
-        values.current_pp = values.get_current_pp();
+        values.update_current();
         values.fc_pp = values.get_fc_pp();
 
         values.prev_passed_objects = passed_objects;

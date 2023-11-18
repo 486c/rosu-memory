@@ -109,6 +109,10 @@ pub struct Values {
 
     pub status: GameStatus,
 
+    pub stars: f64,
+    pub stars_mods: f64,
+    pub current_stars: f64,
+
     pub ar: f32,
     pub cs: f32,
     pub hp: f32,
@@ -424,8 +428,7 @@ impl Values {
             self.kiai_now
         }
     }
-    pub fn get_current_pp(&mut self) -> f64 {
-        let mut current_pp = self.current_pp;
+    pub fn update_current(&mut self) {
         let score_state = ScoreState {
             max_combo: self.max_combo as usize,
             n_geki: self.hit_geki as usize,
@@ -457,15 +460,14 @@ impl Values {
             // always <= passed_objects
             if (delta > 0) && (self.delta_sum < prev_passed_objects) {
                 self.delta_sum += delta;
-                current_pp = gradual.process_next_n_objects(
+                let attrs = gradual.process_next_n_objects(
                     score_state,
                     delta
-                )
-                    .expect("process isn't called after the objects ended")
-                    .pp();
+                ).expect("process isn't called after the objects ended");
+                self.current_pp = attrs.pp();
+                self.current_stars = attrs.stars();
             }
         }
-        current_pp
     }
 
     pub fn get_fc_pp(&mut self) -> f64 {
