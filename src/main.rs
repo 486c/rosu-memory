@@ -162,6 +162,7 @@ fn process_reading_loop(
                     full_path
                 ) {
                     Ok(beatmap) => {
+                        span!("new beatmap stars");
                         new_map = true;
                         values.stars = beatmap.stars().calculate().stars();
                         values.stars_mods = beatmap.stars().mods(values.menu_mods).calculate().stars();
@@ -180,6 +181,7 @@ fn process_reading_loop(
 
     if let Some(beatmap) = &values.current_beatmap {
         if mods_updated {
+            span!("beatmap stars with new mods");
             values.stars_mods = beatmap.stars().mods(values.menu_mods).calculate().stars();
         }
         values.bpm = beatmap.bpm();
