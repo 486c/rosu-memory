@@ -2,7 +2,7 @@ mod smol_executor;
 
 use std::{net::TcpListener, sync::{Arc, Mutex}};
 
-use crate::structs::{Values, OutputValues, Clients};
+use crate::structs::{OutputValues, Clients};
 
 use self::smol_executor::*;
 use async_compat::*;
@@ -14,7 +14,6 @@ use async_tungstenite::{
     WebSocketStream
 };
 
-use hyper::upgrade::Upgraded;
 use eyre::{Result, Error};
 use hyper::{
     Server, service::{make_service_fn, service_fn}, 
@@ -26,8 +25,11 @@ use hyper::{
 
 
 pub async fn handle_clients(values: Arc<Mutex<OutputValues>>, clients: Clients) {
-    println!("handle clients lock");
     let mut clients = clients.lock().unwrap();
+    let serialized_values = serde_json::to_string(
+        &(*values.lock().unwrap())
+    ).unwrap(); // Serialization not gonna fail in any possible way
+
     clients.retain_mut(|websocket| {
         smol::block_on(async {
             let next_future = websocket.next();
@@ -52,16 +54,13 @@ pub async fn handle_clients(values: Arc<Mutex<OutputValues>>, clients: Clients) 
             };
 
             websocket.send(
-                Message::Text(
-                    "hii".to_string()
-                    )
-                ).await.unwrap();
+                Message::Text(serialized_values.clone())
+            ).await.unwrap();
 
             true
         })
     });
 
-    println!("handle clients drop lock");
 }
 
 pub fn server_thread(ctx: Clients) {
@@ -81,9 +80,7 @@ pub fn server_thread(ctx: Clients) {
                     })) }
                 }));
         
-        if let Err(_) = server.await {
-            println!("server error");
-        }
+        server.await.unwrap()
     })
 }
 
@@ -107,11 +104,9 @@ async fn serve_ws(
             None,
         ).await;
         
-        println!("upgrade lock()");
         let mut clients = clients.lock().unwrap();
 
         clients.push(client);
-        println!("upgrade lock drop");
     }).detach();
     
     let mut res = Response::new(Body::empty());
@@ -141,9 +136,9 @@ async fn serve_http(
 
 async fn serve(clients: Clients, req: Request<Body>) -> Result<Response<Body>> {
     if req.uri() != "/ws" {
-        return serve_http(clients, req).await
+        serve_http(clients, req).await
     } else {
         dbg!("ws");
-        return serve_ws(clients, req).await
+        serve_ws(clients, req).await
     }
 }
