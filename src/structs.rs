@@ -14,6 +14,9 @@ use serde::Serialize;
 use serde_repr::Serialize_repr;
 use eyre::Result;
 
+pub type Arm<T> = Arc<Mutex<T>>;
+pub type Clients = Arm<Vec<WebSocketStream<Compat<Upgraded>>>>;
+
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
 #[repr(u32)]
 pub enum GameStatus {
@@ -116,7 +119,6 @@ impl StaticAddresses {
     }
 }
 
-pub type Clients = Arc<Mutex<Vec<WebSocketStream<Compat<Upgraded>>>>>;
 
 pub struct Values {
     pub addresses: StaticAddresses,
