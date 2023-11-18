@@ -1,8 +1,8 @@
 mod smol_executor;
 
-use std::{net::TcpListener, sync::{Arc, Mutex}};
+use std::net::TcpListener;
 
-use crate::structs::{OutputValues, Clients};
+use crate::structs::{OutputValues, Clients, Arm};
 
 use self::smol_executor::*;
 use async_compat::*;
@@ -24,12 +24,16 @@ use hyper::{
 };
 
 
-pub async fn handle_clients(values: Arc<Mutex<OutputValues>>, clients: Clients) {
+pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
     let _span = tracy_client::span!("handle clients");
     let mut clients = clients.lock().unwrap();
+
+    let values_lock = values.lock().unwrap();
     let serialized_values = serde_json::to_string(
-        &(*values.lock().unwrap())
+        &(*values_lock)
     ).unwrap(); // Serialization not gonna fail in any possible way
+
+    drop(values_lock); // Droping lock manually just in case
 
     clients.retain_mut(|websocket| {
         smol::block_on(async {
@@ -123,23 +127,28 @@ async fn serve_ws(
     );
 
     res.headers_mut()
-        .append(SEC_WEBSOCKET_ACCEPT, derived.unwrap().parse().unwrap());
+        .append(
+            SEC_WEBSOCKET_ACCEPT, 
+            derived.unwrap().parse().unwrap() //TODO remove unwraps
+        );
 
     Ok(res)
 }
 
 async fn serve_http(
-    clients: Clients, 
-    mut req: Request<Body>
+    _clients: Clients, 
+    mut _req: Request<Body>
 ) -> Result<Response<Body>> {
     Ok(Response::new(Body::from("hello http request!")))
 }
 
-async fn serve(clients: Clients, req: Request<Body>) -> Result<Response<Body>> {
+async fn serve(
+    clients: Clients, 
+    req: Request<Body>
+) -> Result<Response<Body>> {
     if req.uri() != "/ws" {
         serve_http(clients, req).await
     } else {
-        dbg!("ws");
         serve_ws(clients, req).await
     }
 }

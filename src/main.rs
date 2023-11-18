@@ -9,7 +9,7 @@ use crate::network::{server_thread, handle_clients};
 use crate::reading_loop::process_reading_loop;
 use crate::structs::{
     StaticAddresses,
-    Values,
+    State,
 };
 
 use std::sync::{Arc, Mutex};
@@ -52,7 +52,7 @@ fn main() -> Result<()> {
     let output_values = Arc::new(Mutex::new(OutputValues::default()));
     let inner_values = InnerValues::default();
 
-    let mut state = Values {
+    let mut state = State {
         addresses: StaticAddresses::default(),
         clients: Clients::default(),
         ivalues: inner_values,
@@ -106,7 +106,6 @@ fn main() -> Result<()> {
             continue 'init_loop
         };
 
-        println!("init loop drop");
         drop(values);
 
         println!("Reading static signatures...");
