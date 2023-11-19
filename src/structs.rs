@@ -1,9 +1,17 @@
-use std::{num::TryFromIntError, path::PathBuf, str::FromStr, sync::{Arc, Mutex}};
+use std::{
+    num::TryFromIntError, 
+    path::PathBuf, 
+    str::FromStr, 
+    sync::{Arc, Mutex}
+};
 
-use async_compat::Compat;
 use async_tungstenite::WebSocketStream;
 use hyper::upgrade::Upgraded;
-use rosu_memory::memory::{process::{Process, ProcessTraits}, signature::Signature};
+use rosu_memory::memory::{
+    process::{Process, ProcessTraits}, 
+    signature::Signature
+};
+
 use rosu_pp::{
     Beatmap, GameMode, 
     PerformanceAttributes, GradualPerformanceAttributes, 
@@ -14,8 +22,10 @@ use serde::Serialize;
 use serde_repr::Serialize_repr;
 use eyre::Result;
 
+use crate::network::smol_hyper::SmolIo;
+
 pub type Arm<T> = Arc<Mutex<T>>;
-pub type Clients = Arm<Vec<WebSocketStream<Compat<Upgraded>>>>;
+pub type Clients = Arm<Vec<WebSocketStream<SmolIo<Upgraded>>>>;
 
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
 #[repr(u32)]
