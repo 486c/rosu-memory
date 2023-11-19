@@ -29,15 +29,14 @@ use hyper::{
 
 pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
     let _span = tracy_client::span!("handle clients");
+
+    let serialized_values = {
+        let values_lock = values.lock().unwrap();
+    
+        serde_json::to_string(&*values_lock).unwrap()
+    };
+
     let mut clients = clients.lock().unwrap();
-
-    let values_lock = values.lock().unwrap();
-    let serialized_values = serde_json::to_string(
-        &(*values_lock)
-    ).unwrap(); // Serialization not gonna fail in any possible way
-
-    drop(values_lock); // Droping lock manually just in case
-
     clients.retain_mut(|websocket| {
         smol::block_on(async {
             let next_future = websocket.next();
@@ -46,14 +45,9 @@ pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
                 smol::future::poll_once(next_future);
 
             let msg = match msg_future.await {
-                Some(v) => {
-                    match v {
-                        Some(Ok(v)) => Some(v),
-                        Some(Err(_)) => return false,
-                        None => None,
-                    }
-                },
-                None => None,
+                Some(Some(Ok(v))) => Some(v),
+                Some(Some(Err(_))) => return false,
+                Some(None) | None => None,
             };
 
 
@@ -111,7 +105,6 @@ async fn serve_ws(
     let derived = key.map(|k| derive_accept_key(k.as_bytes()));
     let ver = req.version();
     
-    // It needs to be detached in order to upgrade properly work
     smol::spawn(async move {
         let upgraded = hyper::upgrade::on(&mut req).await
             .expect("Upgrade failed!");
