@@ -452,10 +452,6 @@ impl Values {
                     )
                 });
             // delta can't be 0 as processing 0 actually processes 1 object
-            // delta_sum < prev because delta_sum becomes equal to
-            // prev only after running this but it's
-            // always <= passed_objects
-            // println!("delta: {}, passed: {}", delta, passed_objects);
             if (delta > 0) && (self.delta_sum <= prev_passed_objects) {
                 self.delta_sum += delta;
                 current_pp = gradual.nth(
