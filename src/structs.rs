@@ -1,6 +1,6 @@
 use std::{num::TryFromIntError, path::PathBuf};
 
-use rosu_pp::{Beatmap, GameMode, PerformanceAttributes, GradualPerformanceAttributes, beatmap::EffectPoint, ScoreState, AnyPP};
+use rosu_pp::{Beatmap, GameMode, PerformanceAttributes, GradualPerformance, beatmap::EffectPoint, ScoreState, AnyPP};
 
 use serde::Serialize;
 use serde_repr::Serialize_repr;
@@ -97,7 +97,7 @@ pub struct Values {
     pub prev_passed_objects: usize,
     #[serde(skip)]
     pub gradual_performance_current: 
-        Option<GradualPerformanceAttributes<'static>>,
+        Option<GradualPerformance<'static>>,
 
     pub skin: String,
 
@@ -446,7 +446,7 @@ impl Values {
                         // required until we rework the struct
                         extend_lifetime(beatmap)
                     };
-                    GradualPerformanceAttributes::new(
+                    GradualPerformance::new(
                         static_beatmap,
                         self.mods
                     )
@@ -455,11 +455,13 @@ impl Values {
             // delta_sum < prev because delta_sum becomes equal to
             // prev only after running this but it's
             // always <= passed_objects
-            if (delta > 0) && (self.delta_sum < prev_passed_objects) {
+            // println!("delta: {}, passed: {}", delta, passed_objects);
+            if (delta > 0) && (self.delta_sum <= prev_passed_objects) {
                 self.delta_sum += delta;
-                current_pp = gradual.process_next_n_objects(
+                current_pp = gradual.nth(
                     score_state,
-                    delta
+                    // .nth is zero-indexed, -1 accounts for that
+                    delta - 1
                 )
                     .expect("process isn't called after the objects ended")
                     .pp();
