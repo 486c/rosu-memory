@@ -1,11 +1,12 @@
-mod smol_executor;
+pub mod smol_hyper;
+
+use http_body_util::Full;
 
 use std::net::TcpListener;
 
 use crate::structs::{OutputValues, Clients, Arm};
 
-use self::smol_executor::*;
-use async_compat::*;
+use self::smol_hyper::SmolIo;
 use futures_util::sink::SinkExt;
 use smol::{prelude::*, Async};
 
@@ -14,13 +15,15 @@ use async_tungstenite::{
     WebSocketStream
 };
 
-use eyre::{Result, Error};
+use eyre::Result;
 use hyper::{
-    Server, service::{make_service_fn, service_fn}, 
-    Request, Body, Response, StatusCode, 
+    service::service_fn, 
+    Request, Response, StatusCode, 
+    body::Bytes,
     header::{
         HeaderValue, 
-        CONNECTION, UPGRADE, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY}
+        CONNECTION, UPGRADE, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY}, 
+    server::conn::http1
 };
 
 
@@ -65,7 +68,6 @@ pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
             true
         })
     });
-
 }
 
 pub fn server_thread(ctx: Clients) {
@@ -75,24 +77,35 @@ pub fn server_thread(ctx: Clients) {
             .unwrap();
 
 
-        let server = Server::builder(SmolListener::new(&listener))
-                .executor(SmolExecutor)
-                .serve(make_service_fn(|_| {
-                    let ctx = ctx.clone();
-                    async { Ok::<_, Error>(service_fn( move |req| {
-                        let ctx = ctx.clone();
-                        serve(ctx, req)
-                    })) }
-                }));
-        
-        server.await.unwrap();
+        loop {
+            let (stream, _) = listener.accept().await.unwrap();
+
+            let io = SmolIo::new(stream);
+            
+            let ctx = ctx.clone();
+            let service = service_fn(move |req| {
+                let ctx = ctx.clone();
+                serve(ctx, req)
+            });
+
+            smol::spawn(async {
+                if let Err(err) = http1::Builder::new()
+                    .serve_connection(io, service)
+                    .with_upgrades()
+                    .await
+                {
+                    println!("Error serving connection: {:?}", err);
+                }
+            }).detach();
+        }
     })
 }
 
 async fn serve_ws(
     clients: Clients, 
-    mut req: Request<Body>
-) -> Result<Response<Body>> {
+    mut req: Request<hyper::body::Incoming>
+) -> Result<Response<Full<Bytes>>> {
+
     let headers = req.headers();
     let key = headers.get(SEC_WEBSOCKET_KEY);
     let derived = key.map(|k| derive_accept_key(k.as_bytes()));
@@ -101,10 +114,12 @@ async fn serve_ws(
     // It needs to be detached in order to upgrade properly work
     smol::spawn(async move {
         let upgraded = hyper::upgrade::on(&mut req).await
-            .expect("upgraded error");
+            .expect("Upgrade failed!");
+
+        let upgraded = SmolIo::new(upgraded);
 
         let client = WebSocketStream::from_raw_socket(
-            upgraded.compat(),
+            upgraded,
             Role::Server,
             None,
         ).await;
@@ -114,7 +129,8 @@ async fn serve_ws(
         clients.push(client);
     }).detach();
     
-    let mut res = Response::new(Body::empty());
+    let mut res = Response::new(Full::new(Bytes::default()));
+
     *res.status_mut() = StatusCode::SWITCHING_PROTOCOLS;
     *res.version_mut() = ver;
 
@@ -130,22 +146,22 @@ async fn serve_ws(
         .append(
             SEC_WEBSOCKET_ACCEPT, 
             derived.unwrap().parse().unwrap() //TODO remove unwraps
-        );
+    );
 
     Ok(res)
 }
 
 async fn serve_http(
     _clients: Clients, 
-    mut _req: Request<Body>
-) -> Result<Response<Body>> {
-    Ok(Response::new(Body::from("hello http request!")))
+    mut _req: Request<hyper::body::Incoming>,
+) -> Result<Response<Full<Bytes>>> {
+    Ok(Response::new(Full::new(Bytes::from("Hello World!"))))
 }
 
 async fn serve(
     clients: Clients, 
-    req: Request<Body>
-) -> Result<Response<Body>> {
+    req: Request<hyper::body::Incoming>,
+) -> Result<Response<Full<Bytes>>> {
     if req.uri() != "/ws" {
         serve_http(clients, req).await
     } else {
