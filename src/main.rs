@@ -64,7 +64,6 @@ fn main() -> Result<()> {
     std::thread::spawn(move || server_thread(server_clients));
 
     'init_loop: loop {
-        let mut values = state.values.lock().unwrap();
 
         let p = match Process::initialize("osu!.exe") {
             Ok(p) => p,
@@ -74,6 +73,7 @@ fn main() -> Result<()> {
             },
         };
 
+        let mut values = state.values.lock().unwrap();
         // OSU_PATH cli argument if provided should
         // overwrite auto detected path
         // else use auto detected path
@@ -105,8 +105,8 @@ fn main() -> Result<()> {
 
             continue 'init_loop
         };
-
         drop(values);
+
 
         println!("Reading static signatures...");
         match StaticAddresses::new(&p) {
