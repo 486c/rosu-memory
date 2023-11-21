@@ -1,38 +1,27 @@
+mod network;
 mod structs;
+mod reading_loop;
 
-use tracy_client::*;
+use structs::{InnerValues, OutputValues, Clients};
 
+use crate::network::{server_thread, handle_clients};
+
+use crate::reading_loop::process_reading_loop;
 use crate::structs::{
-    BeatmapStatus,
-    GameStatus,
     StaticAddresses,
-    Values,
+    State,
 };
 
-use std::{
-    borrow::Cow,
-    str::FromStr, 
-    collections::HashMap, net::TcpStream, path::PathBuf
-};
+use std::sync::{Arc, Mutex};
+use std::path::PathBuf;
 
 use clap::Parser;
 
-use async_tungstenite::WebSocketStream;
-use crossbeam_channel::bounded;
-
-use async_tungstenite::tungstenite;
-use futures_util::sink::SinkExt;
-use rosu_pp::Beatmap;
-use smol::{prelude::*, Async};
-use tungstenite::Message;
-
-use rosu_memory::{
+use rosu_memory::
     memory::{
         process::{Process, ProcessTraits}, 
-        signature::Signature, error::ProcessError
-    }, 
-    websockets::server_thread
-};
+        error::ProcessError
+    };
 
 use eyre::{Report, Result};
 
@@ -54,300 +43,28 @@ fn parse_interval(
     let ms = arg.parse()?;
     Ok(std::time::Duration::from_millis(ms))
 }
-fn read_static_addresses(
-    p: &Process,
-    addresses: &mut StaticAddresses
-) -> Result<()> {
-    let _span = span!("static addresses");
 
-    let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
-    let status_sign = Signature::from_str("48 83 F8 04 73 1E")?;
-    let menu_mods_sign = Signature::from_str(
-        "C8 FF ?? ?? ?? ?? ?? 81 0D ?? ?? ?? ?? 00 08 00 00"
-    )?;
-
-    let rulesets_sign = Signature::from_str(
-        "7D 15 A1 ?? ?? ?? ?? 85 C0"
-    )?;
-
-    let playtime_sign = Signature::from_str(
-        "5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04"
-    )?;
-
-    let skin_sign = Signature::from_str("75 21 8B 1D")?;
-
-    addresses.base = p.read_signature(&base_sign)?;
-    addresses.status = p.read_signature(&status_sign)?;
-    addresses.menu_mods = p.read_signature(&menu_mods_sign)?;
-    addresses.rulesets = p.read_signature(&rulesets_sign)?;
-    addresses.playtime = p.read_signature(&playtime_sign)?;
-    addresses.skin = p.read_signature(&skin_sign)?;
-
-    Ok(())
-}
-
-fn process_reading_loop(
-    p: &Process,
-    addresses: &StaticAddresses,
-    values: &mut Values
-) -> Result<()> {
-    let _span = span!("reading loop");
-
-    let menu_mods_ptr = p.read_i32(addresses.menu_mods + 0x9)?;
-    values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
-
-    let playtime_ptr = p.read_i32(addresses.playtime + 0x5)?;
-    values.playtime = p.read_i32(playtime_ptr as usize)?;
-
-    let beatmap_ptr = p.read_i32(addresses.base - 0xC)?;
-    let beatmap_addr = p.read_i32(beatmap_ptr as usize)?;
-
-    let status_ptr = p.read_i32(addresses.status - 0x4)?;
-
-    let skin_ptr = p.read_i32(addresses.skin + 0x4)?;
-    let skin_data = p.read_i32(skin_ptr as usize)?;
-    values.skin = p.read_string(skin_data as usize + 0x44)?;
-
-    values.status = GameStatus::from(
-        p.read_u32(status_ptr as usize)?
-    );
-
-    if beatmap_addr == 0 {
-      return Ok(())
-    }
-
-    if values.status != GameStatus::MultiplayerLobby {
-        let ar_addr = beatmap_addr + 0x2c;
-        let cs_addr = ar_addr + 0x04;
-        let hp_addr = cs_addr + 0x04;
-        let od_addr = hp_addr + 0x04;
-
-        values.ar = p.read_f32(ar_addr as usize)?;
-        values.cs = p.read_f32(cs_addr as usize)?;
-        values.hp = p.read_f32(hp_addr as usize)?;
-        values.od = p.read_f32(od_addr as usize)?;
-
-        let plays_addr = p.read_i32(addresses.base - 0x33)? + 0xC;
-        values.plays = p.read_i32(plays_addr as usize)?;
-
-        values.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
-    }
-
-    values.beatmap_status = BeatmapStatus::from(
-      p.read_i16(beatmap_addr as usize + 0x130)?
-    );
-
-    let mut new_map = false;
-
-    if values.status != GameStatus::PreSongSelect
-    && values.status != GameStatus::MultiplayerLobby 
-    && values.status != GameStatus::MultiplayerResultScreen {
-        let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
-        let folder = p.read_string((beatmap_addr + 0x78) as usize)?;
-        let menu_mode_addr = p.read_i32(addresses.base - 0x33)?;
-        values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
-
-
-        if folder != values.folder 
-        || beatmap_file != values.beatmap_file {
-            let mut full_path = values.osu_path.clone();
-            full_path.push("Songs");
-            full_path.push(&folder);
-            full_path.push(&beatmap_file);
-
-            if full_path.exists() {
-                values.current_beatmap = match Beatmap::from_path(
-                    full_path
-                ) {
-                    Ok(beatmap) => {
-                        new_map = true;
-                        Some(beatmap)
-                    },
-                    Err(_) => {
-                        println!("Failed to parse beatmap");
-                        None
-                    },
-                }
-            }
-        }
-        values.beatmap_file = beatmap_file;
-        values.folder = folder;
-    }
-
-    if let Some(beatmap) = &values.current_beatmap {
-        values.bpm = beatmap.bpm();
-    }
-
-    // store the converted map so it's not converted 
-    // everytime it's used for pp calc
-    if new_map {
-        if let Some(map) = &values.current_beatmap {
-            if let Cow::Owned(converted) = map
-                .convert_mode(values.menu_gamemode()) 
-            {
-                values.current_beatmap = Some(converted);
-            }
-        }
-    }
-
-    let ruleset_addr = p.read_i32(
-        (p.read_i32(addresses.rulesets - 0xb)? + 0x4) as usize
-    )?;
-
-    if values.status == GameStatus::Playing {
-        let _span = span!("Gameplay data");
-        if values.prev_playtime > values.playtime {
-            values.reset_gameplay();
-        }
-
-        values.prev_playtime = values.playtime;
-
-        let gameplay_base = 
-            p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
-        let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
-
-        let hp_base: usize = p.read_i32(gameplay_base + 0x40)? as usize;
-
-        // Random value but seems to work pretty well
-        if values.playtime > 150 {
-            values.current_hp = p.read_f64(hp_base + 0x1C)?;
-            values.current_hp_smooth = p.read_f64(hp_base + 0x14)?;
-        }
-
-        let hit_errors_base = (
-            p.read_i32(score_base + 0x38)?
-        ) as usize;
-
-        p.read_i32_array(
-            hit_errors_base,
-            &mut values.hit_errors
-        )?;
-
-        values.unstable_rate = values.calculate_unstable_rate();
-
-        values.mode = p.read_i32(score_base + 0x64)?;
-
-        values.hit_300 = p.read_i16(score_base + 0x8a)?;
-        values.hit_100 = p.read_i16(score_base + 0x88)?;
-        values.hit_50 = p.read_i16(score_base + 0x8c)?;
-
-        values.username = p.read_string(score_base + 0x28)?;
-
-        values.hit_geki = p.read_i16(score_base + 0x8e)?;
-        values.hit_katu = p.read_i16(score_base + 0x90)?;
-        values.hit_miss = p.read_i16(score_base + 0x92)?;
-
-        let passed_objects = values.passed_objects()?;
-        values.passed_objects = passed_objects;
-
-        values.accuracy = values.get_accuracy();
-
-        values.score = p.read_i32(score_base + 0x78)?;
-
-        values.combo = p.read_i16(score_base + 0x94)?;
-        values.max_combo = p.read_i16(score_base + 0x68)?;
-
-        if values.prev_combo > values.combo {
-            values.prev_combo = 0;
-        }
-
-        if values.combo < values.prev_combo
-        && values.hit_miss == values.prev_hit_miss {
-            values.slider_breaks += 1;
-        }
-
-        values.prev_hit_miss = values.hit_miss;
-
-        let mods_xor_base = (
-            p.read_i32(score_base + 0x1C)?
-        ) as usize;
-
-        let mods_raw = p.read_u64(mods_xor_base + 0x8)?;
-
-        let mods_xor1 = mods_raw & 0xFFFFFFFF;
-        let mods_xor2 = mods_raw >> 32;
-
-        values.mods = (mods_xor1 ^ mods_xor2) as u32;
-
-        // Calculate pp
-        values.current_pp = values.get_current_pp();
-        values.fc_pp = values.get_fc_pp();
-
-        values.prev_passed_objects = passed_objects;
-        
-        values.grade = values.get_current_grade();
-        values.current_bpm = values.get_current_bpm();
-        values.kiai_now = values.get_kiai();
-
-        // Placing at the very end cuz we should
-        // keep up with current_bpm & unstable rate
-        // updates
-        values.adjust_bpm();
-    }
-
-    Ok(())
-}
-fn handle_clients(
-    values: &Values,
-    clients: &mut HashMap<usize, WebSocketStream<Async<TcpStream>>>
-) {
-    let _span = span!("handle clients");
-    clients.retain(|_client_id, websocket| {
-        smol::block_on(async {
-            let _span = span!("send message to clients");
-
-            let next_future = websocket.next();
-            let msg_future =
-                smol::future::poll_once(next_future);
-
-            #[allow(clippy::collapsible_match)]
-            let msg = match msg_future.await {
-                Some(v) => {
-                    match v {
-                        Some(Ok(v)) => Some(v),
-                        Some(Err(_)) => return false,
-                        None => None,
-                    }
-                },
-                None => None,
-            };
-
-
-            if let Some(tungstenite::Message::Close(_)) = msg {
-                return false;
-            };
-
-            let _ = websocket.send(
-                Message::Text(
-                    serde_json::to_string(&values)
-                    .unwrap()
-                    ) // No way serialization gonna fail so
-                      // using unwrap
-                ).await;
-
-            true
-        })
-    });
-}
 
 fn main() -> Result<()> {
     let _client = tracy_client::Client::start();
 
     let args = Args::parse();
-    let mut values = Values::default();
+    let output_values = Arc::new(Mutex::new(OutputValues::default()));
+    let inner_values = InnerValues::default();
 
-    let (tx, rx) = bounded::<WebSocketStream<Async<TcpStream>>>(20);
-
-    std::thread::spawn(move || server_thread(tx.clone()));
-
-    let mut client_id = 0;
-    let mut clients: HashMap<usize, WebSocketStream<Async<TcpStream>>> = 
-        HashMap::new();
-
-    let mut static_static_addresses = StaticAddresses::default();
+    let mut state = State {
+        addresses: StaticAddresses::default(),
+        clients: Clients::default(),
+        ivalues: inner_values,
+        values: output_values,
+    };
     
-    // TODO ugly nesting mess
+    // Spawning Hyper server
+    let server_clients = state.clients.clone();
+    std::thread::spawn(move || server_thread(server_clients));
+
     'init_loop: loop {
+
         let p = match Process::initialize("osu!.exe") {
             Ok(p) => p,
             Err(e) => {
@@ -356,6 +73,7 @@ fn main() -> Result<()> {
             },
         };
 
+        let mut values = state.values.lock().unwrap();
         // OSU_PATH cli argument if provided should
         // overwrite auto detected path
         // else use auto detected path
@@ -387,11 +105,12 @@ fn main() -> Result<()> {
 
             continue 'init_loop
         };
+        drop(values);
 
 
         println!("Reading static signatures...");
-        match read_static_addresses(&p, &mut static_static_addresses) {
-            Ok(_) => {},
+        match StaticAddresses::new(&p) {
+            Ok(v) => state.addresses = v,
             Err(e) => {
                 match e.downcast_ref::<ProcessError>() {
                     Some(&ProcessError::ProcessNotFound) => 
@@ -409,15 +128,9 @@ fn main() -> Result<()> {
 
         println!("Starting reading loop");
         'main_loop: loop {
-            while let Ok(client) = rx.try_recv() {
-                clients.insert(client_id, client);
-                client_id += 1;
-            }
-
             if let Err(e) = process_reading_loop(
                 &p,
-                &static_static_addresses,
-                &mut values
+                &mut state
             ) {
                 match e.downcast_ref::<ProcessError>() {
                     Some(&ProcessError::ProcessNotFound) => 
@@ -432,7 +145,9 @@ fn main() -> Result<()> {
                 }
             }
 
-            handle_clients(&values, &mut clients);
+            smol::block_on(async {
+                handle_clients(state.values.clone(), state.clients.clone()).await;
+            });
 
             std::thread::sleep(args.interval);
         }

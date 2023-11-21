@@ -1,9 +1,31 @@
-use std::{num::TryFromIntError, path::PathBuf};
+use std::{
+    num::TryFromIntError,
+    path::PathBuf,
+    str::FromStr,
+    sync::{Arc, Mutex}
+};
 
-use rosu_pp::{Beatmap, GameMode, PerformanceAttributes, GradualPerformance, beatmap::EffectPoint, ScoreState, AnyPP};
+use async_tungstenite::WebSocketStream;
+use hyper::upgrade::Upgraded;
+use rosu_memory::memory::{
+    process::{Process, ProcessTraits},
+    signature::Signature
+};
+
+use rosu_pp::{
+    Beatmap, GameMode,
+    PerformanceAttributes, GradualPerformance,
+    beatmap::EffectPoint, ScoreState, AnyPP
+};
 
 use serde::Serialize;
 use serde_repr::Serialize_repr;
+use eyre::Result;
+
+use crate::network::smol_hyper::SmolIo;
+
+pub type Arm<T> = Arc<Mutex<T>>;
+pub type Clients = Arm<Vec<WebSocketStream<SmolIo<Upgraded>>>>;
 
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
 #[repr(u32)]
@@ -76,8 +98,67 @@ pub struct StaticAddresses {
     pub skin: usize,
 }
 
+impl StaticAddresses {
+    pub fn new(p: &Process) -> Result<Self> {
+        let _span = tracy_client::span!("static addresses");
+
+        let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
+        let status_sign = Signature::from_str("48 83 F8 04 73 1E")?;
+        let menu_mods_sign = Signature::from_str(
+            "C8 FF ?? ?? ?? ?? ?? 81 0D ?? ?? ?? ?? 00 08 00 00"
+        )?;
+
+        let rulesets_sign = Signature::from_str(
+            "7D 15 A1 ?? ?? ?? ?? 85 C0"
+        )?;
+
+        let playtime_sign = Signature::from_str(
+            "5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04"
+        )?;
+
+        let skin_sign = Signature::from_str("75 21 8B 1D")?;
+
+        Ok(Self {
+            base: p.read_signature(&base_sign)?,
+            status: p.read_signature(&status_sign)?,
+            menu_mods: p.read_signature(&menu_mods_sign)?,
+            rulesets: p.read_signature(&rulesets_sign)?,
+            playtime: p.read_signature(&playtime_sign)?,
+            skin: p.read_signature(&skin_sign)?,
+        })
+    }
+}
+
+
+pub struct State {
+    pub addresses: StaticAddresses,
+    pub clients: Clients,
+    pub values: Arm<OutputValues>,
+    pub ivalues: InnerValues,
+}
+
+// Inner values that used only inside
+// reading loop and shouldn't be
+// shared between any threads
+#[derive(Default)]
+pub struct InnerValues {
+    pub gradual_performance_current:
+        Option<GradualPerformance<'static>>,
+
+    pub current_beatmap_perf: Option<PerformanceAttributes>,
+
+    pub addresses: StaticAddresses
+}
+
+impl InnerValues {
+    pub fn reset(&mut self) {
+        self.current_beatmap_perf = None;
+        self.gradual_performance_current = None;
+    }
+}
+
 #[derive(Debug, Default, Serialize)]
-pub struct Values {
+pub struct OutputValues {
     #[serde(skip)]
     pub osu_path: PathBuf,
 
@@ -95,9 +176,6 @@ pub struct Values {
     pub prev_playtime: i32,
     #[serde(skip)]
     pub prev_passed_objects: usize,
-    #[serde(skip)]
-    pub gradual_performance_current: 
-        Option<GradualPerformance<'static>>,
 
     pub skin: String,
 
@@ -148,8 +226,6 @@ pub struct Values {
     pub current_pp: f64,
     pub fc_pp: f64,
     pub ss_pp: f64,
-    #[serde(skip)]
-    pub current_beatmap_perf: Option<PerformanceAttributes>,
 
     pub passed_objects: usize,
     #[serde(skip)]
@@ -161,7 +237,7 @@ pub struct Values {
     pub plays: i32,
 }
 
-impl Values {
+impl OutputValues {
     pub fn reset_gameplay(&mut self) {
         let _span = tracy_client::span!("reset gameplay!");
 
@@ -190,7 +266,6 @@ impl Values {
         self.current_pp = 0.0;
         self.fc_pp = 0.0;
         self.ss_pp = 0.0;
-        self.current_beatmap_perf = None;
 
         self.passed_objects = 0;
 
@@ -200,7 +275,6 @@ impl Values {
         self.current_bpm = 0.0;
         self.prev_passed_objects = 0;
         self.delta_sum = 0;
-        self.gradual_performance_current = None;
         self.kiai_now = false;
     }
 
@@ -411,6 +485,7 @@ impl Values {
     }
 
     pub fn get_kiai(&self) -> bool {
+        let _span = tracy_client::span!("get_kiai");
         if let Some(beatmap) = &self.current_beatmap {
             // TODO: get rid of extra allocation?
             let kiai_data: Option<EffectPoint> = beatmap
@@ -424,26 +499,28 @@ impl Values {
             self.kiai_now
         }
     }
-    pub fn get_current_pp(&mut self) -> f64 {
-        let mut current_pp = self.current_pp;
-        let score_state = ScoreState {
-            max_combo: self.max_combo as usize,
-            n_geki: self.hit_geki as usize,
-            n_katu: self.hit_katu as usize,
-            n300: self.hit_300 as usize,
-            n100: self.hit_100 as usize,
-            n50: self.hit_50 as usize,
-            n_misses: self.hit_miss as usize,
-        };
-        let passed_objects = self.passed_objects;
-        let prev_passed_objects = self.prev_passed_objects;
-        let delta = passed_objects - prev_passed_objects;
+
+    pub fn get_current_pp(&mut self, ivalues: &mut InnerValues) -> f64 {
         if let Some(beatmap) = &self.current_beatmap {
-            let gradual = &mut self
+            let score_state = ScoreState {
+                max_combo: self.max_combo as usize,
+                n_geki: self.hit_geki as usize,
+                n_katu: self.hit_katu as usize,
+                n300: self.hit_300 as usize,
+                n100: self.hit_100 as usize,
+                n50: self.hit_50 as usize,
+                n_misses: self.hit_miss as usize,
+            };
+
+            let passed_objects = self.passed_objects;
+            let prev_passed_objects = self.prev_passed_objects;
+            let delta = passed_objects - prev_passed_objects;
+
+            let gradual = ivalues
                 .gradual_performance_current
                 .get_or_insert_with(|| {
+                    // TODO: required until we rework the struct
                     let static_beatmap = unsafe {
-                        // required until we rework the struct
                         extend_lifetime(beatmap)
                     };
                     GradualPerformance::new(
@@ -454,23 +531,24 @@ impl Values {
             // delta can't be 0 as processing 0 actually processes 1 object
             if (delta > 0) && (self.delta_sum <= prev_passed_objects) {
                 self.delta_sum += delta;
-                current_pp = gradual.nth(
+                return gradual.nth(
                     score_state,
                     // .nth is zero-indexed, -1 accounts for that
                     delta - 1
                 )
-                    .expect("process isn't called after the objects ended")
-                    .pp();
+                .expect("process isn't called after the objects ended")
+                .pp()
             }
         }
-        current_pp
+
+        self.current_pp
     }
 
-    pub fn get_fc_pp(&mut self) -> f64 {
+    pub fn get_fc_pp(&mut self, ivalues: &mut InnerValues) -> f64 {
         if let Some(beatmap) = &self.current_beatmap {
-            if self.current_beatmap_perf.is_some() {
+            if ivalues.current_beatmap_perf.is_some() {
                 if let Some(attributes) =
-                    self.current_beatmap_perf.clone() {
+                    ivalues.current_beatmap_perf.clone() {
                     let fc_pp = AnyPP::new(beatmap)
                         .attributes(attributes.clone())
                         .mods(self.mods)
@@ -493,7 +571,7 @@ impl Values {
                     .calculate();
                 let ss_pp = attr.pp();
                 self.ss_pp = ss_pp;
-                self.current_beatmap_perf = Some(attr);
+                ivalues.current_beatmap_perf = Some(attr);
                 ss_pp
             }
         } else {
