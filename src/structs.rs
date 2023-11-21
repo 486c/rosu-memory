@@ -1,20 +1,20 @@
 use std::{
-    num::TryFromIntError, 
-    path::PathBuf, 
-    str::FromStr, 
+    num::TryFromIntError,
+    path::PathBuf,
+    str::FromStr,
     sync::{Arc, Mutex}
 };
 
 use async_tungstenite::WebSocketStream;
 use hyper::upgrade::Upgraded;
 use rosu_memory::memory::{
-    process::{Process, ProcessTraits}, 
+    process::{Process, ProcessTraits},
     signature::Signature
 };
 
 use rosu_pp::{
-    Beatmap, GameMode, 
-    PerformanceAttributes, GradualPerformanceAttributes, 
+    Beatmap, GameMode,
+    PerformanceAttributes, GradualPerformance,
     beatmap::EffectPoint, ScoreState, AnyPP
 };
 
@@ -117,7 +117,7 @@ impl StaticAddresses {
         )?;
 
         let skin_sign = Signature::from_str("75 21 8B 1D")?;
-        
+
         Ok(Self {
             base: p.read_signature(&base_sign)?,
             status: p.read_signature(&status_sign)?,
@@ -142,8 +142,8 @@ pub struct State {
 // shared between any threads
 #[derive(Default)]
 pub struct InnerValues {
-    pub gradual_performance_current: 
-        Option<GradualPerformanceAttributes<'static>>,
+    pub gradual_performance_current:
+        Option<GradualPerformance<'static>>,
 
     pub current_beatmap_perf: Option<PerformanceAttributes>,
 
@@ -151,7 +151,7 @@ pub struct InnerValues {
 }
 
 impl InnerValues {
-    pub fn reset(&mut self) { 
+    pub fn reset(&mut self) {
         self.current_beatmap_perf = None;
         self.gradual_performance_current = None;
     }
@@ -523,23 +523,18 @@ impl OutputValues {
                     let static_beatmap = unsafe {
                         extend_lifetime(beatmap)
                     };
-
-                    GradualPerformanceAttributes::new(
+                    GradualPerformance::new(
                         static_beatmap,
                         self.mods
                     )
                 });
-
             // delta can't be 0 as processing 0 actually processes 1 object
-            // delta_sum < prev because delta_sum becomes equal to
-            // prev only after running this but it's
-            // always <= passed_objects
-            if (delta > 0) && (self.delta_sum < prev_passed_objects) {
+            if (delta > 0) && (self.delta_sum <= prev_passed_objects) {
                 self.delta_sum += delta;
-
-                return gradual.process_next_n_objects(
+                return gradual.nth(
                     score_state,
-                    delta
+                    // .nth is zero-indexed, -1 accounts for that
+                    delta - 1
                 )
                 .expect("process isn't called after the objects ended")
                 .pp()
@@ -574,7 +569,6 @@ impl OutputValues {
                     .mods(self.mods)
                     .mode(self.gameplay_gamemode())
                     .calculate();
-
                 let ss_pp = attr.pp();
                 self.ss_pp = ss_pp;
                 ivalues.current_beatmap_perf = Some(attr);

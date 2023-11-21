@@ -11,7 +11,7 @@ cfg-if = "1.0.0"
 clap = { version = "4.4.8", default-features = false, features = ["std", "derive", "env"] }
 eyre = "0.6.9"
 paste = "1.0.14"
-rosu-pp = "0.9.5"
+rosu-pp = {  version = "0.10.0", features = ["gradual"] }
 serde = { version = "1.0.192", default-features = false, features = ["derive"] }
 serde_json = "1.0.108"
 serde_repr = "0.1.17"
