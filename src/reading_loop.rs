@@ -72,16 +72,17 @@ pub fn process_reading_loop(
     && values.status != GameStatus::MultiplayerLobby 
     && values.status != GameStatus::MultiplayerResultScreen {
         let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
-        let folder = p.read_string((beatmap_addr + 0x78) as usize)?;
+        let beatmap_folder = p.read_string((beatmap_addr + 0x78) as usize)?;
+        let background_file = p.read_string((beatmap_addr + 0x68) as usize)?;
         let menu_mode_addr = p.read_i32(state.addresses.base - 0x33)?;
         values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
 
 
-        if folder != values.folder 
+        if beatmap_folder != values.beatmap_folder 
         || beatmap_file != values.beatmap_file {
             let mut full_path = values.osu_path.clone();
             full_path.push("Songs");
-            full_path.push(&folder);
+            full_path.push(&beatmap_folder);
             full_path.push(&beatmap_file);
 
             if full_path.exists() {
@@ -99,8 +100,15 @@ pub fn process_reading_loop(
                 }
             }
         }
+
         values.beatmap_file = beatmap_file;
-        values.folder = folder;
+
+        values.background_path_full.clear();
+        values.background_path_full.push(&beatmap_folder);
+        values.background_path_full.push(&background_file);
+        
+        values.beatmap_folder = beatmap_folder;
+        values.background_file = background_file;
     }
 
     if let Some(beatmap) = &values.current_beatmap {

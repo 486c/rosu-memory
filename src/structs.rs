@@ -180,8 +180,10 @@ pub struct OutputValues {
     pub skin: String,
 
     pub artist: String,
-    pub folder: String,
+    pub beatmap_folder: String,
     pub beatmap_file: String,
+    pub background_file: String,
+    pub background_path_full: PathBuf,
     pub playtime: i32,
     pub menu_mode: i32,
 

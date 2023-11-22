@@ -61,7 +61,8 @@ fn main() -> Result<()> {
     
     // Spawning Hyper server
     let server_clients = state.clients.clone();
-    std::thread::spawn(move || server_thread(server_clients));
+    let server_values = state.values.clone();
+    std::thread::spawn(move || server_thread(server_clients, server_values));
 
     'init_loop: loop {
 
@@ -106,7 +107,6 @@ fn main() -> Result<()> {
             continue 'init_loop
         };
         drop(values);
-
 
         println!("Reading static signatures...");
         match StaticAddresses::new(&p) {
