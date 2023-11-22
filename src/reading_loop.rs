@@ -198,7 +198,7 @@ pub fn process_reading_loop(
         values.mods = (mods_xor1 ^ mods_xor2) as u32;
 
         // Calculate pp
-        values.current_pp = values.get_current_pp(&mut state.ivalues);
+        values.update_current(&mut state.ivalues);
         values.fc_pp = values.get_fc_pp(&mut state.ivalues);
 
         values.prev_passed_objects = passed_objects;
