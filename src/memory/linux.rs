@@ -75,7 +75,7 @@ impl ProcessTraits for Process {
         let path = format!("/proc/{}/maps", &self.pid);
         let mut v = Vec::new();
         
-        let buff = fs::read_to_string(&path)?;
+        let buff = fs::read_to_string(path)?;
     
         for line in buff.split('\n')
         {

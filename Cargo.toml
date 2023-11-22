@@ -3,8 +3,6 @@ name = "rosu-memory"
 version = "0.2.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 async-tungstenite = "0.23.0"
 cfg-if = "1.0.0"
@@ -44,3 +42,17 @@ opt-level = "s"
 
 [dev-dependencies]
 rand = "0.8.5"
+
+[lints.clippy]
+# Ignoring this clippy warning because one edge case
+# with prim_read_array_impl(u8).
+# std::slice::from_raw_parts_mut(..) expects
+# to use element count (see docs) not bytes and in u8 case it becomes
+# something like: 
+# buff.len() * std::mem::size_of::<u8>()
+# ^                  ^ always 1
+# |
+# valid length
+# valid length * 1 = valid_length
+# So clippy thinks we passing bytes count not element count
+size_of_in_element_count = "allow"

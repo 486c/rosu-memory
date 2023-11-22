@@ -1,17 +1,3 @@
-// Ignoring this clippy warning because one edge case
-// with prim_read_array_impl(u8).
-// std::slice::from_raw_parts_mut(..) expects
-// to use element count (see docs) not bytes and in u8 case it becomes
-// something like: 
-// buff.len() * std::mem::size_of::<u8>()
-// ^                  ^ always 1
-// |
-// valid length
-// valid length * 1 = valid_length
-// So clippy thinks we passing bytes count not element count
-
-#![allow(clippy::size_of_in_element_count)]
-
 use std::path::PathBuf;
 
 use super::error::ProcessError;
