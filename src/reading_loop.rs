@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rosu_pp::Beatmap;
+use rosu_pp::{Beatmap, BeatmapExt};
 use tracy_client::*;
 use eyre::Result;
 
@@ -21,7 +21,9 @@ pub fn process_reading_loop(
         state.addresses.menu_mods + 0x9
     )?;
 
-    values.menu_mods = p.read_u32(menu_mods_ptr as usize)?;
+    let menu_mods = p.read_u32(menu_mods_ptr as usize)?;
+    let mods_updated = menu_mods != values.menu_mods;
+    values.menu_mods = menu_mods;
 
     let playtime_ptr = p.read_i32(state.addresses.playtime + 0x5)?;
     values.playtime = p.read_i32(playtime_ptr as usize)?;
@@ -88,6 +90,8 @@ pub fn process_reading_loop(
                 ) {
                     Ok(beatmap) => {
                         new_map = true;
+                        values.stars = beatmap.stars().calculate().stars();
+                        values.stars_mods = beatmap.stars().mods(values.menu_mods).calculate().stars();
                         Some(beatmap)
                     },
                     Err(_) => {
@@ -103,6 +107,9 @@ pub fn process_reading_loop(
 
     if let Some(beatmap) = &values.current_beatmap {
         values.bpm = beatmap.bpm();
+        // if mods_updated {
+        //   values.stars_mods = beatmap.stars().mods(values.menu_mods).calculate().stars();
+        // }
     }
 
     // store the converted map so it's not converted 
