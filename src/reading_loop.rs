@@ -71,23 +71,27 @@ pub fn process_reading_loop(
     if values.status != GameStatus::PreSongSelect
     && values.status != GameStatus::MultiplayerLobby 
     && values.status != GameStatus::MultiplayerResultScreen {
-        let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
-        let beatmap_folder = p.read_string((beatmap_addr + 0x78) as usize)?;
-        let background_file = p.read_string((beatmap_addr + 0x68) as usize)?;
         let menu_mode_addr = p.read_i32(state.addresses.base - 0x33)?;
+
+        values.beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
+        values.beatmap_folder = p.read_string((beatmap_addr + 0x78) as usize)?;
         values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
 
+        // Background file can be not available on the time
+        // so if this happens we keeping previous background_file
+        // and updating it in next iteration (if it becomes available)
+        match p.read_string((beatmap_addr + 0x68) as usize) {
+            Ok(v) => values.background_file = v,
+            Err(_) => {},
+        };
 
-        if beatmap_folder != values.beatmap_folder 
-        || beatmap_file != values.beatmap_file {
-            let mut full_path = values.osu_path.clone();
-            full_path.push("Songs");
-            full_path.push(&beatmap_folder);
-            full_path.push(&beatmap_file);
+        values.update_full_paths();
 
-            if full_path.exists() {
+        if values.beatmap_folder != values.beatmap_folder 
+        || values.beatmap_file != values.beatmap_file {
+            if values.full_path.exists() {
                 values.current_beatmap = match Beatmap::from_path(
-                    full_path
+                    &values.full_path
                 ) {
                     Ok(beatmap) => {
                         new_map = true;
@@ -100,15 +104,6 @@ pub fn process_reading_loop(
                 }
             }
         }
-
-        values.beatmap_file = beatmap_file;
-
-        values.background_path_full.clear();
-        values.background_path_full.push(&beatmap_folder);
-        values.background_path_full.push(&background_file);
-        
-        values.beatmap_folder = beatmap_folder;
-        values.background_file = background_file;
     }
 
     if let Some(beatmap) = &values.current_beatmap {

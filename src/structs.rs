@@ -179,6 +179,8 @@ pub struct OutputValues {
 
     pub skin: String,
 
+    pub full_path: PathBuf,
+
     pub artist: String,
     pub beatmap_folder: String,
     pub beatmap_file: String,
@@ -534,6 +536,7 @@ impl OutputValues {
                         self.mods
                     )
                 });
+
             // delta can't be 0 as processing 0 actually processes 1 object
             if (delta > 0) && (self.delta_sum <= prev_passed_objects) {
                 self.delta_sum += delta;
@@ -635,7 +638,21 @@ impl OutputValues {
                 .stars();
         }
     }
+
+    pub fn update_full_paths(&mut self) {
+        let _span = tracy_client::span!("update_full_paths");
+        self.full_path.clear();
+        self.full_path.push("Songs");
+        self.full_path.push(&self.beatmap_folder);
+        self.full_path.push(&self.beatmap_file);
+
+
+        self.background_path_full.clear();
+        self.background_path_full.push(&self.beatmap_folder);
+        self.background_path_full.push(&self.background_file);
+    }
 }
+
 unsafe fn extend_lifetime<T>(value: &T) -> &'static T {
     std::mem::transmute(value)
 }
