@@ -18,6 +18,8 @@ jobs:
           - target: x86_64-pc-windows-msvc
             os: windows-latest
     steps:
+      - name: Update Rust
+        run: rustup update stable
       - name: Checkout code
         uses: actions/checkout@v3
       - name: Install musl
