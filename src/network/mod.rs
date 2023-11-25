@@ -158,28 +158,14 @@ async fn serve_http(
         ),
     };
 
-    let bg_path = match path.next() {
-        Some(v) => v,
-        None => return Ok(
-            Response::builder()
-                .status(400)
-                .body(Full::default())?
-        ),
-    }.replace("%20", " "); // TODO: deencode properly
-
     if songs_path.starts_with("Songs") {
-
         let background_path = { 
             let values = values.lock().unwrap();
 
-            values.osu_path
-                .join("Songs/")
-                .join(bg_path)
+            values.background_path_full.clone()
         };
 
-
         if !background_path.exists() {
-            println!("Requested background doesn't exists!");
             return Ok(Response::builder()
                 .status(400)
                 .body(Full::default())?
@@ -210,19 +196,3 @@ async fn serve(
         serve_ws(clients, req).await
     }
 }
-
-/*
-   async fn serve_http(
-    _clients: Clients, 
-    mut req: Request<hyper::body::Incoming>,
-) -> Result<Response<Full<Bytes>>> {
-    let uri_path = req.uri().path();
-    if uri_path.starts_with("/Songs/") {
-        let songs_path = str::replace(Path::new("C:/osu!/Songs").join(&uri_path[7..]).to_str().unwrap(), "%20", " ");
-        let bytes = std::fs::read(songs_path)?;
-        Ok(Response::new(Full::new(Bytes::from(bytes))))
-    } else {
-        Ok(Response::new(Full::new(Bytes::from("Hello World!"))))
-    }
-}
-*/

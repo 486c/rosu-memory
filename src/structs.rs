@@ -159,6 +159,7 @@ impl InnerValues {
 
 #[derive(Debug, Default, Serialize)]
 pub struct OutputValues {
+    /// Absolute path to the osu! folder
     #[serde(skip)]
     pub osu_path: PathBuf,
 
@@ -179,7 +180,7 @@ pub struct OutputValues {
 
     pub skin: String,
 
-    pub full_path: PathBuf,
+    pub beatmap_full_path: PathBuf,
 
     pub artist: String,
     pub beatmap_folder: String,
@@ -641,13 +642,11 @@ impl OutputValues {
 
     pub fn update_full_paths(&mut self) {
         let _span = tracy_client::span!("update_full_paths");
-        self.full_path.clear();
-        self.full_path.push("Songs");
-        self.full_path.push(&self.beatmap_folder);
-        self.full_path.push(&self.beatmap_file);
 
+        // beatmap_full_path is expection because
+        // it depends on previous state
 
-        self.background_path_full.clear();
+        self.background_path_full = self.osu_path.join("Songs/");
         self.background_path_full.push(&self.beatmap_folder);
         self.background_path_full.push(&self.background_file);
     }
