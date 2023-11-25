@@ -13,7 +13,7 @@ use rosu_memory::memory::{
 };
 
 use rosu_pp::{
-    Beatmap, GameMode,
+    Beatmap, BeatmapExt, GameMode,
     PerformanceAttributes, GradualPerformance,
     beatmap::EffectPoint, ScoreState, AnyPP
 };
@@ -606,6 +606,31 @@ impl OutputValues {
                 }
             },
             _ => ()
+        }
+    }
+
+    pub fn update_stars(&mut self) {
+        let _span = tracy_client::span!("update stars");
+
+        if let Some(beatmap) = &self.current_beatmap {
+            self.stars = beatmap
+                .stars()
+                .calculate()
+                .stars();
+
+            let mods = {
+                if self.status == GameStatus::Playing {
+                    self.mods
+                } else {
+                    self.menu_mods
+                }
+            };
+
+            self.stars_mods = beatmap
+                .stars()
+                .mods(mods)
+                .calculate()
+                .stars();
         }
     }
 }

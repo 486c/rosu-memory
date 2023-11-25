@@ -90,8 +90,6 @@ pub fn process_reading_loop(
                 ) {
                     Ok(beatmap) => {
                         new_map = true;
-                        values.stars = beatmap.stars().calculate().stars();
-                        values.stars_mods = beatmap.stars().mods(values.menu_mods).calculate().stars();
                         Some(beatmap)
                     },
                     Err(_) => {
@@ -107,9 +105,6 @@ pub fn process_reading_loop(
 
     if let Some(beatmap) = &values.current_beatmap {
         values.bpm = beatmap.bpm();
-        // if mods_updated {
-        //   values.stars_mods = beatmap.stars().mods(values.menu_mods).calculate().stars();
-        // }
     }
 
     // store the converted map so it's not converted 
@@ -123,6 +118,8 @@ pub fn process_reading_loop(
             }
         }
     }
+    
+    values.update_stars();
 
     let ruleset_addr = p.read_i32(
         (p.read_i32(state.addresses.rulesets - 0xb)? + 0x4) as usize
