@@ -187,6 +187,10 @@ pub struct OutputValues {
 
     pub status: GameStatus,
 
+    pub stars: f64,
+    pub stars_mods: f64,
+    pub current_stars: f64,
+
     pub ar: f32,
     pub cs: f32,
     pub hp: f32,
@@ -500,7 +504,7 @@ impl OutputValues {
         }
     }
 
-    pub fn get_current_pp(&mut self, ivalues: &mut InnerValues) -> f64 {
+    pub fn update_current(&mut self, ivalues: &mut InnerValues) {
         if let Some(beatmap) = &self.current_beatmap {
             let score_state = ScoreState {
                 max_combo: self.max_combo as usize,
@@ -531,17 +535,12 @@ impl OutputValues {
             // delta can't be 0 as processing 0 actually processes 1 object
             if (delta > 0) && (self.delta_sum <= prev_passed_objects) {
                 self.delta_sum += delta;
-                return gradual.nth(
-                    score_state,
-                    // .nth is zero-indexed, -1 accounts for that
-                    delta - 1
-                )
-                .expect("process isn't called after the objects ended")
-                .pp()
+                let attrs = gradual.nth(score_state, delta - 1)
+                  .expect("process isn't called after the objects ended");
+                self.current_pp = attrs.pp();
+                self.current_stars = attrs.stars();
             }
         }
-
-        self.current_pp
     }
 
     pub fn get_fc_pp(&mut self, ivalues: &mut InnerValues) -> f64 {
