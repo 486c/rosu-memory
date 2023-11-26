@@ -1,6 +1,6 @@
 use std::borrow::Cow;
 
-use rosu_pp::{Beatmap, BeatmapExt};
+use rosu_pp::Beatmap;
 use tracy_client::*;
 use eyre::Result;
 
