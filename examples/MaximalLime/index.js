@@ -1,7 +1,7 @@
 let socket = new ReconnectingWebSocket("ws://127.0.0.1:9001/ws");
 
 let bg = document.getElementById("bg");
-let star = document.getElementById("star");
+let star = document.getElementById("star_span");
 let pp = document.getElementById("pp");
 let hun = document.getElementById("h100");
 let fifty = document.getElementById("h50");
@@ -45,16 +45,12 @@ socket.onmessage = event => {
 	} else {
 		pp.innerHTML = 0 + "pp"
 	}
-	/*
-	if (data.menu.bm.stats.SR != '') {
-		let SR = data.menu.bm.stats.SR;
+	if (data.stars_mods != '') {
+		let SR = data.stars_mods;
 		star.innerHTML = SR.toFixed(2)
 	} else {
 		star.innerHTML = 0
 	}
-	*/
-	star.innerHTML = 0
-
 	if (data.hit_100 > 0) {
 		hun.innerHTML = data.hit_100;
 	} else {
@@ -70,6 +66,8 @@ socket.onmessage = event => {
 	} else {
 		miss.innerHTML = 0
 	}
+
+	console.log(data.stars_mods);
 }
 
 
