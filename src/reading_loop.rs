@@ -22,7 +22,6 @@ pub fn process_reading_loop(
     )?;
 
     let menu_mods = p.read_u32(menu_mods_ptr as usize)?;
-    let mods_updated = menu_mods != values.menu_mods;
     values.menu_mods = menu_mods;
 
     let playtime_ptr = p.read_i32(state.addresses.playtime + 0x5)?;
@@ -40,6 +39,12 @@ pub fn process_reading_loop(
     values.status = GameStatus::from(
         p.read_u32(status_ptr as usize)?
     );
+
+    if values.prev_status == GameStatus::Playing 
+    && values.status != GameStatus::Playing {
+        values.reset_gameplay();
+        state.ivalues.reset();
+    }
 
     if beatmap_addr == 0 {
       return Ok(())
@@ -215,6 +220,7 @@ pub fn process_reading_loop(
         // keep up with current_bpm & unstable rate
         // updates
         values.adjust_bpm();
+        values.prev_status = values.status;
     }
 
     Ok(())

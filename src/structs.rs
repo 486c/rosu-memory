@@ -27,7 +27,7 @@ use crate::network::smol_hyper::SmolIo;
 pub type Arm<T> = Arc<Mutex<T>>;
 pub type Clients = Arm<Vec<WebSocketStream<SmolIo<Upgraded>>>>;
 
-#[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
+#[derive(Serialize_repr, Debug, Default, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
 pub enum GameStatus {
     PreSongSelect = 0,
@@ -176,6 +176,8 @@ pub struct OutputValues {
     pub prev_playtime: i32,
     #[serde(skip)]
     pub prev_passed_objects: usize,
+    #[serde(skip)]
+    pub prev_status: GameStatus,
 
     pub skin: String,
 
