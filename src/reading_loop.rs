@@ -76,36 +76,43 @@ pub fn process_reading_loop(
     if values.status != GameStatus::PreSongSelect
     && values.status != GameStatus::MultiplayerLobby 
     && values.status != GameStatus::MultiplayerResultScreen {
-        let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
-        let folder = p.read_string((beatmap_addr + 0x78) as usize)?;
         let menu_mode_addr = p.read_i32(state.addresses.base - 0x33)?;
+
+        let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
+        let beatmap_folder = p.read_string((beatmap_addr + 0x78) as usize)?;
         values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
 
+        values.beatmap_full_path = values.osu_path.join("Songs/");
+        values.beatmap_full_path.push(&beatmap_folder);
+        values.beatmap_full_path.push(&beatmap_file);
 
-        if folder != values.folder 
-        || beatmap_file != values.beatmap_file {
-            let mut full_path = values.osu_path.clone();
-            full_path.push("Songs");
-            full_path.push(&folder);
-            full_path.push(&beatmap_file);
+        if (beatmap_folder != values.beatmap_folder 
+        || beatmap_file != values.beatmap_file)
+        && values.beatmap_full_path.exists() {
+            let current_beatmap = match Beatmap::from_path(
+                &values.beatmap_full_path
+            ) {
+                Ok(beatmap) => {
+                    new_map = true;
 
-            if full_path.exists() {
-                values.current_beatmap = match Beatmap::from_path(
-                    full_path
-                ) {
-                    Ok(beatmap) => {
-                        new_map = true;
-                        Some(beatmap)
-                    },
-                    Err(_) => {
-                        println!("Failed to parse beatmap");
-                        None
-                    },
-                }
-            }
+                    values.background_file = 
+                        beatmap.background.filename.clone();
+
+                    Some(beatmap)
+                },
+                Err(_) => {
+                    println!("Failed to parse beatmap");
+                    None
+                },
+            };
+
+            values.current_beatmap = current_beatmap;
         }
+
+        values.beatmap_folder = beatmap_folder;
         values.beatmap_file = beatmap_file;
-        values.folder = folder;
+
+        values.update_full_paths();
     }
 
     if let Some(beatmap) = &values.current_beatmap {

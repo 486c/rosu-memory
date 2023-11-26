@@ -61,7 +61,10 @@ fn main() -> Result<()> {
     
     // Spawning Hyper server
     let server_clients = state.clients.clone();
-    std::thread::spawn(move || server_thread(server_clients));
+    let server_values = state.values.clone();
+    std::thread::spawn(move || server_thread(
+        server_clients, server_values
+    ));
 
     'init_loop: loop {
 
@@ -107,7 +110,6 @@ fn main() -> Result<()> {
         };
         drop(values);
 
-
         println!("Reading static signatures...");
         match StaticAddresses::new(&p) {
             Ok(v) => state.addresses = v,
@@ -146,7 +148,9 @@ fn main() -> Result<()> {
             }
 
             smol::block_on(async {
-                handle_clients(state.values.clone(), state.clients.clone()).await;
+                handle_clients(
+                    state.values.clone(), state.clients.clone()
+                ).await;
             });
 
             std::thread::sleep(args.interval);

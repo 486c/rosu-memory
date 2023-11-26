@@ -159,6 +159,7 @@ impl InnerValues {
 
 #[derive(Debug, Default, Serialize)]
 pub struct OutputValues {
+    /// Absolute path to the osu! folder
     #[serde(skip)]
     pub osu_path: PathBuf,
 
@@ -181,9 +182,13 @@ pub struct OutputValues {
 
     pub skin: String,
 
+    pub beatmap_full_path: PathBuf,
+
     pub artist: String,
-    pub folder: String,
+    pub beatmap_folder: String,
     pub beatmap_file: String,
+    pub background_file: String,
+    pub background_path_full: PathBuf,
     pub playtime: i32,
     pub menu_mode: i32,
 
@@ -534,6 +539,7 @@ impl OutputValues {
                         self.mods
                     )
                 });
+
             // delta can't be 0 as processing 0 actually processes 1 object
             if (delta > 0) && (self.delta_sum <= prev_passed_objects) {
                 self.delta_sum += delta;
@@ -635,7 +641,19 @@ impl OutputValues {
                 .stars();
         }
     }
+
+    pub fn update_full_paths(&mut self) {
+        let _span = tracy_client::span!("update_full_paths");
+
+        // beatmap_full_path is expection because
+        // it depends on previous state
+
+        self.background_path_full = self.osu_path.join("Songs/");
+        self.background_path_full.push(&self.beatmap_folder);
+        self.background_path_full.push(&self.background_file);
+    }
 }
+
 unsafe fn extend_lifetime<T>(value: &T) -> &'static T {
     std::mem::transmute(value)
 }

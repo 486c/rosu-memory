@@ -26,7 +26,6 @@ use hyper::{
     server::conn::http1
 };
 
-
 pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
     let _span = tracy_client::span!("handle clients");
 
@@ -50,7 +49,6 @@ pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
                 Some(None) | None => None,
             };
 
-
             if let Some(Message::Close(_)) = msg {
                 return false;
             };
@@ -64,22 +62,23 @@ pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
     });
 }
 
-pub fn server_thread(ctx: Clients) {
+pub fn server_thread(ctx_clients: Clients, values: Arm<OutputValues>) {
     smol::block_on(async {
         let tcp = TcpListener::bind("127.0.0.1:9001").unwrap();
         let listener = Async::new(tcp)
             .unwrap();
-
 
         loop {
             let (stream, _) = listener.accept().await.unwrap();
 
             let io = SmolIo::new(stream);
             
-            let ctx = ctx.clone();
+            let ctx_clients = ctx_clients.clone();
+            let ctx_values = values.clone();
             let service = service_fn(move |req| {
-                let ctx = ctx.clone();
-                serve(ctx, req)
+                let ctx_clients = ctx_clients.clone();
+                let ctx_values = ctx_values.clone();
+                serve(ctx_clients, ctx_values, req)
             });
 
             smol::spawn(async {
@@ -145,18 +144,54 @@ async fn serve_ws(
 }
 
 async fn serve_http(
-    _clients: Clients, 
-    mut _req: Request<hyper::body::Incoming>,
+    values: Arm<OutputValues>,
+    req: Request<hyper::body::Incoming>,
 ) -> Result<Response<Full<Bytes>>> {
-    Ok(Response::new(Full::new(Bytes::from("Hello World!"))))
+    let mut path = req.uri().path().splitn(3, '/').skip(1);
+
+    let songs_path = match path.next() {
+        Some(v) => v,
+        None => return Ok(
+            Response::builder()
+                .status(404)
+                .body(Full::default())?
+        ),
+    };
+
+    if songs_path.starts_with("Songs") {
+        let background_path = { 
+            let values = values.lock().unwrap();
+
+            values.background_path_full.clone()
+        };
+
+        if !background_path.exists() {
+            return Ok(Response::builder()
+                .status(400)
+                .body(Full::default())?
+            )
+        }
+
+        let bytes = smol::fs::read(background_path).await?;
+        
+        Ok(Response::new(Full::new(
+            Bytes::copy_from_slice(bytes.as_slice())
+        )))
+    } else {
+        Ok(Response::builder()
+            .status(400)
+            .body(Full::default())?
+        )
+    }
 }
 
 async fn serve(
     clients: Clients, 
+    values: Arm<OutputValues>,
     req: Request<hyper::body::Incoming>,
 ) -> Result<Response<Full<Bytes>>> {
     if req.uri() != "/ws" {
-        serve_http(clients, req).await
+        serve_http(values, req).await
     } else {
         serve_ws(clients, req).await
     }
