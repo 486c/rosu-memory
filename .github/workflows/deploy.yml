@@ -1,0 +1,43 @@
+name: Build and Deploy
+
+on:
+  push:
+    tags:
+      - 'v[0-9]+.[0-9]+.[0-9]+*'
+  workflow_dispatch:
+  
+env:
+  CARGO_INCREMENTAL: 0
+  CARGO_NET_RETRY: 10
+  RUSTFLAGS: -Cdebuginfo=1 -Dwarnings
+
+jobs:
+  build:
+    runs-on: ubuntu-20.04
+
+    steps:
+      - name: Checkout project
+        uses: actions/checkout@v3
+
+      - name: Install rust toolchain
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          profile: minimal
+          override: true
+
+      - name: Cache dependencies
+        uses: Swatinem/rust-cache@v1
+
+      - name: Build
+        run: cargo build --release --features full
+
+      - name: Deploy
+        uses: appleboy/scp-action@v0.1.4
+        with:
+          host: ${{ secrets.SCP_HOST }}
+          username: ${{ secrets.SCP_USERNAME }}
+          password: ${{ secrets.SCP_PASSWORD }}
+          source: target/release/rosu-memory
+          target: ${{ secrets.SCP_TARGET }}
+          strip_components: 2
