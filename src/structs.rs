@@ -289,6 +289,7 @@ impl OutputValues {
         self.prev_passed_objects = 0;
         self.delta_sum = 0;
         self.kiai_now = false;
+        self.playtime = 0;
     }
 
     // TODO PR to rosu-pp to add From<u8> trait?

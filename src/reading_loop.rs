@@ -235,6 +235,7 @@ pub fn process_reading_loop(
     if values.prev_status != GameStatus::Playing 
     && values.status == GameStatus::Playing {
         values.update_stars();
+        values.reset_gameplay();
     }
 
     if values.status == GameStatus::SongSelect 
