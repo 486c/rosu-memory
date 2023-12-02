@@ -188,6 +188,7 @@ pub struct OutputValues {
 
     pub artist: String,
     pub beatmap_folder: String,
+    pub beatmap_id: i32,
     pub beatmap_file: String,
     pub background_file: String,
     pub background_path_full: PathBuf,
@@ -248,6 +249,9 @@ pub struct OutputValues {
     pub mods: u32,
 
     pub plays: i32,
+
+    pub last_obj_time: f64,
+    pub first_obj_time: f64,
 }
 
 impl OutputValues {
