@@ -292,26 +292,14 @@ impl OutputValues {
         self.playtime = 0;
     }
 
-    // TODO PR to rosu-pp to add From<u8> trait?
+    #[inline]
     pub fn gameplay_gamemode(&self) -> GameMode {
-        match self.mode {
-            0 => GameMode::Osu,
-            1 => GameMode::Taiko,
-            2 => GameMode::Catch,
-            3 => GameMode::Mania,
-            _ => GameMode::Osu // Defaulting to osu
-        }
+        GameMode::from(self.mode as u8)
     }
     
-    // Waiting for new rosu-pp version
+    #[inline]
     pub fn menu_gamemode(&self) -> GameMode {
-        match self.menu_mode {
-            0 => GameMode::Osu,
-            1 => GameMode::Taiko,
-            2 => GameMode::Catch,
-            3 => GameMode::Mania,
-            _ => GameMode::Osu // Defaulting to osu
-        }
+        GameMode::from(self.menu_mode as u8)
     }
 
     pub fn passed_objects(&self) -> Result<usize, TryFromIntError> {
