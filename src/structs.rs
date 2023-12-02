@@ -179,6 +179,8 @@ pub struct OutputValues {
     pub prev_passed_objects: usize,
     #[serde(skip)]
     pub prev_status: GameStatus,
+    #[serde(skip)]
+    pub prev_menu_mods: u32,
 
     pub skin: String,
 

@@ -44,6 +44,7 @@ pub fn process_reading_loop(
     && values.status != GameStatus::Playing {
         values.reset_gameplay();
         state.ivalues.reset();
+        values.update_stars();
     }
 
     if beatmap_addr == 0 {
@@ -129,9 +130,10 @@ pub fn process_reading_loop(
                 values.current_beatmap = Some(converted);
             }
         }
+
+        values.update_stars();
     }
     
-    values.update_stars();
 
     let ruleset_addr = p.read_i32(
         (p.read_i32(state.addresses.rulesets - 0xb)? + 0x4) as usize
@@ -227,8 +229,21 @@ pub fn process_reading_loop(
         // keep up with current_bpm & unstable rate
         // updates
         values.adjust_bpm();
-        values.prev_status = values.status;
     }
+
+    // Update stars when entering `Playing` state
+    if values.prev_status != GameStatus::Playing 
+    && values.status == GameStatus::Playing {
+        values.update_stars();
+    }
+
+    if values.status == GameStatus::SongSelect 
+    && values.prev_menu_mods != values.menu_mods {
+        values.update_stars();
+    }
+
+    values.prev_menu_mods = menu_mods;
+    values.prev_status = values.status;
 
     Ok(())
 }
