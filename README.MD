@@ -11,8 +11,8 @@ But just in case there always `--osu_path` argument available which
 gonna overwrite autodetected path. Methods how to set it is listed
 in sections below
 
-# How do i use counters?
-1. Select any ported counter/overlay (you see some inside examples/ folder)
+# How do i use counters/overlays?
+1. Select any ported counter/overlay (you see some inside `examples` folder)
 2. Open OBS
 3. Add to your scene `Browser Source`
 4. Click on `Local File` checkbox
@@ -35,16 +35,8 @@ There two primary methods
 	2. Change `set OSU_PATH=%HOMEDRIVE%%HOMEPATH%\AppData\Local\osu!` to `set OSU_PATH=<YOUR OSU PATH>`
 	3. Start rosu-memory by opening `windows_start.bat file` (Note: `rosu-memory.exe` and `windows_start.bat` should be in the same folder)
 ### Linux  
-	1. Download binary or compile it by yourself
-	2. Set OSU_PATH environment variable or run rosu-memory with `--osu_path` argument
-
-### Command line arguments
-```
-Options:
-  -o, --osu-path <OSU_PATH>  Path to osu! folder [env: OSU_PATH=]
-  -i, --interval <INTERVAL>  Interval between updates in ms [default: 300]
-  -h, --help                 Print help
-```
+1. Download binary or compile it by yourself
+2. Set OSU_PATH environment variable or run rosu-memory with `--osu_path` argument
 
 ## Differences between gosumemory and tosu
 1. Small binary size
@@ -57,7 +49,7 @@ Options:
 2. Low RAM usage. Since Rust is compiled language and doesn't have any garbage collection (opposed to gosu and tosu) it has very low (almost minimal) ram usage.
 3. Low CPU usage
 4. It's **blazingly** fast compared to other readers. We using gradual pp calculation which means we don't recalculate whole beatmap on new read iteration, only calculate object's that have passed.
-5. Background image appears almost instanlty (if you used other readers you that this is really big problem for them)
+5. Background image appears almost instanlty (if you used other readers you know that this is really big problem for them)
 6. Statically linked binary, no runtime dependencies required (except win32 and glibc)
 7. Can be compiled using musl libc!
 8. Cross-platform
@@ -138,3 +130,12 @@ Around ~600 ms
 ### Profiling
 You can use [tracy] (https://github.com/wolfpld/tracy) to profile `rosu-memory`. 
 Just build `rosu` with `--features tracy-profile` argument and then connect to client.
+
+
+# Command line arguments
+```
+Options:
+  -o, --osu-path <OSU_PATH>  Path to osu! folder [env: OSU_PATH=]
+  -i, --interval <INTERVAL>  Interval between updates in ms [default: 300]
+  -h, --help                 Print help
+```
