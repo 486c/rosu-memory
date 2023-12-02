@@ -3,16 +3,14 @@
 Lightweight, cross-platform and simple osu! memory reader written in Rust
 
 # Usage
-Currently rosu-memory auto detects your osu! folder from running osu!
-process so you don't need to pass any arguments just run it and you
-good to go!
+Currently rosu-memory tries to auto-detect your osu! folder from running osu! process.
+This means you can simply run it without providing additional arguments
 
-But just in case there always `--osu_path` argument available which
-gonna overwrite autodetected path. Methods how to set it is listed
-in sections below
+But just in case you can always overwrite auto-detected path.
+Instructions on how to do that are listed below.
 
-# How do i use counters/overlays?
-1. Select any ported counter/overlay (you see some inside `examples` folder)
+# How do I use counters/overlays?
+1. Select any ported counter/overlay (you can see some inside `examples` folder)
 2. Open OBS
 3. Add to your scene `Browser Source`
 4. Click on `Local File` checkbox
@@ -21,7 +19,7 @@ in sections below
 
 # Setting path to the osu! folder manually
 ### Windows
-There two primary methods
+There are two primary methods
 1. By setting environment value in windows settings (**recommended**):
 	1.  Type `Edit the system environment variables` in your search bar, press enter
 	2.  In opened window click `Environment variables` at the very bottom
@@ -41,15 +39,15 @@ There two primary methods
 ## Differences between gosumemory and tosu
 1. Small binary size
 
-	|         | rosu-memory  | gosumemory (v 1.3.8) |     tosu (v 1.3.0)   |
+	|         | rosu-memory  | gosumemory (v 1.3.8)  | tosu (v 1.3.0)       |
 	|-------- | ------------ | --------------------- | -------------------  |
 	| Windows | 0.9 MB       | 21 MB                 | 35 MB                |
 	| Linux   | 1.2 MB       | 21.2 MB               | Does not support     |
 
-2. Low RAM usage. Since Rust is compiled language and doesn't have any garbage collection (opposed to gosu and tosu) it has very low (almost minimal) ram usage.
+2. Low RAM usage. Since Rust is a compiled language and doesn't have any garbage collection (as opposed to gosu and tosu), it has very low (almost minimal) RAM usage.
 3. Low CPU usage
-4. It's **blazingly** fast compared to other readers. We using gradual pp calculation which means we don't recalculate whole beatmap on new read iteration, only calculate object's that have passed.
-5. Background image appears almost instanlty (if you used other readers you know that this is really big problem for them)
+4. It's **blazingly** fast compared to other readers. We are using gradual pp calculation, which means we don't recalculate the whole beatmap each iteration, only calculating new objects that have been passed.
+5. Background image appears almost instantly (if you used other readers you know that this is really big problem for them)
 6. Statically linked binary, no runtime dependencies required (except win32 and glibc)
 7. Can be compiled using musl libc!
 8. Cross-platform
@@ -123,7 +121,7 @@ Around ~600 ms
 ### Reading loop
 1. `The Sun The Moon The Stars +DT (x2 replay)`
 	~190us
-2. `Plasma Gun [Extreme] +DTHD`
+2. `Plasma Gun [Extreme] +HDDT`
 	~90us
 
 ## Development
