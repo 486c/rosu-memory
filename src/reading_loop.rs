@@ -44,6 +44,7 @@ pub fn process_reading_loop(
     && values.status != GameStatus::Playing {
         values.reset_gameplay();
         state.ivalues.reset();
+        values.update_stars();
     }
 
     if beatmap_addr == 0 {
@@ -85,6 +86,7 @@ pub fn process_reading_loop(
 
         let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
         let beatmap_folder = p.read_string((beatmap_addr + 0x78) as usize)?;
+        values.beatmap_id = p.read_i32(beatmap_addr as usize + 0xCC)?;
         values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
 
         values.beatmap_full_path = values.osu_path.join("Songs/");
@@ -102,6 +104,15 @@ pub fn process_reading_loop(
 
                     values.background_file = 
                         beatmap.background.filename.clone();
+
+                    if let Some(hobj) = beatmap.hit_objects.last() {
+                        values.last_obj_time = hobj.start_time;
+                    }
+
+                    if let Some(hobj) = beatmap.hit_objects.first() {
+                        values.first_obj_time = hobj.start_time;
+                    }
+
 
                     Some(beatmap)
                 },
@@ -134,9 +145,10 @@ pub fn process_reading_loop(
                 values.current_beatmap = Some(converted);
             }
         }
+
+        values.update_stars();
     }
     
-    values.update_stars();
 
     let ruleset_addr = p.read_i32(
         (p.read_i32(state.addresses.rulesets - 0xb)? + 0x4) as usize
@@ -232,8 +244,22 @@ pub fn process_reading_loop(
         // keep up with current_bpm & unstable rate
         // updates
         values.adjust_bpm();
-        values.prev_status = values.status;
     }
+
+    // Update stars when entering `Playing` state
+    if values.prev_status != GameStatus::Playing 
+    && values.status == GameStatus::Playing {
+        values.update_stars();
+        values.reset_gameplay();
+    }
+
+    if values.status == GameStatus::SongSelect 
+    && values.prev_menu_mods != values.menu_mods {
+        values.update_stars();
+    }
+
+    values.prev_menu_mods = menu_mods;
+    values.prev_status = values.status;
 
     Ok(())
 }

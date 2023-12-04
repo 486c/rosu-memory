@@ -65,6 +65,7 @@ fn main() -> Result<()> {
     std::thread::spawn(move || server_thread(
         server_clients, server_values
     ));
+    println!("Spawned server!");
 
     'init_loop: loop {
 

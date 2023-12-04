@@ -178,6 +178,8 @@ pub struct OutputValues {
     pub prev_passed_objects: usize,
     #[serde(skip)]
     pub prev_status: GameStatus,
+    #[serde(skip)]
+    pub prev_menu_mods: u32,
 
     pub skin: String,
 
@@ -191,6 +193,7 @@ pub struct OutputValues {
     pub mapset_id: i32,
 
     pub beatmap_folder: String,
+    pub beatmap_id: i32,
     pub beatmap_file: String,
     pub background_file: String,
     pub background_path_full: PathBuf,
@@ -251,6 +254,9 @@ pub struct OutputValues {
     pub mods: u32,
 
     pub plays: i32,
+
+    pub last_obj_time: f64,
+    pub first_obj_time: f64,
 }
 
 impl OutputValues {
@@ -292,28 +298,17 @@ impl OutputValues {
         self.prev_passed_objects = 0;
         self.delta_sum = 0;
         self.kiai_now = false;
+        self.playtime = 0;
     }
 
-    // TODO PR to rosu-pp to add From<u8> trait?
+    #[inline]
     pub fn gameplay_gamemode(&self) -> GameMode {
-        match self.mode {
-            0 => GameMode::Osu,
-            1 => GameMode::Taiko,
-            2 => GameMode::Catch,
-            3 => GameMode::Mania,
-            _ => GameMode::Osu // Defaulting to osu
-        }
+        GameMode::from(self.mode as u8)
     }
     
-    // Waiting for new rosu-pp version
+    #[inline]
     pub fn menu_gamemode(&self) -> GameMode {
-        match self.menu_mode {
-            0 => GameMode::Osu,
-            1 => GameMode::Taiko,
-            2 => GameMode::Catch,
-            3 => GameMode::Mania,
-            _ => GameMode::Osu // Defaulting to osu
-        }
+        GameMode::from(self.menu_mode as u8)
     }
 
     pub fn passed_objects(&self) -> Result<usize, TryFromIntError> {

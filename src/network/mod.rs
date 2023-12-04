@@ -68,6 +68,7 @@ pub fn server_thread(ctx_clients: Clients, values: Arm<OutputValues>) {
         let listener = Async::new(tcp)
             .unwrap();
 
+
         loop {
             let (stream, _) = listener.accept().await.unwrap();
 
