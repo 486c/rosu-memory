@@ -12,10 +12,9 @@ use rosu_memory::memory::{
     signature::Signature
 };
 
-use rosu_pp::{
-    Beatmap, BeatmapExt, GameMode,
-    PerformanceAttributes, GradualPerformance,
-    beatmap::EffectPoint, ScoreState, AnyPP
+use rosu_pp::{Beatmap, BeatmapExt, GameMode,
+              PerformanceAttributes, GradualPerformance,
+              beatmap::EffectPoint, ScoreState, AnyPP
 };
 
 use serde::Serialize;
