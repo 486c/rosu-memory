@@ -397,6 +397,13 @@ impl OutputValues {
                 }
             }
         }
+        if mods.contains(&"SD".to_string()) && mods.contains(&"PF".to_string()) {
+            for i in 0..mods.len() - 1 {
+                if mods[i] == "SD" {
+                    mods.remove(i);
+                }
+            }
+        }
         self.mods_str = mods;
     }
 
