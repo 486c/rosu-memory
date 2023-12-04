@@ -66,6 +66,11 @@ pub fn process_reading_loop(
         values.plays = p.read_i32(plays_addr as usize)?;
 
         values.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
+        values.title = p.read_string((beatmap_addr + 0x24) as usize)?;
+        values.creator = p.read_string((beatmap_addr + 0x7C) as usize)?;
+        values.difficulty = p.read_string((beatmap_addr + 0xB0) as usize)?;
+        values.map_id = p.read_i32((beatmap_addr + 0xCC) as usize)?;
+        values.mapset_id = p.read_i32((beatmap_addr + 0xD0) as usize)?;
     }
 
     values.beatmap_status = BeatmapStatus::from(

@@ -12,10 +12,9 @@ use rosu_memory::memory::{
     signature::Signature
 };
 
-use rosu_pp::{
-    Beatmap, BeatmapExt, GameMode,
-    PerformanceAttributes, GradualPerformance,
-    beatmap::EffectPoint, ScoreState, AnyPP
+use rosu_pp::{Beatmap, BeatmapExt, GameMode,
+              PerformanceAttributes, GradualPerformance,
+              beatmap::EffectPoint, ScoreState, AnyPP
 };
 
 use serde::Serialize;
@@ -187,6 +186,12 @@ pub struct OutputValues {
     pub beatmap_full_path: PathBuf,
 
     pub artist: String,
+    pub title: String,
+    pub creator: String,
+    pub difficulty: String,
+    pub map_id: i32,
+    pub mapset_id: i32,
+
     pub beatmap_folder: String,
     pub beatmap_id: i32,
     pub beatmap_file: String,
