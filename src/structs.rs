@@ -4,6 +4,7 @@ use std::{
     str::FromStr,
     sync::{Arc, Mutex}
 };
+use std::ops::{BitAnd};
 
 use async_tungstenite::WebSocketStream;
 use hyper::upgrade::Upgraded;
@@ -12,10 +13,9 @@ use rosu_memory::memory::{
     signature::Signature
 };
 
-use rosu_pp::{
-    Beatmap, BeatmapExt, GameMode,
-    PerformanceAttributes, GradualPerformance,
-    beatmap::EffectPoint, ScoreState, AnyPP
+use rosu_pp::{Beatmap, BeatmapExt, GameMode,
+              PerformanceAttributes, GradualPerformance,
+              beatmap::EffectPoint, ScoreState, AnyPP
 };
 
 use serde::Serialize;
@@ -26,7 +26,39 @@ use crate::network::smol_hyper::SmolIo;
 
 pub type Arm<T> = Arc<Mutex<T>>;
 pub type Clients = Arm<Vec<WebSocketStream<SmolIo<Upgraded>>>>;
-
+const MODS: [(u32, &str); 31] = [
+    (1 << 0, "NF"),
+    (1 << 1, "EZ"),
+    (1 << 2, "TD"),
+    (1 << 3, "HD"),
+    (1 << 4, "HR"),
+    (1 << 5, "SD"),
+    (1 << 6, "DT"),
+    (1 << 7, "RX"),
+    (1 << 8, "HT"),
+    (1 << 9, "NC"),
+    (1 << 10, "FF"),
+    (1 << 11, "AU"),
+    (1 << 12, "SO"),
+    (1 << 13, "AP"),
+    (1 << 14, "PF"),
+    (1 << 15, "K4"),
+    (1 << 16, "K5"),
+    (1 << 17, "K6"),
+    (1 << 18, "K7"),
+    (1 << 19, "K8"),
+    (1 << 20, "FI"),
+    (1 << 21, "RN"),
+    (1 << 22, "CM"),
+    (1 << 23, "TP"),
+    (1 << 24, "K9"),
+    (1 << 25, "Coop"),
+    (1 << 26, "K1"),
+    (1 << 27, "K3"),
+    (1 << 28, "K2"),
+    (1 << 29, "V2"),
+    (1 << 30, "LM"),
+];
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
 pub enum GameStatus {
@@ -247,6 +279,7 @@ pub struct OutputValues {
 
     pub menu_mods: u32,
     pub mods: u32,
+    pub mods_str: Vec<String>,
 
     pub plays: i32,
 
@@ -279,6 +312,7 @@ impl OutputValues {
         self.prev_hit_miss = 0;
         self.prev_playtime = 0;
 
+        self.mods_str.clear();
 
         self.current_pp = 0.0;
         self.fc_pp = 0.0;
@@ -348,6 +382,22 @@ impl OutputValues {
         variance /= hit_errors_len;
 
         f64::sqrt(variance as f64) * 10.0
+    }
+    pub fn get_readable_mods(&mut self) {
+        let mut mods: Vec<String> = Default::default();
+        for (idx, mod_name) in MODS {
+            if self.mods.bitand(idx) > 0 {
+                mods.push(mod_name.to_string());
+            }
+        }
+        if mods.contains(&"DT".to_string()) && mods.contains(&"NC".to_string()) {
+            for i in 0..mods.len() - 1 {
+                if mods[i] == "DT" {
+                    mods.remove(i);
+                }
+            }
+        }
+        self.mods_str = mods;
     }
 
     pub fn get_accuracy(&self) -> f64 {
