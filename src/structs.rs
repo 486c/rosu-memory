@@ -185,6 +185,12 @@ pub struct OutputValues {
     pub beatmap_full_path: PathBuf,
 
     pub artist: String,
+    pub title: String,
+    pub creator: String,
+    pub difficulty: String,
+    pub map_id: i32,
+    pub mapset_id: i32,
+
     pub beatmap_folder: String,
     pub beatmap_file: String,
     pub background_file: String,
