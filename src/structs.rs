@@ -384,12 +384,9 @@ impl OutputValues {
         f64::sqrt(variance as f64) * 10.0
     }
     pub fn get_readable_mods(&mut self) {
-        let mut mods: Vec<&'static str> = Default::default();
-        for (idx, mod_name) in MODS {
-            if self.mods.bitand(idx) > 0 {
-                mods.push(mod_name);
-            }
-        }
+        let mut mods: Vec<&'static str> = MODS.iter()
+            .filter_map(|(idx, name)| (self.mods & idx > 0).then_some(name))
+            .collect();
         if mods.contains(&"NC") {
             mods.retain(|x| x != &"DT");
         }
