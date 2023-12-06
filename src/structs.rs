@@ -55,7 +55,7 @@ const MODS: [(u32, &str); 31] = [
     (1 << 27, "K3"),
     (1 << 28, "K2"),
     (1 << 29, "V2"),
-    (1 << 30, "LM"),
+    (1 << 30, "MR"),
 ];
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
