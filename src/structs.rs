@@ -279,7 +279,7 @@ pub struct OutputValues {
 
     pub menu_mods: u32,
     pub mods: u32,
-    pub mods_str: Vec<String>,
+    pub mods_str: Vec<&'static str>,
 
     pub plays: i32,
 
@@ -384,20 +384,20 @@ impl OutputValues {
         f64::sqrt(variance as f64) * 10.0
     }
     pub fn get_readable_mods(&mut self) {
-        let mut mods: Vec<String> = Default::default();
+        let mut mods: Vec<&'static str> = Default::default();
         for (idx, mod_name) in MODS {
             if self.mods.bitand(idx) > 0 {
-                mods.push(mod_name.to_string());
+                mods.push(mod_name);
             }
         }
-        if mods.contains(&"DT".to_string()) && mods.contains(&"NC".to_string()) {
+        if mods.contains(&"DT") && mods.contains(&"NC") {
             for i in 0..mods.len() - 1 {
                 if mods[i] == "DT" {
                     mods.remove(i);
                 }
             }
         }
-        if mods.contains(&"SD".to_string()) && mods.contains(&"PF".to_string()) {
+        if mods.contains(&"SD") && mods.contains(&"PF") {
             for i in 0..mods.len() - 1 {
                 if mods[i] == "SD" {
                     mods.remove(i);
