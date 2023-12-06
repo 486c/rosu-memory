@@ -4,7 +4,6 @@ use std::{
     str::FromStr,
     sync::{Arc, Mutex}
 };
-use std::ops::{BitAnd};
 
 use async_tungstenite::WebSocketStream;
 use hyper::upgrade::Upgraded;
@@ -23,7 +22,6 @@ use serde_repr::Serialize_repr;
 use eyre::Result;
 
 use crate::network::smol_hyper::SmolIo;
-
 pub type Arm<T> = Arc<Mutex<T>>;
 pub type Clients = Arm<Vec<WebSocketStream<SmolIo<Upgraded>>>>;
 const MODS: [(u32, &str); 31] = [
@@ -383,9 +381,9 @@ impl OutputValues {
 
         f64::sqrt(variance as f64) * 10.0
     }
-    pub fn get_readable_mods(&mut self) {
+    pub fn get_readable_mods(&mut self) -> Vec<&'static str> {
         let mut mods: Vec<&'static str> = MODS.iter()
-            .filter_map(|(idx, name)| (self.mods & idx > 0).then_some(name))
+            .filter_map(|(idx, name)| (self.mods & idx > 0).then_some(*name))
             .collect();
         if mods.contains(&"NC") {
             mods.retain(|x| x != &"DT");
@@ -393,7 +391,7 @@ impl OutputValues {
         if mods.contains(&"PF") {
             mods.retain(|x| x != &"SD");
         }
-        self.mods_str = mods;
+        mods
     }
 
     pub fn get_accuracy(&self) -> f64 {
@@ -697,4 +695,19 @@ impl OutputValues {
 
 unsafe fn extend_lifetime<T>(value: &T) -> &'static T {
     std::mem::transmute(value)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_mod_conversion() {
+        let mut values = OutputValues::default();
+        values.mods = 88;
+        assert_eq!(vec!["HD", "HR", "DT"], values.get_readable_mods());
+        values.mods = 584;
+        assert_eq!(vec!["HD", "NC"], values.get_readable_mods());
+        values.mods = 1107561552;
+        assert_eq!(vec!["HR","DT","FF","AU","K7","Coop","LM"], values.get_readable_mods());
+    }
 }
