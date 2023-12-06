@@ -390,19 +390,11 @@ impl OutputValues {
                 mods.push(mod_name);
             }
         }
-        if mods.contains(&"DT") && mods.contains(&"NC") {
-            for i in 0..mods.len() - 1 {
-                if mods[i] == "DT" {
-                    mods.remove(i);
-                }
-            }
+        if mods.contains(&"NC") {
+            mods.retain(|x| x != &"DT");
         }
-        if mods.contains(&"SD") && mods.contains(&"PF") {
-            for i in 0..mods.len() - 1 {
-                if mods[i] == "SD" {
-                    mods.remove(i);
-                }
-            }
+        if mods.contains(&"PF") {
+            mods.retain(|x| x != &"SD");
         }
         self.mods_str = mods;
     }
