@@ -35,7 +35,7 @@ const MODS: [(u32, &str); 31] = [
     (1 << 7, "RX"),
     (1 << 8, "HT"),
     (1 << 9, "NC"),
-    (1 << 10, "FF"),
+    (1 << 10, "FL"),
     (1 << 11, "AU"),
     (1 << 12, "SO"),
     (1 << 13, "AP"),
@@ -708,6 +708,6 @@ mod test {
         values.mods = 584;
         assert_eq!(vec!["HD", "NC"], values.get_readable_mods());
         values.mods = 1107561552;
-        assert_eq!(vec!["HR","DT","FF","AU","K7","Coop","LM"], values.get_readable_mods());
+        assert_eq!(vec!["HR","DT","FL","AU","K7","Coop","LM"], values.get_readable_mods());
     }
 }
