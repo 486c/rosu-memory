@@ -388,8 +388,11 @@ impl OutputValues {
         f64::sqrt(variance as f64) * 10.0
     }
     pub fn get_readable_mods(&mut self) -> Vec<&'static str> {
+        let _span = tracy_client::span!("get_readable_mods");
         let mut mods: Vec<&'static str> = MODS.iter()
-            .filter_map(|(idx, name)| (self.mods & idx > 0).then_some(*name))
+            .filter_map(|(idx, name)| 
+                (self.mods & idx > 0).then_some(*name)
+            )
             .collect();
         if mods.contains(&"NC") {
             mods.retain(|x| x != &"DT");
@@ -556,7 +559,8 @@ impl OutputValues {
         }
     }
 
-    pub fn update_current(&mut self, ivalues: &mut InnerValues) {
+    pub fn update_current_pp(&mut self, ivalues: &mut InnerValues) {
+        let _span = tracy_client::span!("get_current_pp");
         if let Some(beatmap) = &self.current_beatmap {
             let score_state = ScoreState {
                 max_combo: self.max_combo as usize,
@@ -597,6 +601,7 @@ impl OutputValues {
     }
 
     pub fn get_fc_pp(&mut self, ivalues: &mut InnerValues) -> f64 {
+        let _span = tracy_client::span!("get_fc_pp");
         if let Some(beatmap) = &self.current_beatmap {
             if ivalues.current_beatmap_perf.is_some() {
                 if let Some(attributes) =
@@ -713,9 +718,14 @@ mod test {
             ..Default::default()
         };
         assert_eq!(vec!["HD", "HR", "DT"], values.get_readable_mods());
+
         values.mods = 584;
         assert_eq!(vec!["HD", "NC"], values.get_readable_mods());
+
         values.mods = 1107561552;
-        assert_eq!(vec!["HR","DT","FL","AU","K7","Coop","MR"], values.get_readable_mods());
+        assert_eq!(
+            vec!["HR","DT","FL","AU","K7","Coop","MR"], 
+            values.get_readable_mods()
+        );
     }
 }
