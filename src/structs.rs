@@ -716,6 +716,6 @@ mod test {
         values.mods = 584;
         assert_eq!(vec!["HD", "NC"], values.get_readable_mods());
         values.mods = 1107561552;
-        assert_eq!(vec!["HR","DT","FL","AU","K7","Coop","LM"], values.get_readable_mods());
+        assert_eq!(vec!["HR","DT","FL","AU","K7","Coop","MR"], values.get_readable_mods());
     }
 }
