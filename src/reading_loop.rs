@@ -232,7 +232,7 @@ pub fn process_reading_loop(
         values.mods_str = values.get_readable_mods();
 
         // Calculate pp
-        values.update_current(&mut state.ivalues);
+        values.update_current_pp(&mut state.ivalues);
         values.fc_pp = values.get_fc_pp(&mut state.ivalues);
 
         values.prev_passed_objects = passed_objects;
