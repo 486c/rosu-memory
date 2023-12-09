@@ -14,6 +14,7 @@ use crate::structs::{
 
 use std::sync::{Arc, Mutex};
 use std::path::PathBuf;
+use std::thread;
 
 use clap::Parser;
 
@@ -33,17 +34,29 @@ pub struct Args {
 
     /// Interval between updates in ms
     #[clap(default_value = "300")]
-    #[arg(short, long, value_parser=parse_interval)]
+    #[arg(short, long, value_parser=parse_interval_ms)]
     interval: std::time::Duration,
+    
+    // Amount of waiting after critical error happened
+    // before running again
+    #[clap(default_value = "3")]
+    #[arg(short, long, value_parser=parse_interval_secs)]
+    error_interval: std::time::Duration,
 }
 
-fn parse_interval(
+fn parse_interval_ms(
     arg: &str
 ) -> Result<std::time::Duration, std::num::ParseIntError> {
     let ms = arg.parse()?;
     Ok(std::time::Duration::from_millis(ms))
 }
 
+fn parse_interval_secs(
+    arg: &str
+) -> Result<std::time::Duration, std::num::ParseIntError> {
+    let secs = arg.parse()?;
+    Ok(std::time::Duration::from_secs(secs))
+}
 
 fn main() -> Result<()> {
     let _client = tracy_client::Client::start();
@@ -65,6 +78,7 @@ fn main() -> Result<()> {
     std::thread::spawn(move || server_thread(
         server_clients, server_values
     ));
+
     println!("Spawned server!");
 
     'init_loop: loop {
@@ -73,6 +87,7 @@ fn main() -> Result<()> {
             Ok(p) => p,
             Err(e) => {
                 println!("{:?}", Report::new(e));
+                thread::sleep(args.error_interval);
                 continue 'init_loop
             },
         };
@@ -107,8 +122,10 @@ fn main() -> Result<()> {
                 &values.osu_path.to_str().unwrap()
             );
 
+            thread::sleep(args.error_interval);
             continue 'init_loop
         };
+
         drop(values);
 
         println!("Reading static signatures...");
@@ -116,13 +133,18 @@ fn main() -> Result<()> {
             Ok(v) => state.addresses = v,
             Err(e) => {
                 match e.downcast_ref::<ProcessError>() {
-                    Some(&ProcessError::ProcessNotFound) => 
-                        continue 'init_loop,
+                    Some(&ProcessError::ProcessNotFound) =>  {
+                        thread::sleep(args.error_interval);
+                        continue 'init_loop
+                    },
                     #[cfg(target_os = "windows")]
-                    Some(&ProcessError::OsError{ .. }) => 
-                        continue 'init_loop,
+                    Some(&ProcessError::OsError{ .. }) => {
+                        thread::sleep(args.error_interval);
+                        continue 'init_loop
+                    },
                     Some(_) | None => {
                         println!("{:?}", e);
+                        thread::sleep(args.error_interval);
                         continue 'init_loop
                     },
                 }
@@ -136,13 +158,18 @@ fn main() -> Result<()> {
                 &mut state
             ) {
                 match e.downcast_ref::<ProcessError>() {
-                    Some(&ProcessError::ProcessNotFound) => 
-                        continue 'init_loop,
+                    Some(&ProcessError::ProcessNotFound) => {
+                        thread::sleep(args.error_interval);
+                        continue 'init_loop
+                    },
                     #[cfg(target_os = "windows")]
-                    Some(&ProcessError::OsError{ .. }) => 
-                        continue 'init_loop,
+                    Some(&ProcessError::OsError{ .. }) => {
+                        thread::sleep(args.error_interval);
+                        continue 'init_loop
+                    },
                     Some(_) | None => {
                         println!("{:?}", e);
+                        thread::sleep(args.error_interval);
                         continue 'main_loop
                     },
                 }
