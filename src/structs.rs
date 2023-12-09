@@ -22,10 +22,41 @@ use serde_repr::Serialize_repr;
 use eyre::Result;
 
 use crate::network::smol_hyper::SmolIo;
-
 pub type Arm<T> = Arc<Mutex<T>>;
 pub type Clients = Arm<Vec<WebSocketStream<SmolIo<Upgraded>>>>;
-
+const MODS: [(u32, &str); 31] = [
+    (1 << 0, "NF"),
+    (1 << 1, "EZ"),
+    (1 << 2, "TD"),
+    (1 << 3, "HD"),
+    (1 << 4, "HR"),
+    (1 << 5, "SD"),
+    (1 << 6, "DT"),
+    (1 << 7, "RX"),
+    (1 << 8, "HT"),
+    (1 << 9, "NC"),
+    (1 << 10, "FL"),
+    (1 << 11, "AU"),
+    (1 << 12, "SO"),
+    (1 << 13, "AP"),
+    (1 << 14, "PF"),
+    (1 << 15, "K4"),
+    (1 << 16, "K5"),
+    (1 << 17, "K6"),
+    (1 << 18, "K7"),
+    (1 << 19, "K8"),
+    (1 << 20, "FI"),
+    (1 << 21, "RN"),
+    (1 << 22, "CN"),
+    (1 << 23, "TP"),
+    (1 << 24, "K9"),
+    (1 << 25, "Coop"),
+    (1 << 26, "K1"),
+    (1 << 27, "K3"),
+    (1 << 28, "K2"),
+    (1 << 29, "V2"),
+    (1 << 30, "MR"),
+];
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
 pub enum GameStatus {
@@ -252,6 +283,7 @@ pub struct OutputValues {
 
     pub menu_mods: u32,
     pub mods: u32,
+    pub mods_str: Vec<&'static str>,
 
     pub plays: i32,
 
@@ -284,6 +316,7 @@ impl OutputValues {
         self.prev_hit_miss = 0;
         self.prev_playtime = 0;
 
+        self.mods_str.clear();
 
         self.current_pp = 0.0;
         self.fc_pp = 0.0;
@@ -353,6 +386,18 @@ impl OutputValues {
         variance /= hit_errors_len;
 
         f64::sqrt(variance as f64) * 10.0
+    }
+    pub fn get_readable_mods(&mut self) -> Vec<&'static str> {
+        let mut mods: Vec<&'static str> = MODS.iter()
+            .filter_map(|(idx, name)| (self.mods & idx > 0).then_some(*name))
+            .collect();
+        if mods.contains(&"NC") {
+            mods.retain(|x| x != &"DT");
+        }
+        if mods.contains(&"PF") {
+            mods.retain(|x| x != &"SD");
+        }
+        mods
     }
 
     pub fn get_accuracy(&self) -> f64 {
@@ -656,4 +701,19 @@ impl OutputValues {
 
 unsafe fn extend_lifetime<T>(value: &T) -> &'static T {
     std::mem::transmute(value)
+}
+
+#[cfg(test)]
+mod test {
+    use super::*;
+    #[test]
+    fn test_mod_conversion() {
+        let mut values = OutputValues::default();
+        values.mods = 88;
+        assert_eq!(vec!["HD", "HR", "DT"], values.get_readable_mods());
+        values.mods = 584;
+        assert_eq!(vec!["HD", "NC"], values.get_readable_mods());
+        values.mods = 1107561552;
+        assert_eq!(vec!["HR","DT","FL","AU","K7","Coop","LM"], values.get_readable_mods());
+    }
 }
