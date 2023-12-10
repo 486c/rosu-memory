@@ -126,7 +126,7 @@ Around ~600 ms
 
 ## Development
 ### Profiling
-You can use [tracy] (https://github.com/wolfpld/tracy) to profile `rosu-memory`. 
+You can use [tracy](https://github.com/wolfpld/tracy) to profile `rosu-memory`. 
 Just build `rosu` with `--features tracy-profile` argument and then connect to client.
 
 
