@@ -37,8 +37,8 @@ pub struct Args {
     #[arg(short, long, value_parser=parse_interval_ms)]
     interval: std::time::Duration,
     
-    // Amount of waiting after critical error happened
-    // before running again
+    /// Amount of seconds waiting after critical error happened
+    /// before running again
     #[clap(default_value = "3")]
     #[arg(short, long, value_parser=parse_interval_secs)]
     error_interval: std::time::Duration,

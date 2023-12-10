@@ -133,7 +133,8 @@ Just build `rosu` with `--features tracy-profile` argument and then connect to c
 # Command line arguments
 ```
 Options:
-  -o, --osu-path <OSU_PATH>  Path to osu! folder [env: OSU_PATH=]
-  -i, --interval <INTERVAL>  Interval between updates in ms [default: 300]
-  -h, --help                 Print help
+  -o, --osu-path       <OSU_PATH>        Path to osu! folder [env: OSU_PATH=]
+  -i, --interval       <INTERVAL>        Interval between updates in ms [default: 300]
+  -e, --error-interval <ERROR_INTERVAL>  Amount of seconds waiting after critical error happened before running again
+  -h, --help                             Print help
 ```
