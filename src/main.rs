@@ -122,8 +122,11 @@ fn main() -> Result<()> {
                 &values.osu_path.to_str().unwrap()
             );
 
-            thread::sleep(args.error_interval);
-            continue 'init_loop
+            return Err(Report::msg(
+                "Can't auto-detect osu! folder path \
+                 nor any was provided through command \
+                 line argument"
+            ))
         };
 
         drop(values);
