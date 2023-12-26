@@ -53,9 +53,13 @@ pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
                 return false;
             };
 
-            websocket.send(
+            let res = websocket.send(
                 Message::Text(serialized_values.clone())
-            ).await.unwrap();
+            ).await;
+            
+            if let Err(e) = res {
+                println!("{:?}", e);
+            };
 
             true
         })
