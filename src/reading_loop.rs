@@ -68,13 +68,13 @@ pub fn process_reading_loop(
         values.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
         values.title = p.read_string((beatmap_addr + 0x24) as usize)?;
         values.creator = p.read_string((beatmap_addr + 0x7C) as usize)?;
-        values.difficulty = p.read_string((beatmap_addr + 0xB0) as usize)?;
-        values.map_id = p.read_i32((beatmap_addr + 0xCC) as usize)?;
-        values.mapset_id = p.read_i32((beatmap_addr + 0xD0) as usize)?;
+        values.difficulty = p.read_string((beatmap_addr + 0xAC) as usize)?;
+        values.map_id = p.read_i32((beatmap_addr + 0xC8) as usize)?;
+        values.mapset_id = p.read_i32((beatmap_addr + 0xCC) as usize)?;
     }
 
     values.beatmap_status = BeatmapStatus::from(
-        p.read_i16(beatmap_addr as usize + 0x130)?
+        p.read_i16(beatmap_addr as usize + 0x12C)?
     );
 
     let mut new_map = false;
@@ -84,7 +84,7 @@ pub fn process_reading_loop(
     && values.status != GameStatus::MultiplayerResultScreen {
         let menu_mode_addr = p.read_i32(state.addresses.base - 0x33)?;
 
-        let beatmap_file = p.read_string((beatmap_addr + 0x94) as usize)?;
+        let beatmap_file = p.read_string((beatmap_addr + 0x90) as usize)?;
         let beatmap_folder = p.read_string((beatmap_addr + 0x78) as usize)?;
         values.beatmap_id = p.read_i32(beatmap_addr as usize + 0xCC)?;
         values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
