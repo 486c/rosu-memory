@@ -59,6 +59,7 @@ pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
             
             if let Err(e) = res {
                 println!("{:?}", e);
+                Err(e).unwrap()
             };
 
             true
