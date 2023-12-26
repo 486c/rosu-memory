@@ -142,6 +142,7 @@ fn main() -> Result<()> {
                     },
                     #[cfg(target_os = "windows")]
                     Some(&ProcessError::OsError{ .. }) => {
+                        println!("{:?}", e);
                         thread::sleep(args.error_interval);
                         continue 'init_loop
                     },
@@ -167,6 +168,7 @@ fn main() -> Result<()> {
                     },
                     #[cfg(target_os = "windows")]
                     Some(&ProcessError::OsError{ .. }) => {
+                        println!("{:?}", e);
                         thread::sleep(args.error_interval);
                         continue 'init_loop
                     },

@@ -592,10 +592,15 @@ impl OutputValues {
             // delta can't be 0 as processing 0 actually processes 1 object
             if (delta > 0) && (self.delta_sum <= prev_passed_objects) {
                 self.delta_sum += delta;
-                let attrs = gradual.nth(score_state, delta - 1)
-                  .expect("process isn't called after the objects ended");
-                self.current_pp = attrs.pp();
-                self.current_stars = attrs.stars();
+                let attributes_option = gradual.nth(score_state, delta - 1);
+                match attributes_option {
+                    Some(attributes) => {
+                        self.current_pp = attributes.pp();
+                        self.current_stars = attributes.stars();
+                    }
+                    None => { println!("Failed to calculate current pp/sr") }
+                }
+
             }
         }
     }
