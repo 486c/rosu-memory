@@ -642,14 +642,6 @@ impl OutputValues {
 
     }
 
-    pub fn get_menu_pp(&mut self) {
-        if let Some(beatmap) = &self.current_beatmap {
-            let attr = AnyPP::new(beatmap)
-                .mode(self.menu_gamemode())
-                .calculate();
-            self.ss_pp = attr.pp();
-        }
-    }
     pub fn adjust_bpm(&mut self) {
         let _span = tracy_client::span!("adjust bpm");
         match self.status {
