@@ -148,7 +148,11 @@ pub fn process_reading_loop(
 
         values.update_stars();
     }
-    
+    if values.status == GameStatus::SongSelect
+        && new_map {
+        values.get_menu_pp();
+    }
+
 
     let ruleset_addr = p.read_i32(
         (p.read_i32(state.addresses.rulesets - 0xb)? + 0x4) as usize
