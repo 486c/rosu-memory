@@ -56,10 +56,20 @@ pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
             let res = websocket.send(
                 Message::Text(serialized_values.clone())
             ).await;
-            
+
+            // When some sort of websocket's error happened
+            // Just close current websocket connection
+            // and try to keep going (also notify user) 
+            // instead of panicking
             if let Err(e) = res {
                 println!("{:?}", e);
-                panic!("{}", e);
+                
+                // Ignoring result of `Close` message
+                let _ = websocket.send(
+                    Message::Close(None)
+                ).await;
+
+                return false;
             };
 
             true
