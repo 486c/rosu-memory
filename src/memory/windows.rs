@@ -26,8 +26,6 @@ use windows::Win32::{
     }
 };
 
-//TODO put unsafe only where it belongs
-//or wrap safe helper functions :)
 impl ProcessTraits for Process {
     fn initialize(proc_name: &str) -> Result<Process, ProcessError> {
         let process = Process::find_process(proc_name)?;

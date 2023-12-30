@@ -243,7 +243,7 @@ pub fn process_reading_loop(
         values.prev_passed_objects = passed_objects;
         
         values.gameplay.grade = values.gameplay.get_current_grade();
-        values.current_bpm = values.get_current_bpm();
+        values.update_current_bpm();
         values.kiai_now = values.get_kiai();
 
         // Placing at the very end cuz we should

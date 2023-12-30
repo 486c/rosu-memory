@@ -543,8 +543,9 @@ pub struct OutputValues {
     /// Mods on `SongSelect` state
     pub menu_mods: u32,
 
-    /// String representation of gameplay mods
-    // TODO: should respect state
+    /// String representation of current selected mods
+    /// `Playing` => using gameplay mods
+    /// `SongSelect` => using menu_mods
     pub mods_str: Vec<&'static str>,
 
     pub plays: i32,
@@ -579,22 +580,24 @@ impl OutputValues {
         self.kiai_now = false;
         self.playtime = 0;
     }
-
     
     #[inline]
     pub fn menu_gamemode(&self) -> GameMode {
         GameMode::from(self.menu_mode as u8)
     }
 
-    pub fn get_current_bpm(&self) -> f64 {
+    pub fn update_current_bpm(&mut self) {
         let _span = tracy_client::span!("get current bpm");
-        if let Some(beatmap) = &self.current_beatmap {
+
+        let bpm = if let Some(beatmap) = &self.current_beatmap {
             60000.0 / beatmap
                 .timing_point_at(self.playtime as f64)
                 .beat_len
         } else {
             self.current_bpm
-        }
+        };
+
+        self.current_bpm = bpm;
     }
 
     pub fn get_kiai(&self) -> bool {
@@ -757,10 +760,15 @@ impl OutputValues {
 
     pub fn get_readable_mods(&mut self) -> Vec<&'static str> {
         let _span = tracy_client::span!("get_readable_mods");
-        //TODO take state into account
+        let mods_values = match self.state {
+            GameState::Playing => self.gameplay.mods,
+            GameState::SongSelect => self.menu_mods,
+            _ => self.menu_mods,
+        };
+
         let mut mods: Vec<&'static str> = MODS.iter()
             .filter_map(|(idx, name)| 
-                (self.gameplay.mods & idx > 0).then_some(*name)
+                (mods_values & idx > 0).then_some(*name)
             )
             .collect();
         if mods.contains(&"NC") {
