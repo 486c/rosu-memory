@@ -238,7 +238,7 @@ pub fn process_reading_loop(
 
         // Calculate pp
         values.update_current_pp(&mut state.ivalues);
-        values.fc_pp = values.get_fc_pp(&mut state.ivalues);
+        values.update_fc_pp(&mut state.ivalues);
 
         values.prev_passed_objects = passed_objects;
         

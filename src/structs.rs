@@ -616,6 +616,7 @@ impl OutputValues {
         }
     }
 
+    /// Depends on `GameplayValues`
     pub fn update_current_pp(&mut self, ivalues: &mut InnerValues) {
         let _span = tracy_client::span!("get_current_pp");
         if let Some(beatmap) = &self.current_beatmap {
@@ -662,7 +663,8 @@ impl OutputValues {
         }
     }
 
-    pub fn get_fc_pp(&mut self, ivalues: &mut InnerValues) -> f64 {
+    /// Depends on `GameplayValues`
+    pub fn update_fc_pp(&mut self, ivalues: &mut InnerValues) {
         let _span = tracy_client::span!("get_fc_pp");
         if let Some(beatmap) = &self.current_beatmap {
             if ivalues.current_beatmap_perf.is_some() {
@@ -678,10 +680,10 @@ impl OutputValues {
                         .n_katu(self.gameplay.hit_katu as usize)
                         .n_misses(self.gameplay.hit_miss as usize)
                         .calculate();
-                    fc_pp.pp()
+                    self.fc_pp = fc_pp.pp();
                 }
                 else {
-                    0.0
+                    self.fc_pp = 0.0
                 }
             } else {
                 let attr = AnyPP::new(beatmap)
@@ -691,10 +693,11 @@ impl OutputValues {
                 let ss_pp = attr.pp();
                 self.ss_pp = ss_pp;
                 ivalues.current_beatmap_perf = Some(attr);
-                ss_pp
+
+                self.fc_pp = ss_pp;
             }
         } else {
-            0.0
+            self.fc_pp = 0.0
         }
 
     }
