@@ -6,7 +6,7 @@ use eyre::Result;
 
 use rosu_memory::memory::process::{Process, ProcessTraits};
 
-use crate::structs::{State, GameStatus, BeatmapStatus};
+use crate::structs::{State, GameState, BeatmapStatus};
 
 pub fn process_reading_loop(
     p: &Process,
@@ -36,12 +36,12 @@ pub fn process_reading_loop(
     let skin_data = p.read_i32(skin_ptr as usize)?;
     values.skin = p.read_string(skin_data as usize + 0x44)?;
 
-    values.status = GameStatus::from(
+    values.state = GameState::from(
         p.read_u32(status_ptr as usize)?
     );
 
-    if values.prev_status == GameStatus::Playing 
-    && values.status != GameStatus::Playing {
+    if values.prev_status == GameState::Playing 
+    && values.state != GameState::Playing {
         values.reset_gameplay();
         state.ivalues.reset();
         values.update_stars();
@@ -51,7 +51,7 @@ pub fn process_reading_loop(
       return Ok(())
     }
 
-    if values.status != GameStatus::MultiplayerLobby {
+    if values.state != GameState::MultiplayerLobby {
         let ar_addr = beatmap_addr + 0x2c;
         let cs_addr = ar_addr + 0x04;
         let hp_addr = cs_addr + 0x04;
@@ -79,9 +79,9 @@ pub fn process_reading_loop(
 
     let mut new_map = false;
 
-    if values.status != GameStatus::PreSongSelect
-    && values.status != GameStatus::MultiplayerLobby 
-    && values.status != GameStatus::MultiplayerResultScreen {
+    if values.state != GameState::PreSongSelect
+    && values.state != GameState::MultiplayerLobby 
+    && values.state != GameState::MultiplayerResultScreen {
         let menu_mode_addr = p.read_i32(state.addresses.base - 0x33)?;
 
         let beatmap_file = p.read_string((beatmap_addr + 0x90) as usize)?;
@@ -156,8 +156,9 @@ pub fn process_reading_loop(
         (p.read_i32(state.addresses.rulesets - 0xb)? + 0x4) as usize
     )?;
 
-    if values.status == GameStatus::Playing {
+    if values.state == GameState::Playing {
         let _span = span!("Gameplay data");
+
         if values.prev_playtime > values.playtime {
             values.reset_gameplay();
             state.ivalues.reset();
@@ -173,8 +174,9 @@ pub fn process_reading_loop(
 
         // Random value but seems to work pretty well
         if values.playtime > 150 {
-            values.current_hp = p.read_f64(hp_base + 0x1C)?;
-            values.current_hp_smooth = p.read_f64(hp_base + 0x14)?;
+            values.gameplay.current_hp = p.read_f64(hp_base + 0x1C)?;
+            values.gameplay.current_hp_smooth = 
+                p.read_f64(hp_base + 0x14)?;
         }
 
         let hit_errors_base = (
@@ -183,43 +185,44 @@ pub fn process_reading_loop(
 
         p.read_i32_array(
             hit_errors_base,
-            &mut values.hit_errors
+            &mut values.gameplay.hit_errors
         )?;
 
-        values.unstable_rate = values.calculate_unstable_rate();
+        values.gameplay.unstable_rate = 
+            values.gameplay.calculate_unstable_rate();
 
-        values.mode = p.read_i32(score_base + 0x64)?;
+        values.gameplay.mode = p.read_i32(score_base + 0x64)?;
 
-        values.hit_300 = p.read_i16(score_base + 0x8a)?;
-        values.hit_100 = p.read_i16(score_base + 0x88)?;
-        values.hit_50 = p.read_i16(score_base + 0x8c)?;
+        values.gameplay.hit_300 = p.read_i16(score_base + 0x8a)?;
+        values.gameplay.hit_100 = p.read_i16(score_base + 0x88)?;
+        values.gameplay.hit_50 = p.read_i16(score_base + 0x8c)?;
 
-        values.username = p.read_string(score_base + 0x28)?;
+        values.gameplay.username = p.read_string(score_base + 0x28)?;
 
-        values.hit_geki = p.read_i16(score_base + 0x8e)?;
-        values.hit_katu = p.read_i16(score_base + 0x90)?;
-        values.hit_miss = p.read_i16(score_base + 0x92)?;
+        values.gameplay.hit_geki = p.read_i16(score_base + 0x8e)?;
+        values.gameplay.hit_katu = p.read_i16(score_base + 0x90)?;
+        values.gameplay.hit_miss = p.read_i16(score_base + 0x92)?;
 
-        let passed_objects = values.passed_objects()?;
-        values.passed_objects = passed_objects;
+        let passed_objects = values.gameplay.passed_objects()?;
+        values.gameplay.passed_objects = passed_objects;
 
-        values.accuracy = values.get_accuracy();
+        values.gameplay.accuracy = values.gameplay.get_accuracy();
 
-        values.score = p.read_i32(score_base + 0x78)?;
+        values.gameplay.score = p.read_i32(score_base + 0x78)?;
 
-        values.combo = p.read_i16(score_base + 0x94)?;
-        values.max_combo = p.read_i16(score_base + 0x68)?;
+        values.gameplay.combo = p.read_i16(score_base + 0x94)?;
+        values.gameplay.max_combo = p.read_i16(score_base + 0x68)?;
 
-        if values.prev_combo > values.combo {
+        if values.prev_combo > values.gameplay.combo {
             values.prev_combo = 0;
         }
 
-        if values.combo < values.prev_combo
-        && values.hit_miss == values.prev_hit_miss {
-            values.slider_breaks += 1;
+        if values.gameplay.combo < values.prev_combo
+        && values.gameplay.hit_miss == values.prev_hit_miss {
+            values.gameplay.slider_breaks += 1;
         }
 
-        values.prev_hit_miss = values.hit_miss;
+        values.prev_hit_miss = values.gameplay.hit_miss;
 
         let mods_xor_base = (
             p.read_i32(score_base + 0x1C)?
@@ -230,7 +233,7 @@ pub fn process_reading_loop(
         let mods_xor1 = mods_raw & 0xFFFFFFFF;
         let mods_xor2 = mods_raw >> 32;
 
-        values.mods = (mods_xor1 ^ mods_xor2) as u32;
+        values.gameplay.mods = (mods_xor1 ^ mods_xor2) as u32;
         values.mods_str = values.get_readable_mods();
 
         // Calculate pp
@@ -239,7 +242,7 @@ pub fn process_reading_loop(
 
         values.prev_passed_objects = passed_objects;
         
-        values.grade = values.get_current_grade();
+        values.gameplay.grade = values.gameplay.get_current_grade();
         values.current_bpm = values.get_current_bpm();
         values.kiai_now = values.get_kiai();
 
@@ -250,20 +253,20 @@ pub fn process_reading_loop(
     }
 
     // Update stars when entering `Playing` state
-    if values.prev_status != GameStatus::Playing 
-    && values.status == GameStatus::Playing {
+    if values.prev_status != GameState::Playing 
+    && values.state == GameState::Playing {
         values.update_stars();
         values.reset_gameplay();
     }
 
-    if values.status == GameStatus::SongSelect 
+    if values.state == GameState::SongSelect 
     && values.prev_menu_mods != values.menu_mods {
         values.update_stars();
     }
 
     values.prev_menu_mode = values.menu_mode;
     values.prev_menu_mods = menu_mods;
-    values.prev_status = values.status;
+    values.prev_status = values.state;
 
     Ok(())
 }
