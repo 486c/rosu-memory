@@ -57,23 +57,23 @@ pub fn process_reading_loop(
         let hp_addr = cs_addr + 0x04;
         let od_addr = hp_addr + 0x04;
 
-        values.ar = p.read_f32(ar_addr as usize)?;
-        values.cs = p.read_f32(cs_addr as usize)?;
-        values.hp = p.read_f32(hp_addr as usize)?;
-        values.od = p.read_f32(od_addr as usize)?;
+        values.beatmap.ar = p.read_f32(ar_addr as usize)?;
+        values.beatmap.cs = p.read_f32(cs_addr as usize)?;
+        values.beatmap.hp = p.read_f32(hp_addr as usize)?;
+        values.beatmap.od = p.read_f32(od_addr as usize)?;
 
         let plays_addr = p.read_i32(state.addresses.base - 0x33)? + 0xC;
         values.plays = p.read_i32(plays_addr as usize)?;
 
-        values.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
-        values.title = p.read_string((beatmap_addr + 0x24) as usize)?;
-        values.creator = p.read_string((beatmap_addr + 0x7C) as usize)?;
-        values.difficulty = p.read_string((beatmap_addr + 0xAC) as usize)?;
-        values.map_id = p.read_i32((beatmap_addr + 0xC8) as usize)?;
-        values.mapset_id = p.read_i32((beatmap_addr + 0xCC) as usize)?;
+        values.beatmap.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
+        values.beatmap.title = p.read_string((beatmap_addr + 0x24) as usize)?;
+        values.beatmap.creator = p.read_string((beatmap_addr + 0x7C) as usize)?;
+        values.beatmap.difficulty = p.read_string((beatmap_addr + 0xAC) as usize)?;
+        values.beatmap.map_id = p.read_i32((beatmap_addr + 0xC8) as usize)?;
+        values.beatmap.mapset_id = p.read_i32((beatmap_addr + 0xCC) as usize)?;
     }
 
-    values.beatmap_status = BeatmapStatus::from(
+    values.beatmap.beatmap_status = BeatmapStatus::from(
         p.read_i16(beatmap_addr as usize + 0x12C)?
     );
 
@@ -86,8 +86,7 @@ pub fn process_reading_loop(
 
         let beatmap_file = p.read_string((beatmap_addr + 0x90) as usize)?;
         let beatmap_folder = p.read_string((beatmap_addr + 0x78) as usize)?;
-        values.beatmap_id = p.read_i32(beatmap_addr as usize + 0xCC)?;
-
+        values.beatmap.beatmap_id = p.read_i32(beatmap_addr as usize + 0xCC)?;
         values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
 
         values.beatmap_full_path = values.osu_path.join("Songs/");
@@ -108,11 +107,11 @@ pub fn process_reading_loop(
                         beatmap.background.filename.clone();
 
                     if let Some(hobj) = beatmap.hit_objects.last() {
-                        values.last_obj_time = hobj.start_time;
+                        values.beatmap.last_obj_time = hobj.start_time;
                     }
 
                     if let Some(hobj) = beatmap.hit_objects.first() {
-                        values.first_obj_time = hobj.start_time;
+                        values.beatmap.first_obj_time = hobj.start_time;
                     }
 
 
@@ -134,7 +133,7 @@ pub fn process_reading_loop(
     }
 
     if let Some(beatmap) = &values.current_beatmap {
-        values.bpm = beatmap.bpm();
+        values.beatmap.bpm = beatmap.bpm();
     }
 
     // store the converted map so it's not converted 

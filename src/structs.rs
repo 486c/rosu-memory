@@ -187,6 +187,34 @@ impl InnerValues {
     }
 }
 
+
+#[derive(Debug, Default, Serialize)]
+pub struct BeatmapValues {
+    pub artist: String,
+    pub title: String,
+    pub creator: String,
+    pub difficulty: String,
+    pub beatmap_id: i32,
+    pub map_id: i32,
+    pub mapset_id: i32,
+
+    pub ar: f32,
+    pub cs: f32,
+    pub hp: f32,
+    pub od: f32,
+
+    pub beatmap_status: BeatmapStatus,
+
+    /// Time in milliseconds of last object of beatmap
+    pub last_obj_time: f64,
+
+    /// Time in milliseconds of first object of beatmap
+    pub first_obj_time: f64,
+
+    /// BPM of current selected beatmap
+    pub bpm: f64,
+}
+
 #[derive(Debug, Default, Serialize)]
 pub struct GameplayValues {
     #[serde(skip)]
@@ -451,14 +479,6 @@ pub struct OutputValues {
     /// Name of the current skin
     pub skin: String,
 
-    pub artist: String,
-    pub title: String,
-    pub creator: String,
-    pub difficulty: String,
-    pub beatmap_id: i32,
-    pub map_id: i32,
-    pub mapset_id: i32,
-
     /// Absolute beatmap file path
     /// Example: `/path/to/osu/Songs/124321 Artist - Title/my_map.osu`
     pub beatmap_full_path: PathBuf,
@@ -503,19 +523,12 @@ pub struct OutputValues {
     /// current gameplay mods and passed objects
     /// calculated gradually
     pub current_stars: f64,
-
-    pub ar: f32,
-    pub cs: f32,
-    pub hp: f32,
-    pub od: f32,
-
-    pub beatmap_status: BeatmapStatus,
     
     /// Gameplay info
     pub gameplay: GameplayValues,
 
-    /// BPM of current selected beatmap
-    pub bpm: f64,
+    /// Beatmap info
+    pub beatmap: BeatmapValues,
 
     /// BPM calculated during gameplay
     /// based on your progress into the beatmap and gameplay mods
@@ -534,7 +547,6 @@ pub struct OutputValues {
     /// basically just removes misses
     pub fc_pp: f64,
 
-
     /// SS PP during gameplay
     /// based on your progress into the beatmap and gameplay mods
     /// TODO: Should be calculated based on state & mods
@@ -550,11 +562,6 @@ pub struct OutputValues {
 
     pub plays: i32,
     
-    /// Time in milliseconds of last object of beatmap
-    pub last_obj_time: f64,
-
-    /// Time in milliseconds of first object of beatmap
-    pub first_obj_time: f64,
 }
 
 impl OutputValues {
@@ -573,7 +580,7 @@ impl OutputValues {
         self.fc_pp = 0.0;
         self.ss_pp = 0.0;
 
-        self.bpm = 0.0;
+        self.beatmap.bpm = 0.0; // TODO ???
         self.current_bpm = 0.0;
         self.prev_passed_objects = 0;
         self.delta_sum = 0;
@@ -714,23 +721,23 @@ impl OutputValues {
                 if self.gameplay.mods & 64 > 0 {
                     self.gameplay.unstable_rate /= 1.5;
                     self.current_bpm *= 1.5;
-                    self.bpm *= 1.5;
+                    self.beatmap.bpm *= 1.5;
                 }
 
                 if self.gameplay.mods & 256 > 0 {
                     self.gameplay.unstable_rate *= 0.75;
                     self.current_bpm *= 0.75;
-                    self.bpm *= 0.75;
+                    self.beatmap.bpm *= 0.75;
                 }
             },
             GameState::SongSelect => {
                 // Using menu mods when in SongSelect
                 if self.menu_mods & 64 > 0 {
-                    self.bpm *= 1.5;
+                    self.beatmap.bpm *= 1.5;
                 }
 
                 if self.menu_mods & 256 > 0 {
-                    self.bpm *= 0.75;
+                    self.beatmap.bpm *= 0.75;
                 }
             },
             _ => ()
