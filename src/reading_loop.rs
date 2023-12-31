@@ -113,9 +113,7 @@ pub fn process_reading_loop(
                         values.first_obj_time = hobj.start_time;
                     }
 
-                    if beatmap.mode != values.menu_gamemode() {
-                        beatmap = beatmap.convert_mode(values.menu_gamemode()).into_owned();
-                    }
+                    beatmap = beatmap.convert_mode(values.menu_gamemode()).into_owned();
 
                     Some(beatmap)
                 },
