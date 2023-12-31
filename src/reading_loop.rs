@@ -88,7 +88,6 @@ pub fn process_reading_loop(
         let beatmap_folder = p.read_string((beatmap_addr + 0x78) as usize)?;
         values.beatmap_id = p.read_i32(beatmap_addr as usize + 0xCC)?;
 
-        values.prev_menu_mode = values.menu_mode;
         values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
 
         values.beatmap_full_path = values.osu_path.join("Songs/");
@@ -262,6 +261,7 @@ pub fn process_reading_loop(
         values.update_stars();
     }
 
+    values.prev_menu_mode = values.menu_mode;
     values.prev_menu_mods = menu_mods;
     values.prev_status = values.status;
 
