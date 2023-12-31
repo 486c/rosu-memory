@@ -211,6 +211,8 @@ pub struct OutputValues {
     pub prev_status: GameStatus,
     #[serde(skip)]
     pub prev_menu_mods: u32,
+    #[serde(skip)]
+    pub prev_menu_mode: i32,
 
     pub skin: String,
 
