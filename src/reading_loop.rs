@@ -99,7 +99,7 @@ pub fn process_reading_loop(
             let current_beatmap = match Beatmap::from_path(
                 &values.beatmap_full_path
             ) {
-                Ok(beatmap) => {
+                Ok(mut beatmap) => {
                     new_map = true;
 
                     values.background_file = 
@@ -113,6 +113,9 @@ pub fn process_reading_loop(
                         values.first_obj_time = hobj.start_time;
                     }
 
+                    if beatmap.mode != values.menu_gamemode() {
+                        beatmap = beatmap.convert_mode(values.menu_gamemode()).into_owned();
+                    }
 
                     Some(beatmap)
                 },
