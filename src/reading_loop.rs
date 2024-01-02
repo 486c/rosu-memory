@@ -144,6 +144,11 @@ pub fn process_reading_loop(
             {
                 values.current_beatmap = Some(converted);
             }
+            else {
+                // manually set mode, since mode isn't changed for
+                // conversions to catch.
+                values.current_beatmap.as_mut().unwrap().mode = values.menu_gamemode();
+            }
         }
 
         values.update_stars();
