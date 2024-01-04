@@ -86,24 +86,25 @@ pub fn process_reading_loop(
 
         let beatmap_file = p.read_string((beatmap_addr + 0x90) as usize)?;
         let beatmap_folder = p.read_string((beatmap_addr + 0x78) as usize)?;
-        values.beatmap.beatmap_id = p.read_i32(beatmap_addr as usize + 0xCC)?;
         values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
 
-        values.beatmap_full_path = values.osu_path.join("Songs/");
-        values.beatmap_full_path.push(&beatmap_folder);
-        values.beatmap_full_path.push(&beatmap_file);
+        values.beatmap.paths.beatmap_full_path 
+            = values.osu_path.join("Songs/");
 
-        if (beatmap_folder != values.beatmap_folder 
-        || beatmap_file != values.beatmap_file
+        values.beatmap.paths.beatmap_full_path.push(&beatmap_folder);
+        values.beatmap.paths.beatmap_full_path.push(&beatmap_file);
+
+        if (beatmap_folder != values.beatmap.paths.beatmap_folder 
+        || beatmap_file != values.beatmap.paths.beatmap_file
         || values.prev_menu_mode != values.menu_mode)
-        && values.beatmap_full_path.exists() {
+        && values.beatmap.paths.beatmap_full_path.exists() {
             let current_beatmap = match Beatmap::from_path(
-                &values.beatmap_full_path
+                &values.beatmap.paths.beatmap_full_path
             ) {
                 Ok(beatmap) => {
                     new_map = true;
 
-                    values.background_file = 
+                    values.beatmap.paths.background_file = 
                         beatmap.background.filename.clone();
 
                     if let Some(hobj) = beatmap.hit_objects.last() {
@@ -126,8 +127,8 @@ pub fn process_reading_loop(
             values.current_beatmap = current_beatmap;
         }
 
-        values.beatmap_folder = beatmap_folder;
-        values.beatmap_file = beatmap_file;
+        values.beatmap.paths.beatmap_folder = beatmap_folder;
+        values.beatmap.paths.beatmap_file = beatmap_file;
 
         values.update_full_paths();
     }

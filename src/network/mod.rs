@@ -178,7 +178,7 @@ async fn serve_http(
         let background_path = { 
             let values = values.lock().unwrap();
 
-            values.background_path_full.clone()
+            values.beatmap.paths.background_path_full.clone()
         };
 
         if !background_path.exists() {

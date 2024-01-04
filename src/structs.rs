@@ -24,6 +24,7 @@ use eyre::Result;
 use crate::network::smol_hyper::SmolIo;
 pub type Arm<T> = Arc<Mutex<T>>;
 pub type Clients = Arm<Vec<WebSocketStream<SmolIo<Upgraded>>>>;
+
 const MODS: [(u32, &str); 31] = [
     (1 << 0, "NF"),
     (1 << 1, "EZ"),
@@ -187,6 +188,28 @@ impl InnerValues {
     }
 }
 
+#[derive(Debug, Default, Serialize)]
+pub struct BeatmapPathValues {
+    /// Absolute beatmap file path
+    /// Example: `/path/to/osu/Songs/124321 Artist - Title/my_map.osu`
+    pub beatmap_full_path: PathBuf,
+
+    /// Relative to osu! folder beatmap folder path
+    /// Example: `124321 Artist - Title`
+    pub beatmap_folder: String,
+
+    /// Relative to beatmap folder background file path
+    /// Example: `my_map.osu`
+    pub beatmap_file: String,
+
+    /// Relative to beatmap folder background file path
+    /// Example: `background.jpg`
+    pub background_file: String,
+
+    /// Absolute background file path
+    /// Example: `/path/to/osu/Songs/beatmap/background.jpg`
+    pub background_path_full: PathBuf,
+}
 
 #[derive(Debug, Default, Serialize)]
 pub struct BeatmapValues {
@@ -194,8 +217,11 @@ pub struct BeatmapValues {
     pub title: String,
     pub creator: String,
     pub difficulty: String,
-    pub beatmap_id: i32,
+
+    /// ID of particular difficulty inside mapset
     pub map_id: i32,
+
+    /// ID of whole mapset
     pub mapset_id: i32,
 
     pub ar: f32,
@@ -213,6 +239,10 @@ pub struct BeatmapValues {
 
     /// BPM of current selected beatmap
     pub bpm: f64,
+    
+    /// Paths of files used by beatmap
+    /// .osu file, background file, etc
+    pub paths: BeatmapPathValues,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -246,30 +276,9 @@ pub struct GameplayValues {
 }
 
 impl GameplayValues {
-    pub fn reset(&mut self) {
-        self.slider_breaks = 0;
-        self.username.clear();
-        self.score = 0;
-        self.hit_300 = 0;
-        self.hit_100 = 0;
-        self.hit_50 = 0;
-        self.hit_geki = 0;
-        self.passed_objects = 0;
-        self.hit_katu = 0;
-        self.hit_miss = 0;
-        self.combo = 0;
-        self.max_combo = 0;
-        self.mode = 0;
-        self.slider_breaks = 0;
-        self.current_hp = 0.0;
-        self.current_hp_smooth = 0.0;
-
-        self.unstable_rate = 0.0;
-    }
-
-
     #[inline]
     pub fn gamemode(&self) -> GameMode {
+        let _span = tracy_client::span!("gamplay gamemode");
         GameMode::from(self.mode as u8)
     }
 
@@ -373,6 +382,7 @@ impl GameplayValues {
                 }
             }
         };
+
         // Hidden | Flashlight | Fade In
         match (base_grade, self.mods & (8 | 1024 | 1048576)) {
             ("SS", conj) if conj > 0 => "SSH",
@@ -479,26 +489,6 @@ pub struct OutputValues {
     /// Name of the current skin
     pub skin: String,
 
-    /// Absolute beatmap file path
-    /// Example: `/path/to/osu/Songs/124321 Artist - Title/my_map.osu`
-    pub beatmap_full_path: PathBuf,
-
-    /// Relative to osu! folder beatmap folder path
-    /// Example: `124321 Artist - Title`
-    pub beatmap_folder: String,
-
-    /// Relative to beatmap folder background file path
-    /// Example: `my_map.osu`
-    pub beatmap_file: String,
-
-    /// Relative to beatmap folder background file path
-    /// Example: `background.jpg`
-    pub background_file: String,
-
-    /// Absolute background file path
-    /// Example: `/path/to/osu/Songs/beatmap/background.jpg`
-    pub background_path_full: PathBuf,
-
     /// Playtime in milliseconds
     /// `Playing` => represents your progress into current beatmap
     /// `SongSelect` => represents progress of mp3 preview
@@ -565,9 +555,11 @@ pub struct OutputValues {
 }
 
 impl OutputValues {
+    // Reseting values should happen from `OutputValues` functions
+    // Separating it in individual functions gonna decrease readability
+    // a lot
     pub fn reset_gameplay(&mut self) {
         let _span = tracy_client::span!("reset gameplay!");
-        self.gameplay.reset();
         self.skin.clear();
 
         self.prev_combo = 0;
@@ -586,10 +578,30 @@ impl OutputValues {
         self.delta_sum = 0;
         self.kiai_now = false;
         self.playtime = 0;
+
+        self.gameplay.slider_breaks = 0;
+        self.gameplay.username.clear();
+        self.gameplay.score = 0;
+        self.gameplay.hit_300 = 0;
+        self.gameplay.hit_100 = 0;
+        self.gameplay.hit_50 = 0;
+        self.gameplay.hit_geki = 0;
+        self.gameplay.passed_objects = 0;
+        self.gameplay.hit_katu = 0;
+        self.gameplay.hit_miss = 0;
+        self.gameplay.combo = 0;
+        self.gameplay.max_combo = 0;
+        self.gameplay.mode = 0;
+        self.gameplay.slider_breaks = 0;
+        self.gameplay.current_hp = 0.0;
+        self.gameplay.current_hp_smooth = 0.0;
+
+        self.gameplay.unstable_rate = 0.0;
     }
     
     #[inline]
     pub fn menu_gamemode(&self) -> GameMode {
+        let _span = tracy_client::span!("menu gamemody");
         GameMode::from(self.menu_mode as u8)
     }
 
@@ -790,15 +802,22 @@ impl OutputValues {
         mods
     }
 
+
+    /// Depends on `BeatmapValues` and `BeatmapPathValues`
     pub fn update_full_paths(&mut self) {
         let _span = tracy_client::span!("update_full_paths");
 
         // beatmap_full_path is expection because
         // it depends on previous state
 
-        self.background_path_full = self.osu_path.join("Songs/");
-        self.background_path_full.push(&self.beatmap_folder);
-        self.background_path_full.push(&self.background_file);
+        self.beatmap.paths.background_path_full 
+            = self.osu_path.join("Songs/");
+
+        self.beatmap.paths.background_path_full
+            .push(&self.beatmap.paths.beatmap_folder);
+
+        self.beatmap.paths.background_path_full
+            .push(&self.beatmap.paths.background_file);
     }
 }
 
