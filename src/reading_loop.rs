@@ -244,7 +244,7 @@ pub fn process_reading_loop(
         
         values.gameplay.grade = values.gameplay.get_current_grade();
         values.update_current_bpm();
-        values.kiai_now = values.get_kiai();
+        values.update_kiai();
 
         // Placing at the very end cuz we should
         // keep up with current_bpm & unstable rate

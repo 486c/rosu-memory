@@ -625,9 +625,10 @@ impl OutputValues {
         self.current_bpm = bpm;
     }
 
-    pub fn get_kiai(&self) -> bool {
+    pub fn update_kiai(&mut self) {
         let _span = tracy_client::span!("get_kiai");
-        if let Some(beatmap) = &self.current_beatmap {
+
+        self.kiai_now = if let Some(beatmap) = &self.current_beatmap {
             // TODO: get rid of extra allocation?
             let kiai_data: Option<EffectPoint> = beatmap
                 .effect_point_at(self.playtime as f64);
