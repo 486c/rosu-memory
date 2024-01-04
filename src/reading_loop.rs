@@ -206,7 +206,7 @@ pub fn process_reading_loop(
         let passed_objects = values.gameplay.passed_objects()?;
         values.gameplay.passed_objects = passed_objects;
 
-        values.gameplay.accuracy = values.gameplay.get_accuracy();
+        values.gameplay.update_accuracy();
 
         values.gameplay.score = p.read_i32(score_base + 0x78)?;
 

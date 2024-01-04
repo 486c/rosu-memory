@@ -391,48 +391,54 @@ impl GameplayValues {
         }
     }
 
-    pub fn get_accuracy(&self) -> f64 {
+    pub fn update_accuracy(&mut self) {
         let _span = tracy_client::span!("calculate accuracy");
-        if self.passed_objects == 0 {
-          return 1.
-        }
-        match self.gamemode() {
-            GameMode::Osu => 
-                (self.hit_300 as f64 * 6. 
-                 + self.hit_100 as f64 * 2. 
-                 + self.hit_50 as f64)
-                / 
-                ((self.hit_300 
-                 + self.hit_100 
-                 + self.hit_50 
-                 + self.hit_miss) as f64 * 6.
-            ),
-            GameMode::Taiko =>
-                (self.hit_300 as f64 * 2. + self.hit_100 as f64)
-                / 
-                ((self.hit_300 
-                 + self.hit_100 
-                 + self.hit_50 
-                 + self.hit_miss) as f64 * 2.),
-            GameMode::Catch =>
-                (self.hit_300 + self.hit_100 + self.hit_50) as f64
-                / 
-                (self.hit_300 + self.hit_100 + self.hit_50 
-                 + self.hit_katu + self.hit_miss) as f64,
-            GameMode::Mania =>
-                ((self.hit_geki + self.hit_300) as f64 
-                 * 6. + self.hit_katu as f64 
-                 * 4. + self.hit_100 as f64 
-                 * 2. + self.hit_50 as f64)
-                / 
-                ((self.hit_geki 
-                 + self.hit_300 
-                 + self.hit_katu 
-                 + self.hit_100 
-                 + self.hit_50 
-                 + self.hit_miss) as f64 * 6.
-            )
-        }
+
+        let acc: f64 = 'blk: {
+            if self.passed_objects == 0 {
+                break 'blk 1.;
+            }
+
+            match self.gamemode() {
+                GameMode::Osu => 
+                    (self.hit_300 as f64 * 6. 
+                     + self.hit_100 as f64 * 2. 
+                     + self.hit_50 as f64)
+                    / 
+                    ((self.hit_300 
+                      + self.hit_100 
+                      + self.hit_50 
+                      + self.hit_miss) as f64 * 6.
+                    ),
+                GameMode::Taiko =>
+                    (self.hit_300 as f64 * 2. + self.hit_100 as f64)
+                    / 
+                    ((self.hit_300 
+                      + self.hit_100 
+                      + self.hit_50 
+                      + self.hit_miss) as f64 * 2.),
+                GameMode::Catch =>
+                    (self.hit_300 + self.hit_100 + self.hit_50) as f64
+                    / 
+                    (self.hit_300 + self.hit_100 + self.hit_50 
+                     + self.hit_katu + self.hit_miss) as f64,
+                GameMode::Mania =>
+                    ((self.hit_geki + self.hit_300) as f64 
+                     * 6. + self.hit_katu as f64 
+                     * 4. + self.hit_100 as f64 
+                     * 2. + self.hit_50 as f64)
+                    / 
+                    ((self.hit_geki 
+                      + self.hit_300 
+                      + self.hit_katu 
+                      + self.hit_100 
+                      + self.hit_50 
+                      + self.hit_miss) as f64 * 6.
+                    )
+            }
+        };
+
+        self.accuracy = acc;
     }
 
     pub fn calculate_unstable_rate(&self) -> f64 {
