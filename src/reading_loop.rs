@@ -264,7 +264,7 @@ pub fn process_reading_loop(
 
     if values.state == GameState::Playing {
         let res = process_gameplay(
-            &p,
+            p,
             state,
             &mut values,
             ruleset_addr
