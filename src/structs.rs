@@ -698,6 +698,7 @@ impl OutputValues {
                     ivalues.current_beatmap_perf.clone() {
                     let fc_pp = AnyPP::new(beatmap)
                         .attributes(attributes.clone())
+                        .mode(self.gameplay.gamemode())
                         .mods(self.gameplay.mods)
                         .n300(self.gameplay.hit_300 as usize)
                         .n100(self.gameplay.hit_100 as usize)
@@ -716,8 +717,10 @@ impl OutputValues {
                     .mods(self.gameplay.mods)
                     .mode(self.gameplay.gamemode())
                     .calculate();
+
                 let ss_pp = attr.pp();
                 self.ss_pp = ss_pp;
+
                 ivalues.current_beatmap_perf = Some(attr);
 
                 self.fc_pp = ss_pp;
