@@ -584,7 +584,6 @@ impl OutputValues {
         self.prev_passed_objects = 0;
         self.delta_sum = 0;
         self.kiai_now = false;
-        self.playtime = 0;
 
         self.gameplay.slider_breaks = 0;
         self.gameplay.score = 0;
