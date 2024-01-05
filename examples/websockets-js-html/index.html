@@ -3,6 +3,8 @@
     <a>Example on how to read from websockets inside js</a>
 	<br>
 	<a id="stars">Stars: <a>
+	<br>
+	<a id="ss_pp">SS_PP: <a>
 
 	<script>
 	  const socket = new WebSocket("ws://localhost:9001/ws");
@@ -20,9 +22,11 @@
 
 		  const data = JSON.parse(event.data)
 
-		  const elem = document.getElementById("stars");
-		  console.log(data.stars)
-		  elem.innerHTML = "Stars: " + data.stars.toString();
+		  const stars_elem = document.getElementById("stars");
+		  stars_elem.innerHTML = "Stars: " + data.stars.toString();
+
+		  var ss_pp_elem = document.getElementById("ss_pp");
+		  ss_pp_elem.innerHTML = "SS_PP: " + data.ss_pp.toString();
 	  });
 	</script>
   </body>

@@ -792,6 +792,7 @@ impl OutputValues {
 
             let attr = beatmap
                 .pp()
+                .mode(mode)    // ^
                 .mods(mods)
                 .calculate();
 
