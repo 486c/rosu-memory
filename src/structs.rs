@@ -705,6 +705,11 @@ impl OutputValues {
 
             return;
         }
+        
+        // TODO yep it definitely should be refactored
+        if self.state == GameState::SongSelect {
+            self.current_pp = self.ss_pp;
+        }
 
         if let Some(beatmap) = &self.current_beatmap {
             let score_state = ScoreState {

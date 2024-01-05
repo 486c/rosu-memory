@@ -323,6 +323,7 @@ pub fn process_reading_loop(
             values.current_pp = 0.0;
         }
 
+        values.update_current_pp(&mut state.ivalues);
         values.update_stars_and_ss_pp();
     }
 
@@ -337,6 +338,7 @@ pub fn process_reading_loop(
     if values.state == GameState::SongSelect 
     && values.prev_menu_mods != values.menu_mods {
         values.update_stars_and_ss_pp();
+        values.update_current_pp(&mut state.ivalues);
     }
 
     values.prev_menu_mode = values.menu_mode;
