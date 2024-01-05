@@ -27,43 +27,43 @@ pub type Clients = Arm<Vec<WebSocketStream<SmolIo<Upgraded>>>>;
 
 macro_rules! calculate_accuracy {
     ($self: expr) => {{
-            match $self.gamemode() {
-                GameMode::Osu => 
-                    ($self.hit_300 as f64 * 6. 
-                     + $self.hit_100 as f64 * 2. 
-                     + $self.hit_50 as f64)
-                    / 
-                    (($self.hit_300 
-                      + $self.hit_100 
-                      + $self.hit_50 
-                      + $self.hit_miss) as f64 * 6.
-                    ),
-                GameMode::Taiko =>
-                    ($self.hit_300 as f64 * 2. + $self.hit_100 as f64)
-                    / 
-                    (($self.hit_300 
-                      + $self.hit_100 
-                      + $self.hit_50 
-                      + $self.hit_miss) as f64 * 2.),
-                GameMode::Catch =>
-                    ($self.hit_300 + $self.hit_100 + $self.hit_50) as f64
-                    / 
-                    ($self.hit_300 + $self.hit_100 + $self.hit_50 
-                     + $self.hit_katu + $self.hit_miss) as f64,
-                GameMode::Mania =>
-                    (($self.hit_geki + $self.hit_300) as f64 
-                     * 6. + $self.hit_katu as f64 
-                     * 4. + $self.hit_100 as f64 
-                     * 2. + $self.hit_50 as f64)
-                    / 
-                    (($self.hit_geki 
-                      + $self.hit_300 
-                      + $self.hit_katu 
-                      + $self.hit_100 
-                      + $self.hit_50 
-                      + $self.hit_miss) as f64 * 6.
-                    )
-            }
+        match $self.gamemode() {
+            GameMode::Osu => 
+                ($self.hit_300 as f64 * 6. 
+                 + $self.hit_100 as f64 * 2. 
+                 + $self.hit_50 as f64)
+                / 
+                (($self.hit_300 
+                  + $self.hit_100 
+                  + $self.hit_50 
+                  + $self.hit_miss) as f64 * 6.
+                ),
+            GameMode::Taiko =>
+                ($self.hit_300 as f64 * 2. + $self.hit_100 as f64)
+                / 
+                (($self.hit_300 
+                  + $self.hit_100 
+                  + $self.hit_50 
+                  + $self.hit_miss) as f64 * 2.),
+            GameMode::Catch =>
+                ($self.hit_300 + $self.hit_100 + $self.hit_50) as f64
+                / 
+                ($self.hit_300 + $self.hit_100 + $self.hit_50 
+                 + $self.hit_katu + $self.hit_miss) as f64,
+            GameMode::Mania =>
+                (($self.hit_geki + $self.hit_300) as f64 
+                 * 6. + $self.hit_katu as f64 
+                 * 4. + $self.hit_100 as f64 
+                 * 2. + $self.hit_50 as f64)
+                / 
+                (($self.hit_geki 
+                  + $self.hit_300 
+                  + $self.hit_katu 
+                  + $self.hit_100 
+                  + $self.hit_50 
+                  + $self.hit_miss) as f64 * 6.
+                )
+        }
     }}
 }
 
@@ -229,6 +229,31 @@ impl InnerValues {
     pub fn reset(&mut self) {
         self.current_beatmap_perf = None;
         self.gradual_performance_current = None;
+    }
+}
+
+#[derive(Debug, Default, Serialize)]
+pub struct KeyOverlayValues {
+    pub k1_pressed: bool,
+    pub k1_count: u32,
+    pub k2_pressed: bool,
+    pub k2_count: u32,
+    pub m1_pressed: bool,
+    pub m1_count: u32,
+    pub m2_pressed: bool,
+    pub m2_count: u32,
+}
+
+impl KeyOverlayValues {
+    pub fn reset(&mut self) {
+        self.k1_pressed = false;
+        self.k1_count = 0;
+        self.k2_pressed = false;
+        self.k2_count = 0;
+        self.m1_pressed = false;
+        self.m1_count = 0;
+        self.m2_pressed = false;
+        self.m2_count = 0;
     }
 }
 
@@ -567,6 +592,9 @@ pub struct OutputValues {
     /// Beatmap info
     pub beatmap: BeatmapValues,
 
+    // KeyOverlay infi
+    pub keyoverlay: KeyOverlayValues,
+
     /// BPM calculated during gameplay
     /// based on your progress into the beatmap and gameplay mods
     pub current_bpm: f64,
@@ -614,6 +642,8 @@ impl OutputValues {
     // a lot
     pub fn reset_gameplay(&mut self) {
         let _span = tracy_client::span!("reset gameplay!");
+
+        self.keyoverlay.reset();
 
         self.prev_combo = 0;
         self.prev_hit_miss = 0;
