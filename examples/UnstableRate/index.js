@@ -24,16 +24,16 @@ let animation = {
 let tempState;
 socket.onmessage = (event) => {
     let data = JSON.parse(event.data);
-    if (tempState !== data.status) {
-        tempState = data.status;
+    if (tempState !== data.state) {
+        tempState = data.state;
         if (tempState == 2) {
             ur.style.opacity = 1;
         } else {
             ur.style.opacity = 0;
         }
     }
-    if (data.unstable_rate != 0) {
-        animation.ur.update(data.unstable_rate);
+    if (data.gameplay.unstable_rate != 0) {
+        animation.ur.update(data.gameplay.unstable_rate);
     } else {
         animation.ur.update(0);
     }
