@@ -146,7 +146,7 @@ pub fn process_reading_loop(
         p.read_u32(status_ptr as usize)?
     );
     
-    // Handle leaving Playing state
+    // Handle leaving `Playing` state
     if values.prev_state == GameState::Playing 
     && values.state != GameState::Playing {
         values.reset_gameplay();
@@ -305,6 +305,27 @@ pub fn process_reading_loop(
         }
     }
 
+    // Handling entering `ResultScreen` state
+    if values.prev_state != GameState::ResultScreen
+    && values.state == GameState::ResultScreen {
+        if values.prev_state != GameState::Playing {
+            values.update_current_pp(&mut state.ivalues);
+        }
+
+        values.update_stars_and_ss_pp();
+    }
+
+    // Handling entering `SongSelect` state
+    if values.prev_state != GameState::SongSelect
+    && values.state == GameState::SongSelect {
+        // Reseting pp's from result screen
+        if values.prev_state == GameState::ResultScreen {
+            values.current_pp = 0.0;
+        }
+
+        values.update_stars_and_ss_pp();
+    }
+
     // Update stars when entering `Playing` state
     if values.prev_state != GameState::Playing 
     && values.state == GameState::Playing {
@@ -312,7 +333,7 @@ pub fn process_reading_loop(
         values.update_stars_and_ss_pp();
     }
     
-    // Handle changing inside `SongSelect` state
+    // Handle mods changes inside `SongSelect` state
     if values.state == GameState::SongSelect 
     && values.prev_menu_mods != values.menu_mods {
         values.update_stars_and_ss_pp();

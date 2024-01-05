@@ -586,6 +586,7 @@ pub struct OutputValues {
     /// based on your progress into the beatmap and mods
     /// `Playing` => using gameplay mods
     /// `SongSelect` => using menu_mods
+    /// `ResultScreen` => using result_screen mods
     pub ss_pp: f64,
 
     /// Mods on `SongSelect` state
@@ -594,6 +595,7 @@ pub struct OutputValues {
     /// String representation of current selected mods
     /// `Playing` => using gameplay mods
     /// `SongSelect` => using menu_mods
+    /// `ResultScreen` => using result_screen mods
     pub mods_str: Vec<&'static str>,
 
     pub plays: i32,
@@ -677,9 +679,33 @@ impl OutputValues {
         }
     }
 
-    /// Depends on `GameplayValues`
+    /// Depends on `GameplayValues` and `ResultScreenValues`
     pub fn update_current_pp(&mut self, ivalues: &mut InnerValues) {
+        // TODO refactor this function in near future
+        // maybe even split pp into struct aka `GameplayValues` -> pp
+        // etc
         let _span = tracy_client::span!("get_current_pp");
+
+        if self.state == GameState::ResultScreen {
+            if let Some(beatmap) = &self.current_beatmap {
+                let attr = beatmap
+                    .pp()
+                    .mode(self.result_screen.gamemode())
+                    .mods(self.result_screen.mods)
+                    .n300(self.result_screen.hit_300 as usize)
+                    .n100(self.result_screen.hit_100 as usize)
+                    .n50(self.result_screen.hit_50 as usize)
+                    .n_geki(self.result_screen.hit_geki as usize)
+                    .n_katu(self.result_screen.hit_katu as usize)
+                    .n_misses(self.result_screen.hit_miss as usize)
+                    .calculate();
+
+                self.current_pp = attr.pp();
+            }
+
+            return;
+        }
+
         if let Some(beatmap) = &self.current_beatmap {
             let score_state = ScoreState {
                 max_combo: self.gameplay.max_combo as usize,
@@ -806,18 +832,20 @@ impl OutputValues {
 
         if let Some(beatmap) = &self.current_beatmap {
             let mods = {
-                if self.state == GameState::Playing {
-                    self.gameplay.mods
-                } else {
-                    self.menu_mods
+                match self.state {
+                    GameState::Playing => self.gameplay.mods,
+                    GameState::SongSelect => self.menu_mods,
+                    GameState::ResultScreen => self.result_screen.mods,
+                    _ => self.menu_mods
                 }
             };
 
             let mode = {
-                if self.state == GameState::Playing {
-                    self.gameplay.gamemode()
-                } else {
-                    self.menu_gamemode()
+                match self.state {
+                    GameState::Playing => self.gameplay.gamemode(),
+                    GameState::SongSelect => self.menu_gamemode(),
+                    GameState::ResultScreen => self.result_screen.gamemode(),
+                    _ => self.menu_gamemode()
                 }
             };
 
@@ -829,7 +857,7 @@ impl OutputValues {
 
             let attr = beatmap
                 .pp()
-                .mode(mode)    // ^
+                .mode(mode)     // ^
                 .mods(mods)
                 .calculate();
 
@@ -844,6 +872,7 @@ impl OutputValues {
         let mods_values = match self.state {
             GameState::Playing => self.gameplay.mods,
             GameState::SongSelect => self.menu_mods,
+            GameState::ResultScreen=> self.result_screen.mods,
             _ => self.menu_mods,
         };
 
