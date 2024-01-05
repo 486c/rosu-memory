@@ -543,9 +543,10 @@ pub struct OutputValues {
     /// basically just removes misses
     pub fc_pp: f64,
 
-    /// SS PP during gameplay
-    /// based on your progress into the beatmap and gameplay mods
-    /// TODO: Should be calculated based on state & mods
+    /// SS PP's
+    /// based on your progress into the beatmap and mods
+    /// `Playing` => using gameplay mods
+    /// `SongSelect` => using menu_mods
     pub ss_pp: f64,
 
     /// Mods on `SongSelect` state
@@ -759,7 +760,7 @@ impl OutputValues {
             _ => ()
         }
     }
-    pub fn update_stars(&mut self) {
+    pub fn update_stars_and_ss_pp(&mut self) {
         let _span = tracy_client::span!("update stars and ss_pp");
 
         if let Some(beatmap) = &self.current_beatmap {
@@ -775,10 +776,12 @@ impl OutputValues {
                     self.menu_mods
                 }
             };
+
             let attr = beatmap
                 .pp()
                 .mods(mods)
                 .calculate();
+
             self.stars_mods = attr.stars();
             self.ss_pp = attr.pp();
         }

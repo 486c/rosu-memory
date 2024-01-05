@@ -44,7 +44,7 @@ pub fn process_reading_loop(
     && values.state != GameState::Playing {
         values.reset_gameplay();
         state.ivalues.reset();
-        values.update_stars();
+        values.update_stars_and_ss_pp();
     }
 
     if beatmap_addr == 0 {
@@ -148,7 +148,7 @@ pub fn process_reading_loop(
             }
         }
 
-        values.update_stars();
+        values.update_stars_and_ss_pp();
     }
     
 
@@ -255,13 +255,13 @@ pub fn process_reading_loop(
     // Update stars when entering `Playing` state
     if values.prev_status != GameState::Playing 
     && values.state == GameState::Playing {
-        values.update_stars();
+        values.update_stars_and_ss_pp();
         values.reset_gameplay();
     }
 
     if values.state == GameState::SongSelect 
     && values.prev_menu_mods != values.menu_mods {
-        values.update_stars();
+        values.update_stars_and_ss_pp();
     }
 
     values.prev_menu_mode = values.menu_mode;
