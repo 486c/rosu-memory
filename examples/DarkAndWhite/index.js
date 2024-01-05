@@ -36,38 +36,38 @@ socket.onmessage = event => {
   try {
     let data = JSON.parse(event.data);
 	
-    document.documentElement.style.setProperty('--progress', `${(data.playtime / data.last_obj_time * 100).toFixed(2)}%`);
-    if (data.status == 2) {
+    document.documentElement.style.setProperty('--progress', `${(data.playtime / data.beatmap.last_obj_time * 100).toFixed(2)}%`);
+    if (data.state == 2) {
       if (cache.id != 0) cache.id = 0;
-      if (data.first_obj_time > data.playtime) {
+      if (data.beatmap.first_obj_time > data.gameplay.playtime) {
         animation.h100.innerHTML = 0;
         animation.h50.innerHTML = 0;
         animation.h0.innerHTML = 0;
       };
       document.body.classList.remove('songSelect');
-      if (data.playtime > data.first_obj_time) {
+      if (data.playtime > data.beatmap.first_obj_time) {
         if (cache.pp.current != data.current_pp) {
           cache.pp.current = data.current_pp;
           animation.pp.current.update(data.current_pp);
         };
-        if (cache.hits[100] != data.hit_100) {
-          cache.hits[100] = data.hit_100;
-          animation.h100.innerHTML = data.hit_100;
+        if (cache.hits[100] != data.gameplay.hit_100) {
+          cache.hits[100] = data.gameplay.hit_100;
+          animation.h100.innerHTML = data.gameplay.hit_100;
         };
-        if (cache.hits[50] != data.hit_50) {
-          cache.hits[50] = data.hit_50;
-          animation.h50.innerHTML = data.hit_50;
+        if (cache.hits[50] != data.gameplay.hit_50) {
+          cache.hits[50] = data.gameplay.hit_50;
+          animation.h50.innerHTML = data.gameplay.hit_50;
         };
-        if (cache.hits[0] != data.hit_miss) {
-          cache.hits[0] = data.hit_miss;
-          animation.h0.innerHTML = data.hit_miss;
+        if (cache.hits[0] != data.gameplay.hit_miss) {
+          cache.hits[0] = data.gameplay.hit_miss;
+          animation.h0.innerHTML = data.gameplay.hit_miss;
         };
       } else animation.pp.current.update(0);
-    }  else if (data.status != 7) {
+    }  else if (data.state != 7) {
       document.body.classList.add('songSelect');
-      if (cache.id != data.beatmap_id) {
-        animation.pp.current.update(data.beatmap_id);
-        cache.id = data.beatmap_id;
+      if (cache.id != data.beatmap.map_id) {
+        animation.pp.current.update(data.beatmap.map_id);
+        cache.id = data.beatmap.map_id;
       };
       animation.h100.innerHTML = 0;
       animation.h50.innerHTML = 0;
