@@ -23,6 +23,10 @@ pub fn process_gameplay(
 
     values.prev_playtime = values.playtime;
 
+    if ruleset_addr == 0 {
+        return Ok(())
+    };
+
     let gameplay_base = 
         p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
 
@@ -299,6 +303,7 @@ pub fn process_reading_loop(
         }
 
         values.update_stars_and_ss_pp();
+        values.update_current_pp(&mut state.ivalues);
     }
     
     let ruleset_addr = p.read_i32(
@@ -342,8 +347,8 @@ pub fn process_reading_loop(
             ruleset_addr
         );
 
-        if res.is_err() {
-            println!("{:?}", res);
+        if let Err(e) = res {
+            println!("{:?}", e);
             println!("Skipped gameplay reading, probably it's not ready yet");
         }
     }
