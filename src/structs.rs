@@ -671,9 +671,8 @@ impl OutputValues {
             _ => ()
         }
     }
-
     pub fn update_stars(&mut self) {
-        let _span = tracy_client::span!("update stars");
+        let _span = tracy_client::span!("update stars and ss_pp");
 
         if let Some(beatmap) = &self.current_beatmap {
             self.stars = beatmap
@@ -688,12 +687,12 @@ impl OutputValues {
                     self.menu_mods
                 }
             };
-
-            self.stars_mods = beatmap
-                .stars()
+            let attr = beatmap
+                .pp()
                 .mods(mods)
-                .calculate()
-                .stars();
+                .calculate();
+            self.stars_mods = attr.stars();
+            self.ss_pp = attr.pp();
         }
     }
 
