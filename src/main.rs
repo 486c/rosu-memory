@@ -15,6 +15,7 @@ use crate::structs::{
 use std::sync::{Arc, Mutex};
 use std::path::PathBuf;
 use std::thread;
+use std::time::Duration;
 
 use clap::Parser;
 
@@ -80,6 +81,13 @@ fn main() -> Result<()> {
     ));
 
     println!("Spawned server!");
+
+    if args.interval != Duration::from_millis(300) {
+        println!(
+            "Using non default interval: {}", 
+            args.interval.as_millis()
+        );
+    }
 
     'init_loop: loop {
 
@@ -173,6 +181,11 @@ fn main() -> Result<()> {
                         continue 'init_loop
                     },
                     Some(_) | None => {
+                        let values = state.values.lock().unwrap();
+                        dbg!(values.gameplay.passed_objects);
+                        dbg!(values.playtime);
+                        dbg!(values.prev_state);
+                        dbg!(values.state);
                         println!("{:?}", e);
                         thread::sleep(args.error_interval);
                         continue 'main_loop
