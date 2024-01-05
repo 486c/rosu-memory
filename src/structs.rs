@@ -300,7 +300,8 @@ pub struct BeatmapValues {
     pub cs: f32,
     pub hp: f32,
     pub od: f32,
-
+    
+    /// Beatmap Status aka Ranked, Pending, Loved, etc
     pub beatmap_status: BeatmapStatus,
 
     /// Time in milliseconds of last object of beatmap
@@ -549,6 +550,7 @@ pub struct OutputValues {
     /// Stars of current beatmap taking in account state and mods
     /// `Playing` => using gameplay mods
     /// `SongSelect` => using menu_mods
+    /// `ResultScreen` => using result_screen mods
     pub stars_mods: f64,
 
     /// Stars calculated during gameplay and based on 
@@ -573,8 +575,13 @@ pub struct OutputValues {
     /// based on your progress into the beatmap
     pub kiai_now: bool,
     
-    /// Current PP during gameplay
-    /// based on your progress into the beatmap and gameplay mods
+    /// Current PP based on your state
+    /// 
+    /// `Playing` => based on your progress into the beatmap 
+    ///              and gameplay mods
+    /// `SongSelect` => ss_pp for current map using menu_mods
+    /// `ResultScreen` => pp calculated for score on the screen 
+    ///                   (values are taken from result_screen)
     pub current_pp: f64,
 
     /// Fullcombo PP during gameplay
