@@ -9,6 +9,8 @@ This means you can simply run it without providing additional arguments
 But just in case you can always overwrite auto-detected path.
 Instructions on how to do that are listed below.
 
+**On Linux auto-detection doesn't work in cutting edge**
+
 # How do I use counters/overlays?
 1. Select any ported counter/overlay (you can see some inside `examples` folder)
 2. Open OBS
@@ -62,58 +64,110 @@ There are two primary methods
 ## JSON Schema
 ```
 {
-  "skin": "lain's skin",
-  "beatmap_full_path": "/path/to/osu/Songs/587221 Bentham - TONIGHT/Bentham - TONIGHT (dsco) [Joel].osu",
-  "artist": "Bentham",
-  "beatmap_folder": "587221 Bentham - TONIGHT",
-  "beatmap_id": 1243461,
-  "beatmap_file": "Bentham - TONIGHT (dsco) [Joel].osu",
-  "background_file": "background.jpg",
-  "background_path_full": "/path/to/osu/Songs/587221 Bentham - TONIGHT/background.jpg",
-  "playtime": 138201,
-  "menu_mode": 0,
-  "status": 5,
-  "stars": 7.02695812837627,
-  "stars_mods": 10.418831982102235,
-  "current_stars": 0,
-  "ar": 9,
-  "cs": 5,
-  "hp": 4,
-  "od": 8,
-  "beatmap_status": 2,
-  "username": "",
-  "score": 0,
-  "hit_300": 0,
-  "hit_100": 0,
-  "hit_50": 0,
-  "hit_geki": 0,
-  "hit_katu": 0,
-  "hit_miss": 0,
-  "accuracy": 0,
-  "combo": 0,
-  "max_combo": 0,
-  "mode": 0,
-  "slider_breaks": 0,
-  "unstable_rate": 0,
-  "grade": "",
-  "current_hp": 0,
-  "current_hp_smooth": 0,
-  "bpm": 196.00028746708827,
-  "current_bpm": 0,
-  "kiai_now": false,
-  "current_pp": 0,
-  "fc_pp": 0,
-  "ss_pp": 0,
-  "passed_objects": 0,
-  "menu_mods": 64,
-  "mods": 0,
-  "plays": 9,
-  "last_obj_time": 225847,
-  "first_obj_time": 1000
+    "skin": "lain's skin",
+    "playtime": 78624,
+    "menu_mode": 0,
+    "state": 5,
+    "stars": 6.772433558139333,
+    "stars_mods": 6.772433558139333,
+    "current_stars": 6.486382070844266,
+    "result_screen": {
+        "username": "",
+        "mods": 0,
+        "mode": 0,
+        "max_combo": 0,
+        "score": 0,
+        "hit_300": 0,
+        "hit_100": 0,
+        "hit_50": 0,
+        "hit_geki": 0,
+        "hit_katu": 0,
+        "hit_miss": 0,
+        "accuracy": 0
+    },
+    "gameplay": {
+        "mods": 0,
+        "username": "Guest",
+        "score": 0,
+        "hit_300": 0,
+        "hit_100": 0,
+        "hit_50": 0,
+        "hit_geki": 0,
+        "hit_katu": 0,
+        "hit_miss": 0,
+        "accuracy": 0.9141824751580849,
+        "combo": 0,
+        "max_combo": 0,
+        "mode": 0,
+        "slider_breaks": 0,
+        "unstable_rate": 0,
+        "passed_objects": 0,
+        "grade": "B",
+        "current_hp": 0,
+        "current_hp_smooth": 0
+    },
+    "beatmap": {
+        "artist": "Eternal Tears Of Sorrow",
+        "title": "Another Me",
+        "creator": "LMT",
+        "difficulty": "Insane 1.36x (250bpm) CS4.2 AR9.6 OD9",
+        "map_id": 2643167,
+        "mapset_id": 1271974,
+        "ar": 9.6,
+        "cs": 4.2,
+        "hp": 5,
+        "od": 9,
+        "beatmap_status": 2,
+        "last_obj_time": 167310,
+        "first_obj_time": 150,
+        "bpm": 250,
+        "paths": {
+            "beatmap_full_path": "/path/to/osu/Songs/1271974 Eternal Tears Of Sorrow - Another Me/Eternal Tears Of Sorrow - Another Me (LMT) [Insane 1.36x (250bpm) CS4.2 AR9.6 OD9].osu",
+            "beatmap_folder": "1271974 Eternal Tears Of Sorrow - Another Me",
+            "beatmap_file": "Eternal Tears Of Sorrow - Another Me (LMT) [Insane 1.36x (250bpm) CS4.2 AR9.6 OD9].osu",
+            "background_file": "night-3129908_1920.jpg",
+            "background_path_full": "/path/to/osu/Songs/1271974 Eternal Tears Of Sorrow - Another Me/night-3129908_1920.jpg"
+        }
+    },
+    "keyoverlay": {
+        "k1_pressed": false,
+        "k1_count": 0,
+        "k2_pressed": false,
+        "k2_count": 0,
+        "m1_pressed": false,
+        "m1_count": 0,
+        "m2_pressed": false,
+        "m2_count": 0
+    },
+    "current_bpm": 0,
+    "kiai_now": false,
+    "current_pp": 469.34991682892615,
+    "fc_pp": 0,
+    "ss_pp": 469.34991682892615,
+    "menu_mods": 0,
+    "mods_str": [],
+    "plays": 7
 }
 ```
 ### Notes
 - All gameplay data is reset when leaving `Playing` state, so you don't need to do this manually in your counter
+- `current_pp` changes depending on state:
+	1. `SongSelect` - Shows SS pp's for currently selected map
+	2. `Playing` - gradually calculates pp's based on your progress into beatmap and gameplay mods
+	3. `ResultScreen` - calculates pp for score that appears on result screen
+- `unstable_rate` - converts itself according to gameplay mods
+- `fc_pp` - removes misses of scores when playing
+- `ss_pp` - uses mods based on your current state
+- `mods_str` changes depending on state:
+	1. `SongSelect` - uses menu mods
+	2. `Playing` - uses gameplay mods
+	3. `ResultScreen` - uses result_screen mods
+- `current_stars` - calculates stars gradualy based on your progress into beatmap and gameplay mods
+- `playtime` changes depending on state:
+	1. `SongSelect` - represents progress of mp3
+	2. `Playing` - represents your progress into current beatmap
+
+
 
 # Benchmarks (Linux)
 ### Static addresses reading

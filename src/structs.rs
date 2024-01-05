@@ -559,7 +559,7 @@ pub struct OutputValues {
 
     /// Playtime in milliseconds
     /// `Playing` => represents your progress into current beatmap
-    /// `SongSelect` => represents progress of mp3 preview
+    /// `SongSelect` => represents progress of mp3
     /// Note: can be negative
     pub playtime: i32,
 
