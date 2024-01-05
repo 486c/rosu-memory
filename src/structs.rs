@@ -566,7 +566,6 @@ impl OutputValues {
     // a lot
     pub fn reset_gameplay(&mut self) {
         let _span = tracy_client::span!("reset gameplay!");
-        self.skin.clear();
 
         self.prev_combo = 0;
         self.prev_hit_miss = 0;
@@ -578,7 +577,6 @@ impl OutputValues {
         self.fc_pp = 0.0;
         self.ss_pp = 0.0;
 
-        self.beatmap.bpm = 0.0; // TODO ???
         self.current_bpm = 0.0;
         self.prev_passed_objects = 0;
         self.delta_sum = 0;
@@ -586,7 +584,6 @@ impl OutputValues {
         self.playtime = 0;
 
         self.gameplay.slider_breaks = 0;
-        self.gameplay.username.clear();
         self.gameplay.score = 0;
         self.gameplay.hit_300 = 0;
         self.gameplay.hit_100 = 0;
@@ -786,7 +783,8 @@ impl OutputValues {
             self.ss_pp = attr.pp();
         }
     }
-
+    
+    // TODO change to setter
     pub fn get_readable_mods(&mut self) -> Vec<&'static str> {
         let _span = tracy_client::span!("get_readable_mods");
         let mods_values = match self.state {
@@ -808,7 +806,6 @@ impl OutputValues {
         }
         mods
     }
-
 
     /// Depends on `BeatmapValues` and `BeatmapPathValues`
     pub fn update_full_paths(&mut self) {
