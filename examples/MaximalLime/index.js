@@ -25,8 +25,8 @@ let tempState;
 let tempImg;
 socket.onmessage = event => {
 	let data = JSON.parse(event.data);
-	if (tempState !== data.background_path_full) {
-		tempState = data.background_path_full
+	if (tempState !== data.beatmap.paths.background_path_full) {
+		tempState = data.beatmap.paths.background_path_full
 		bg.setAttribute('src', `http://127.0.0.1:9001/Songs/${data.background_path_full}`)
 	}
 	if (data.playtime > 1000) {
@@ -39,7 +39,7 @@ socket.onmessage = event => {
 			time.innerHTML = `${seconds}s`
 		}
 	}
-	if (data.current_pp != '') {
+	if (data.gameplay.current_pp != '') {
 		let ppData = data.current_pp;
 		pp.innerHTML = Math.round(ppData) + "pp"
 	} else {
@@ -51,18 +51,18 @@ socket.onmessage = event => {
 	} else {
 		star.innerHTML = 0
 	}
-	if (data.hit_100 > 0) {
-		hun.innerHTML = data.hit_100;
+	if (data.gameplay.hit_100 > 0) {
+		hun.innerHTML = data.gameplay.hit_100;
 	} else {
 		hun.innerHTML = 0
 	}
-	if (data.hit_50 > 0) {
-		fifty.innerHTML = data.hit_50;
+	if (data.gameplay.hit_50 > 0) {
+		fifty.innerHTML = data.gameplay.hit_50;
 	} else {
 		fifty.innerHTML = 0
 	}
-	if (data.hit_miss > 0) {
-		miss.innerHTML = data.hit_miss;
+	if (data.gameplay.hit_miss > 0) {
+		miss.innerHTML = data.gameplay.hit_miss;
 	} else {
 		miss.innerHTML = 0
 	}
