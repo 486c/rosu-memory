@@ -22,8 +22,8 @@ let tempState
 socket.onmessage = event => {
     let data = JSON.parse(event.data)
 
-    if (data.status !== tempState) {
-        tempState = data.status
+    if (data.state !== tempState) {
+        tempState = data.state
         if (tempState !== 2) {
             wrapper.style.transform = "translateX(-110%)"
         } else {
@@ -41,23 +41,23 @@ socket.onmessage = event => {
     } else {
         animation.ifFcpp.update(0)
     }
-    if (data.hit_100 > 0) {
-        animation.hun.update(data.hit_100)
+    if (data.gameplay.hit_100 > 0) {
+        animation.hun.update(data.gameplay.hit_100)
     } else {
         animation.hun.update(0)
     }
-    if (data.hit_50 > 0) {
-        animation.fiv.update(data.hit_50)
+    if (data.gameplay.hit_50 > 0) {
+        animation.fiv.update(data.gameplay.hit_50)
     } else {
         animation.fiv.update(0)
     }
-    if (data.hit_miss > 0) {
-        animation.miss.update(data.hit_miss)
+    if (data.gameplay.hit_miss > 0) {
+        animation.miss.update(data.gameplay.hit_miss)
     } else {
         animation.miss.update(0)
     }
 
-    if (data.hit_miss > 0  ||  data.slider_breaks > 0) {
+    if (data.gameplay.hit_miss > 0  ||  data.gameplay.slider_breaks > 0) {
         ifFcpp.style.opacity = 1
     } else {
         ifFcpp.style.opacity = 0
