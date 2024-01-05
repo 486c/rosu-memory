@@ -2,9 +2,28 @@
   <body>
     <a>Example on how to read from websockets inside js</a>
 	<br>
-	<a id="stars">Stars: <a>
-	<br>
-	<a id="ss_pp">SS_PP: <a>
+
+	<a id="username">username: <a><br>
+	<a id="stars">Stars: <a><br>
+	<a id="modded stars">mStars: <a><br>
+	<a id="ss_pp">SS_PP: <a><br>
+	<a id="fc_pp">fc_pp: <a><br>
+	<a id="h300">h300: <a><br>
+	<a id="h100">h100: <a><br>
+	<a id="h50">h50: <a><br>
+	<a id="miss">misses: <a><br>
+	<a id="acc">acc: <a><br>
+	<a id="curr_pp">curr_pp: <a><br>
+
+	<br><br>
+	<a id="result_username">result_mode: <a><br>
+	<a id="result_mode">result_mode: <a><br>
+	<a id="result_mods">result_mods: <a><br>
+	<a id="result_h300">result_h300: <a><br>
+	<a id="result_h100">result_h100: <a><br>
+	<a id="result_h50">result_h50: <a><br>
+	<a id="result_hmiss">result_hmiss: <a><br>
+	<a id="result_acc">result_acc: <a><br>
 
 	<script>
 	  const socket = new WebSocket("ws://localhost:9001/ws");
@@ -27,6 +46,48 @@
 
 		  var ss_pp_elem = document.getElementById("ss_pp");
 		  ss_pp_elem.innerHTML = "SS_PP: " + data.ss_pp.toString();
+
+		  var current_pp_elem = document.getElementById("current_pp");
+		
+		  var curr_pp_elem = document.getElementById("curr_pp");
+		  var username_elem = document.getElementById("username");
+		  var acc_elem = document.getElementById("acc");
+		  var h300_elem = document.getElementById("h300");
+		  var h100_elem = document.getElementById("h100");
+		  var h50_elem = document.getElementById("h50");
+		  var miss_elem = document.getElementById("miss");
+		  var mstars_elem = document.getElementById("modded stars");
+		  var fc_pp_elem = document.getElementById("fc_pp");
+
+		  fc_pp_elem.innerHTML = "fc_pp: " + data.fc_pp.toString();
+		  acc_elem.innerHTML = "acc: " + data.gameplay.accuracy.toString();
+		  username_elem.innerHTML = "username: " + data.gameplay.username.toString();
+		  h300_elem.innerHTML = "h300: " + data.gameplay.hit_300.toString();
+		  h100_elem.innerHTML = "h100: " + data.gameplay.hit_100.toString();
+		  h50_elem.innerHTML = "h50: " + data.gameplay.hit_50.toString();
+		  miss_elem.innerHTML = "misses: " + data.gameplay.hit_miss.toString();
+		  mstars_elem.innerHTML = "mStars: " + data.stars_mods.toString();
+		  curr_pp_elem.innerHTML = "curr_pp: " + data.current_pp.toString();
+
+		  // results screen
+		  var result_username_elem = document.getElementById("result_username");
+		  var result_acc_elem = document.getElementById("result_acc");
+		  var result_h300_elem = document.getElementById("result_h300");
+		  var result_h100_elem = document.getElementById("result_h100");
+		  var result_h50_elem = document.getElementById("result_h50");
+		  var result_hmiss_elem = document.getElementById("result_hmiss");
+		  var result_mods_elem = document.getElementById("result_mods");
+		  var result_mode_elem = document.getElementById("result_mode");
+
+		  result_username_elem.innerHTML = "result_username: " + data.result_screen.username.toString();
+		  result_acc_elem.innerHTML = "result_acc: " + data.result_screen.accuracy.toString();
+		  result_mods_elem.innerHTML = "result_mods: " + data.result_screen.mods.toString();
+		  result_mode_elem.innerHTML = "result_mode: " + data.result_screen.mode.toString();
+		  result_h300_elem.innerHTML = "result_h300: " + data.result_screen.hit_300.toString();
+		  result_h100_elem.innerHTML = "result_h100: " + data.result_screen.hit_100.toString();
+		  result_h50_elem.innerHTML = "result_h50: " + data.result_screen.hit_50.toString();
+		  result_hmiss_elem.innerHTML = "result_hmiss: " + data.result_screen.hit_miss.toString();
+
 	  });
 	</script>
   </body>
