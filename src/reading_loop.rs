@@ -6,7 +6,113 @@ use eyre::Result;
 
 use rosu_memory::memory::process::{Process, ProcessTraits};
 
-use crate::structs::{State, GameState, BeatmapStatus};
+use crate::structs::{State, GameState, BeatmapStatus, OutputValues};
+
+pub fn process_gameplay(
+    p: &Process,
+    state: &mut State,
+    values: &mut OutputValues,
+    ruleset_addr: i32,
+) -> Result<()> {
+    let _span = span!("Gameplay data");
+
+    if values.prev_playtime > values.playtime {
+        values.reset_gameplay();
+        state.ivalues.reset();
+    }
+
+    values.prev_playtime = values.playtime;
+
+    let gameplay_base = 
+        p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
+
+    let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
+
+    let hp_base: usize = p.read_i32(gameplay_base + 0x40)? as usize;
+
+    // Random value but seems to work pretty well
+    // TODO sometimes playtime is >150 but game doesn't have
+    // values yet unreal to debug, occurs rarely and randomly
+    if values.playtime > 150 {
+        values.gameplay.current_hp = p.read_f64(hp_base + 0x1C)?;
+        values.gameplay.current_hp_smooth = 
+            p.read_f64(hp_base + 0x14)?;
+    }
+
+    let hit_errors_base = (
+        p.read_i32(score_base + 0x38)?
+        ) as usize;
+
+    p.read_i32_array(
+        hit_errors_base,
+        &mut values.gameplay.hit_errors
+        )?;
+
+    values.gameplay.unstable_rate = 
+        values.gameplay.calculate_unstable_rate();
+
+    values.gameplay.mode = p.read_i32(score_base + 0x64)?;
+
+    values.gameplay.hit_300 = p.read_i16(score_base + 0x8a)?;
+    values.gameplay.hit_100 = p.read_i16(score_base + 0x88)?;
+    values.gameplay.hit_50 = p.read_i16(score_base + 0x8c)?;
+
+    values.gameplay.username = p.read_string(score_base + 0x28)?;
+
+    values.gameplay.hit_geki = p.read_i16(score_base + 0x8e)?;
+    values.gameplay.hit_katu = p.read_i16(score_base + 0x90)?;
+    values.gameplay.hit_miss = p.read_i16(score_base + 0x92)?;
+
+    let passed_objects = values.gameplay.passed_objects()?;
+    values.gameplay.passed_objects = passed_objects;
+
+    values.gameplay.update_accuracy();
+
+    values.gameplay.score = p.read_i32(score_base + 0x78)?;
+
+    values.gameplay.combo = p.read_i16(score_base + 0x94)?;
+    values.gameplay.max_combo = p.read_i16(score_base + 0x68)?;
+
+    if values.prev_combo > values.gameplay.combo {
+        values.prev_combo = 0;
+    }
+
+    if values.gameplay.combo < values.prev_combo
+        && values.gameplay.hit_miss == values.prev_hit_miss {
+            values.gameplay.slider_breaks += 1;
+        }
+
+    values.prev_hit_miss = values.gameplay.hit_miss;
+
+    let mods_xor_base = (
+        p.read_i32(score_base + 0x1C)?
+        ) as usize;
+
+    let mods_raw = p.read_u64(mods_xor_base + 0x8)?;
+
+    let mods_xor1 = mods_raw & 0xFFFFFFFF;
+    let mods_xor2 = mods_raw >> 32;
+
+    values.gameplay.mods = (mods_xor1 ^ mods_xor2) as u32;
+    values.update_readable_mods();
+
+    // Calculate pp
+    values.update_current_pp(&mut state.ivalues);
+    values.update_fc_pp(&mut state.ivalues);
+
+    values.prev_passed_objects = passed_objects;
+
+    values.gameplay.grade = values.gameplay.get_current_grade();
+    values.update_current_bpm();
+    values.update_kiai();
+
+    // Placing at the very end cuz we should
+    // keep up with current_bpm & unstable rate
+    // updates
+    values.adjust_bpm();
+
+    Ok(())
+}
 
 pub fn process_reading_loop(
     p: &Process,
@@ -40,7 +146,7 @@ pub fn process_reading_loop(
         p.read_u32(status_ptr as usize)?
     );
 
-    if values.prev_status == GameState::Playing 
+    if values.prev_state == GameState::Playing 
     && values.state != GameState::Playing {
         values.reset_gameplay();
         state.ivalues.reset();
@@ -157,105 +263,21 @@ pub fn process_reading_loop(
     )?;
 
     if values.state == GameState::Playing {
-        let _span = span!("Gameplay data");
+        let res = process_gameplay(
+            &p,
+            state,
+            &mut values,
+            ruleset_addr
+        );
 
-        if values.prev_playtime > values.playtime {
-            values.reset_gameplay();
-            state.ivalues.reset();
+        if res.is_err() {
+            println!("{:?}", res);
+            println!("Skipped gameplay reading, probably it's not ready yet");
         }
-
-        values.prev_playtime = values.playtime;
-
-        let gameplay_base = 
-            p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
-        let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
-
-        let hp_base: usize = p.read_i32(gameplay_base + 0x40)? as usize;
-
-        // Random value but seems to work pretty well
-        // TODO sometimes playtime is >150 but game doesn't have
-        // values yet unreal to debug, occurs rarely and randomly
-        if values.playtime > 150 {
-            values.gameplay.current_hp = p.read_f64(hp_base + 0x1C)?;
-            values.gameplay.current_hp_smooth = 
-                p.read_f64(hp_base + 0x14)?;
-        }
-
-        let hit_errors_base = (
-            p.read_i32(score_base + 0x38)?
-        ) as usize;
-
-        p.read_i32_array(
-            hit_errors_base,
-            &mut values.gameplay.hit_errors
-        )?;
-
-        values.gameplay.unstable_rate = 
-            values.gameplay.calculate_unstable_rate();
-
-        values.gameplay.mode = p.read_i32(score_base + 0x64)?;
-
-        values.gameplay.hit_300 = p.read_i16(score_base + 0x8a)?;
-        values.gameplay.hit_100 = p.read_i16(score_base + 0x88)?;
-        values.gameplay.hit_50 = p.read_i16(score_base + 0x8c)?;
-
-        values.gameplay.username = p.read_string(score_base + 0x28)?;
-
-        values.gameplay.hit_geki = p.read_i16(score_base + 0x8e)?;
-        values.gameplay.hit_katu = p.read_i16(score_base + 0x90)?;
-        values.gameplay.hit_miss = p.read_i16(score_base + 0x92)?;
-
-        let passed_objects = values.gameplay.passed_objects()?;
-        values.gameplay.passed_objects = passed_objects;
-
-        values.gameplay.update_accuracy();
-
-        values.gameplay.score = p.read_i32(score_base + 0x78)?;
-
-        values.gameplay.combo = p.read_i16(score_base + 0x94)?;
-        values.gameplay.max_combo = p.read_i16(score_base + 0x68)?;
-
-        if values.prev_combo > values.gameplay.combo {
-            values.prev_combo = 0;
-        }
-
-        if values.gameplay.combo < values.prev_combo
-        && values.gameplay.hit_miss == values.prev_hit_miss {
-            values.gameplay.slider_breaks += 1;
-        }
-
-        values.prev_hit_miss = values.gameplay.hit_miss;
-
-        let mods_xor_base = (
-            p.read_i32(score_base + 0x1C)?
-        ) as usize;
-
-        let mods_raw = p.read_u64(mods_xor_base + 0x8)?;
-
-        let mods_xor1 = mods_raw & 0xFFFFFFFF;
-        let mods_xor2 = mods_raw >> 32;
-
-        values.gameplay.mods = (mods_xor1 ^ mods_xor2) as u32;
-        values.update_readable_mods();
-
-        // Calculate pp
-        values.update_current_pp(&mut state.ivalues);
-        values.update_fc_pp(&mut state.ivalues);
-
-        values.prev_passed_objects = passed_objects;
-        
-        values.gameplay.grade = values.gameplay.get_current_grade();
-        values.update_current_bpm();
-        values.update_kiai();
-
-        // Placing at the very end cuz we should
-        // keep up with current_bpm & unstable rate
-        // updates
-        values.adjust_bpm();
     }
 
     // Update stars when entering `Playing` state
-    if values.prev_status != GameState::Playing 
+    if values.prev_state != GameState::Playing 
     && values.state == GameState::Playing {
         values.update_stars_and_ss_pp();
         values.reset_gameplay();
@@ -268,7 +290,7 @@ pub fn process_reading_loop(
 
     values.prev_menu_mode = values.menu_mode;
     values.prev_menu_mods = menu_mods;
-    values.prev_status = values.state;
+    values.prev_state = values.state;
 
     Ok(())
 }
