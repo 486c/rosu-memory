@@ -234,7 +234,7 @@ pub fn process_reading_loop(
         let mods_xor2 = mods_raw >> 32;
 
         values.gameplay.mods = (mods_xor1 ^ mods_xor2) as u32;
-        values.mods_str = values.get_readable_mods();
+        values.update_readable_mods();
 
         // Calculate pp
         values.update_current_pp(&mut state.ivalues);

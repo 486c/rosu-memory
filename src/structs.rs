@@ -25,6 +25,7 @@ use crate::network::smol_hyper::SmolIo;
 pub type Arm<T> = Arc<Mutex<T>>;
 pub type Clients = Arm<Vec<WebSocketStream<SmolIo<Upgraded>>>>;
 
+//TODO use bitflags & enum & bitflags iterator for converting to string?
 const MODS: [(u32, &str); 31] = [
     (1 << 0, "NF"),
     (1 << 1, "EZ"),
@@ -58,6 +59,7 @@ const MODS: [(u32, &str); 31] = [
     (1 << 29, "V2"),
     (1 << 30, "MR"),
 ];
+
 #[derive(Serialize_repr, Debug, Default, PartialEq, Eq, Clone, Copy)]
 #[repr(u32)]
 pub enum GameState {
@@ -788,26 +790,31 @@ impl OutputValues {
     }
     
     // TODO change to setter
-    pub fn get_readable_mods(&mut self) -> Vec<&'static str> {
+    pub fn update_readable_mods(&mut self) {
         let _span = tracy_client::span!("get_readable_mods");
+
         let mods_values = match self.state {
             GameState::Playing => self.gameplay.mods,
             GameState::SongSelect => self.menu_mods,
             _ => self.menu_mods,
         };
 
-        let mut mods: Vec<&'static str> = MODS.iter()
-            .filter_map(|(idx, name)| 
-                (mods_values & idx > 0).then_some(*name)
-            )
-            .collect();
-        if mods.contains(&"NC") {
-            mods.retain(|x| x != &"DT");
+        self.mods_str.clear();
+
+        MODS.iter()
+            .for_each(|(idx, name)| {
+                if let Some(m) = (mods_values & idx > 0).then_some(*name) {
+                    self.mods_str.push(m);
+                }
+            });
+
+        if self.mods_str.contains(&"NC") {
+            self.mods_str.retain(|x| x != &"DT");
         }
-        if mods.contains(&"PF") {
-            mods.retain(|x| x != &"SD");
+
+        if self.mods_str.contains(&"PF") {
+            self.mods_str.retain(|x| x != &"SD");
         }
-        mods
     }
 
     /// Depends on `BeatmapValues` and `BeatmapPathValues`
@@ -838,6 +845,7 @@ mod test {
     #[test]
     fn test_mod_conversion() {
         let mut values = OutputValues {
+            state: GameState::Playing,
             gameplay: GameplayValues {
                 mods: 88,
                 ..Default::default()
@@ -845,20 +853,24 @@ mod test {
             ..Default::default()
         };
 
+        values.update_readable_mods();
         assert_eq!(
             vec!["HD", "HR", "DT"], 
-            values.get_readable_mods()
+            values.mods_str
         );
 
         values.gameplay.mods = 584;
+        values.update_readable_mods();
         assert_eq!(
-            vec!["HD", "NC"], values.get_readable_mods()
+            vec!["HD", "NC"],
+            values.mods_str
         );
 
         values.gameplay.mods = 1107561552;
+        values.update_readable_mods();
         assert_eq!(
             vec!["HR","DT","FL","AU","K7","Coop","MR"], 
-            values.get_readable_mods()
+            values.mods_str
         );
     }
 }
