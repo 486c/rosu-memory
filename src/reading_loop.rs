@@ -86,7 +86,7 @@ pub fn process_gameplay(
 
     let mods_xor_base = (
         p.read_i32(score_base + 0x1C)?
-        ) as usize;
+    ) as usize;
 
     let mods_raw = p.read_u64(mods_xor_base + 0x8)?;
 
@@ -258,11 +258,39 @@ pub fn process_reading_loop(
         values.update_stars_and_ss_pp();
     }
     
-
     let ruleset_addr = p.read_i32(
         (p.read_i32(state.addresses.rulesets - 0xb)? + 0x4) as usize
     )?;
 
+    // Process result screen
+    if values.state == GameState::ResultScreen {
+        let result_base = (
+            p.read_i32(ruleset_addr as usize + 0x38)?
+        ) as usize;
+
+        values.result_screen.username = p.read_string(result_base + 0x28)?;
+
+        let mods_xor_base = (
+            p.read_i32(result_base + 0x1C)?
+        ) as usize;
+
+        let mods_xor1 = p.read_i32(mods_xor_base + 0xC)?;
+        let mods_xor2 = p.read_i32(mods_xor_base + 0x8)?;
+
+        values.result_screen.mods = (mods_xor1 ^ mods_xor2) as u32;
+        values.result_screen.mode = p.read_i32(result_base + 0x64)? as u8;
+        values.result_screen.score = p.read_i32(result_base + 0x78)?;
+
+        values.result_screen.hit_300 = p.read_i16(result_base + 0x8A)?;
+        values.result_screen.hit_100 = p.read_i16(result_base + 0x88)?;
+        values.result_screen.hit_50 = p.read_i16(result_base + 0x8C)?;
+        values.result_screen.hit_geki = p.read_i16(result_base + 0x8E)?;
+        values.result_screen.hit_katu = p.read_i16(result_base + 0x90)?;
+
+        values.result_screen.update_accuracy();
+    }
+    
+    // Process gameplay
     if values.state == GameState::Playing {
         let res = process_gameplay(
             p,
