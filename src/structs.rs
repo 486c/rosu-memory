@@ -728,7 +728,6 @@ impl OutputValues {
         } else {
             self.fc_pp = 0.0
         }
-
     }
 
     /// Adjust bpm based on current state

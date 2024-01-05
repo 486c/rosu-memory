@@ -173,6 +173,8 @@ pub fn process_reading_loop(
         let hp_base: usize = p.read_i32(gameplay_base + 0x40)? as usize;
 
         // Random value but seems to work pretty well
+        // TODO sometimes playtime is >150 but game doesn't have
+        // values yet unreal to debug, occurs rarely and randomly
         if values.playtime > 150 {
             values.gameplay.current_hp = p.read_f64(hp_base + 0x1C)?;
             values.gameplay.current_hp_smooth = 
