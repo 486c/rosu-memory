@@ -1,6 +1,8 @@
 <html>
   <body>
     <a>Example on how to read from websockets inside js</a>
+	<br>
+	<a id="stars">Stars: <a>
 
 	<script>
 	  const socket = new WebSocket("ws://localhost:9001/ws");
@@ -15,6 +17,12 @@
 
 	  socket.addEventListener("message", (event) => {
 		  console.log("Message from server ", event.data);
+
+		  const data = JSON.parse(event.data)
+
+		  const elem = document.getElementById("stars");
+		  console.log(data.stars)
+		  elem.innerHTML = "Stars: " + data.stars.toString();
 	  });
 	</script>
   </body>

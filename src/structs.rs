@@ -762,15 +762,12 @@ impl OutputValues {
             _ => ()
         }
     }
+
+
     pub fn update_stars_and_ss_pp(&mut self) {
         let _span = tracy_client::span!("update stars and ss_pp");
 
         if let Some(beatmap) = &self.current_beatmap {
-            self.stars = beatmap
-                .stars()
-                .calculate()
-                .stars();
-
             let mods = {
                 if self.state == GameState::Playing {
                     self.gameplay.mods
@@ -778,6 +775,20 @@ impl OutputValues {
                     self.menu_mods
                 }
             };
+
+            let mode = {
+                if self.state == GameState::Playing {
+                    self.gameplay.gamemode()
+                } else {
+                    self.menu_gamemode()
+                }
+            };
+
+            self.stars = beatmap
+                .stars()
+                .mode(mode)     // Catch convertions is 
+                .calculate()    // broken so converting
+                .stars();       // manually, read #57 & #55
 
             let attr = beatmap
                 .pp()
@@ -789,7 +800,6 @@ impl OutputValues {
         }
     }
     
-    // TODO change to setter
     pub fn update_readable_mods(&mut self) {
         let _span = tracy_client::span!("get_readable_mods");
 
