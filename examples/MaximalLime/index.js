@@ -27,7 +27,7 @@ socket.onmessage = event => {
 	let data = JSON.parse(event.data);
 	if (tempState !== data.beatmap.paths.background_path_full) {
 		tempState = data.beatmap.paths.background_path_full
-		bg.setAttribute('src', `http://127.0.0.1:9001/Songs/${data.background_path_full}`)
+		bg.setAttribute('src', `http://127.0.0.1:9001/Songs/${data.beatmap.paths.background_path_full}`)
 	}
 	if (data.playtime > 1000) {
 		let seconds = (data.playtime/1000).toFixed(0);
@@ -66,8 +66,6 @@ socket.onmessage = event => {
 	} else {
 		miss.innerHTML = 0
 	}
-
-	console.log(data.stars_mods);
 }
 
 

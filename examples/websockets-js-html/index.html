@@ -40,6 +40,7 @@
 		  console.log("Message from server ", event.data);
 
 		  const data = JSON.parse(event.data)
+		  console.log(data.keyoverlay)
 
 		  const stars_elem = document.getElementById("stars");
 		  stars_elem.innerHTML = "Stars: " + data.stars.toString();
