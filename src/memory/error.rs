@@ -93,7 +93,7 @@ impl Display for ProcessError {
             ProcessError::ConvertionError => 
                 write!(f, "Got error during type convertion"),
             ProcessError::SignatureNotFound(v) => 
-                write!(f, "Cannot found signature {}", v),
+                write!(f, "Cannot find signature {}", v),
             ProcessError::OsError { .. } => 
                 write!(f, "Got OS error"),
             ProcessError::NotEnoughPermissions => 
