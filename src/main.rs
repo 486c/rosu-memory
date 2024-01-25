@@ -181,7 +181,6 @@ fn main() -> Result<()> {
                         continue 'init_loop
                     },
                     Some(_) | None => {
-                        let values = state.values.lock().unwrap();
                         println!("{:?}", e);
                         thread::sleep(args.error_interval);
                         continue 'main_loop
