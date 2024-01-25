@@ -182,10 +182,6 @@ fn main() -> Result<()> {
                     },
                     Some(_) | None => {
                         let values = state.values.lock().unwrap();
-                        dbg!(values.gameplay.passed_objects);
-                        dbg!(values.playtime);
-                        dbg!(values.prev_state);
-                        dbg!(values.state);
                         println!("{:?}", e);
                         thread::sleep(args.error_interval);
                         continue 'main_loop
