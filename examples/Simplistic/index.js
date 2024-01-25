@@ -73,6 +73,16 @@ socket.onmessage = event => {
         // Rank Check
         function rankCheck() {
             switch (hitGrade) {
+                case "SSH":
+                    tempGrade = "SS";
+                    tempColor = (hdfl ? "#e0e0e0" : "#d6c253");
+                    tempShadow = (hdfl ? "0 0 0.5rem #e0e0e0" : "0 0 0.5rem #d6c253");
+                    break;
+                case "SH":
+                    tempGrade = "S";
+                    tempColor = (hdfl ? "#e0e0e0" : "#d6c253");
+                    tempShadow = (hdfl ? "0 0 0.5rem #e0e0e0" : "0 0 0.5rem #d6c253");
+                    break;
                 case "SS":
                     tempGrade = hitGrade;
                     tempColor = (hdfl ? "#e0e0e0" : "#d6c253");
