@@ -8,6 +8,60 @@ use rosu_memory::memory::process::{Process, ProcessTraits};
 
 use crate::structs::{State, GameState, BeatmapStatus, OutputValues};
 
+
+/// Here cases when key overlay is not gonna be available for reading:
+/// 1. Map is not fully loaded
+/// 2. If key overlay is not enabled in settings
+pub fn process_key_overlay(
+    p: &Process,
+    values: &mut OutputValues,
+    ruleset_addr: i32,
+) -> Result<()> {
+    let keyoverlay_ptr = p.read_i32((ruleset_addr + 0xB0) as usize)?;
+
+    if keyoverlay_ptr == 0 {
+        return Ok(())
+    }
+
+    let keyoverlay_addr = p.read_i32(
+        (p.read_i32(keyoverlay_ptr as usize + 0x10)? + 0x4) as usize
+    )? as usize;
+    
+    values.keyoverlay.k1_pressed = p.read_i8(
+        (p.read_i32(keyoverlay_addr + 0x8)? + 0x1C) as usize
+    )? != 0;
+
+    values.keyoverlay.k1_count = p.read_i32(
+        p.read_i32(keyoverlay_addr + 0x8)? as usize + 0x14
+    )? as u32;
+
+    values.keyoverlay.k2_pressed = p.read_i8(
+        p.read_i32(keyoverlay_addr + 0xC)? as usize + 0x1C
+    )? != 0;
+
+    values.keyoverlay.k2_count = p.read_i32(
+        p.read_i32(keyoverlay_addr + 0xC)? as usize + 0x14
+    )? as u32;
+
+    values.keyoverlay.m1_pressed = p.read_i8(
+        p.read_i32(keyoverlay_addr + 0x10)? as usize + 0x1C
+    )? != 0;
+
+    values.keyoverlay.m1_count = p.read_i32(
+        p.read_i32(keyoverlay_addr + 0x10)? as usize + 0x14
+    )? as u32;
+
+    values.keyoverlay.m2_pressed = p.read_i8(
+        p.read_i32(keyoverlay_addr + 0x14)? as usize + 0x1C
+    )? != 0;
+
+    values.keyoverlay.m2_count = p.read_i32(
+        p.read_i32(keyoverlay_addr + 0x14)? as usize + 0x14
+    )? as u32;
+
+    Ok(())
+}
+
 pub fn process_gameplay(
     p: &Process,
     state: &mut State,
@@ -97,48 +151,12 @@ pub fn process_gameplay(
     let mods_xor1 = mods_raw & 0xFFFFFFFF;
     let mods_xor2 = mods_raw >> 32;
 
-    // Read keyoverlay
-    let keyoverlay_ptr = p.read_i32((ruleset_addr + 0xB0) as usize)?;
-
-    // TODO check for nulls
-    // maybe use early returns?
-
-    let keyoverlay_addr = p.read_i32(
-        (p.read_i32(keyoverlay_ptr as usize + 0x10)? + 0x4) as usize
-    )? as usize;
-    
-    // TODO refactor
-    values.keyoverlay.k1_pressed = p.read_i8(
-        (p.read_i32(keyoverlay_addr + 0x8)? + 0x1C) as usize
-    )? != 0;
-
-    values.keyoverlay.k1_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0x8)? as usize + 0x14
-    )? as u32;
-
-    values.keyoverlay.k2_pressed = p.read_i8(
-        p.read_i32(keyoverlay_addr + 0xC)? as usize + 0x1C
-    )? != 0;
-
-    values.keyoverlay.k2_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0xC)? as usize + 0x14
-    )? as u32;
-
-    values.keyoverlay.m1_pressed = p.read_i8(
-        p.read_i32(keyoverlay_addr + 0x10)? as usize + 0x1C
-    )? != 0;
-
-    values.keyoverlay.m1_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0x10)? as usize + 0x14
-    )? as u32;
-
-    values.keyoverlay.m2_pressed = p.read_i8(
-        p.read_i32(keyoverlay_addr + 0x14)? as usize + 0x1C
-    )? != 0;
-
-    values.keyoverlay.m2_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0x14)? as usize + 0x14
-    )? as u32;
+    // Read key overlay
+    process_key_overlay(
+        p,
+        values,
+        ruleset_addr
+    )?;
 
     values.gameplay.mods = (mods_xor1 ^ mods_xor2) as u32;
     values.update_readable_mods();
