@@ -122,6 +122,7 @@ pub fn process_gameplay(
     values.gameplay.hit_miss = p.read_i16(score_base + 0x92)?;
 
     let passed_objects = values.gameplay.passed_objects()?;
+
     values.gameplay.passed_objects = passed_objects;
 
     values.gameplay.update_accuracy();
@@ -130,10 +131,6 @@ pub fn process_gameplay(
 
     values.gameplay.combo = p.read_i16(score_base + 0x94)?;
     values.gameplay.max_combo = p.read_i16(score_base + 0x68)?;
-
-    if values.prev_combo > values.gameplay.combo {
-        values.prev_combo = 0;
-    }
 
     if values.gameplay.combo < values.prev_combo
         && values.gameplay.hit_miss == values.prev_hit_miss {
@@ -166,6 +163,7 @@ pub fn process_gameplay(
     values.update_fc_pp(&mut state.ivalues);
 
     values.prev_passed_objects = passed_objects;
+    values.prev_combo = values.gameplay.combo;
 
     values.gameplay.grade = values.gameplay.get_current_grade();
     values.update_current_bpm();
@@ -324,11 +322,13 @@ pub fn process_reading_loop(
         values.update_current_pp(&mut state.ivalues);
     }
     
+    // TODO check this for null values
     let ruleset_addr = p.read_i32(
         (p.read_i32(state.addresses.rulesets - 0xb)? + 0x4) as usize
     )?;
 
     // Process result screen
+    // TODO handle situations when result screen is not ready
     if values.state == GameState::ResultScreen {
         let result_base = (
             p.read_i32(ruleset_addr as usize + 0x38)?
