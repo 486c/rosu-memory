@@ -11,9 +11,12 @@
 	<a id="h300">h300: <a><br>
 	<a id="h100">h100: <a><br>
 	<a id="h50">h50: <a><br>
+	<a id="hsb">sb: </a><br>
 	<a id="miss">misses: <a><br>
 	<a id="acc">acc: <a><br>
 	<a id="curr_pp">curr_pp: <a><br>
+	<a id="combo">combo: </a><br>
+	<a id="max_combo">max_combo: </a><br>
 
 	<br><br>
 	<a id="result_username">result_mode: <a><br>
@@ -56,9 +59,12 @@
 		  var h300_elem = document.getElementById("h300");
 		  var h100_elem = document.getElementById("h100");
 		  var h50_elem = document.getElementById("h50");
+		  var sb_elem = document.getElementById("hsb");
 		  var miss_elem = document.getElementById("miss");
 		  var mstars_elem = document.getElementById("modded stars");
 		  var fc_pp_elem = document.getElementById("fc_pp");
+		  var combo_elem = document.getElementById("combo");
+		  var max_combo_elem = document.getElementById("max_combo");
 
 		  fc_pp_elem.innerHTML = "fc_pp: " + data.fc_pp.toString();
 		  acc_elem.innerHTML = "acc: " + data.gameplay.accuracy.toString();
@@ -66,9 +72,13 @@
 		  h300_elem.innerHTML = "h300: " + data.gameplay.hit_300.toString();
 		  h100_elem.innerHTML = "h100: " + data.gameplay.hit_100.toString();
 		  h50_elem.innerHTML = "h50: " + data.gameplay.hit_50.toString();
+		  sb_elem.innerHTML = "sb: " + data.gameplay.slider_breaks.toString();
 		  miss_elem.innerHTML = "misses: " + data.gameplay.hit_miss.toString();
 		  mstars_elem.innerHTML = "mStars: " + data.stars_mods.toString();
 		  curr_pp_elem.innerHTML = "curr_pp: " + data.current_pp.toString();
+		  combo_elem.innerHTML = "combo: " + data.gameplay.combo.toString();
+		  max_combo_elem.innerHTML = "max_combo: " + data.gameplay.max_combo.toString();
+
 
 		  // results screen
 		  var result_username_elem = document.getElementById("result_username");
