@@ -21,35 +21,44 @@ socket.onerror = error => {
 
 
 let animation = {
-    acc:  new CountUp('accdata', 0, 0, 2, .2, {useEasing: true, useGrouping: true,   separator: " ", decimal: "." }),
-    combo:  new CountUp('combodata', 0, 0, 0, .2, {useEasing: true, useGrouping: true,   separator: " ", decimal: "." }),
+    acc: new CountUp('accdata', 0, 0, 2, .2, {
+        useEasing: true,
+        useGrouping: true,
+        separator: " ",
+        decimal: "."
+    }),
+    combo: new CountUp('combodata', 0, 0, 0, .2, {
+        useEasing: true,
+        useGrouping: true,
+        separator: " ",
+        decimal: "."
+    }),
 }
 
 let tempState;
 
-socket.onmessage = event => {  
+socket.onmessage = event => {
     let data = JSON.parse(event.data);
-    if(tempState !== data.state){
+    if (tempState !== data.state) {
         tempState = data.state;
-        if(tempState == 2 ){
+        if (tempState == 2) {
             wrapper.style.opacity = 1;
-        }
-        else{
+        } else {
             wrapper.style.opacity = 0;
         }
     }
-    if(data.gameplay.current_hp_smooth != "" || data.gameplay.current_hp_smooth != null || data.gameplay.current_hp_smooth != undefined){
-        let step = widthBase/200;
-        scoreColor.style.width = step * data.gameplay.current_hp_smooth +'px'
+    if (data.gameplay.current_hp_smooth != "" || data.gameplay.current_hp_smooth != null || data.gameplay.current_hp_smooth != undefined) {
+        let step = widthBase / 200;
+        scoreColor.style.width = step * data.gameplay.current_hp_smooth + 'px'
     }
-    if(data.gameplay.score != ""){
-        let text = data.gameplay.score.toString().padStart(8,"0");
+    if (data.gameplay.score != "") {
+        let text = data.gameplay.score.toString().padStart(8, "0");
         score.innerHTML = text;
     }
-    if(data.gameplay.accuracy != ""){
+    if (data.gameplay.accuracy != "") {
         animation.acc.update(data.gameplay.accuracy * 100)
     }
-    if(data.gameplay.combo != ""){
+    if (data.gameplay.combo != "") {
         animation.combo.update(data.gameplay.combo)
     }
 }

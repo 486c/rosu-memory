@@ -20,78 +20,78 @@ socket.onclose = event => {
 };
 socket.onerror = error => console.log("Socket Error: ", error);
 let pp = new CountUp('pp', 0, 0, 0, .5, {
-    useEasing: true
-    , useGrouping: true
-    , separator: " "
-    , decimal: "."
+    useEasing: true,
+    useGrouping: true,
+    separator: " ",
+    decimal: "."
 });
 let fc = new CountUp('ppfc', 0, 0, 0, .5, {
-    useEasing: true
-    , useGrouping: true
-    , separator: " "
-    , decimal: "."
+    useEasing: true,
+    useGrouping: true,
+    separator: " ",
+    decimal: "."
 });
 let h100 = new CountUp('h100', 0, 0, 0, .5, {
-    useEasing: true
-    , useGrouping: true
-    , separator: ""
-    , decimal: "."
+    useEasing: true,
+    useGrouping: true,
+    separator: "",
+    decimal: "."
 });
 let h50 = new CountUp('h50', 0, 0, 0, .5, {
-    useEasing: true
-    , useGrouping: true
-    , separator: ""
-    , decimal: "."
+    useEasing: true,
+    useGrouping: true,
+    separator: "",
+    decimal: "."
 });
 let h0 = new CountUp('h0', 0, 0, 0, .5, {
-    useEasing: true
-    , useGrouping: true
-    , separator: ""
-    , decimal: "."
+    useEasing: true,
+    useGrouping: true,
+    separator: "",
+    decimal: "."
 });
 let ss = new CountUp('ss', 0, 0, 0, .5, {
-    useEasing: true
-    , useGrouping: true
-    , separator: " "
-    , decimal: "."
+    useEasing: true,
+    useGrouping: true,
+    separator: " ",
+    decimal: "."
 });
 let sb = new CountUp('sb', 0, 0, 0, .5, {
-    useEasing: true
-    , useGrouping: true
-    , separator: " "
-    , decimal: "."
+    useEasing: true,
+    useGrouping: true,
+    separator: " ",
+    decimal: "."
 });
 socket.onmessage = event => {
     try {
-        let data = JSON.parse(event.data)
-        , play = data.gameplay
-        , hitGrade = data.gameplay.grade
-        , hdfl = (data.mods_str.includes("HD") || data.mods_str.includes("FL") ? true : false)
-        , tempGrade = ""
-        , tempColor = ""
-        , tempShadow = "";
+        let data = JSON.parse(event.data),
+            play = data.gameplay,
+            hitGrade = data.gameplay.grade,
+            hdfl = (data.mods_str.includes("HD") || data.mods_str.includes("FL") ? true : false),
+            tempGrade = "",
+            tempColor = "",
+            tempShadow = "";
         // Rank Check
         function rankCheck() {
             switch (hitGrade) {
                 case "SSH":
                     tempGrade = "SS";
-                    tempColor = (hdfl ? "#e0e0e0" : "#d6c253");
-                    tempShadow = (hdfl ? "0 0 0.5rem #e0e0e0" : "0 0 0.5rem #d6c253");
+                    tempColor = "#e0e0e0";
+                    tempShadow = "0 0 0.5rem #e0e0e0";
                     break;
                 case "SH":
                     tempGrade = "S";
-                    tempColor = (hdfl ? "#e0e0e0" : "#d6c253");
-                    tempShadow = (hdfl ? "0 0 0.5rem #e0e0e0" : "0 0 0.5rem #d6c253");
+                    tempColor = "#e0e0e0";
+                    tempShadow = "0 0 0.5rem #e0e0e0";
                     break;
                 case "SS":
                     tempGrade = hitGrade;
-                    tempColor = (hdfl ? "#e0e0e0" : "#d6c253");
-                    tempShadow = (hdfl ? "0 0 0.5rem #e0e0e0" : "0 0 0.5rem #d6c253");
+                    tempColor = "#d6c253";
+                    tempShadow = "0 0 0.5rem #d6c253";
                     break;
                 case "S":
                     tempGrade = hitGrade;
-                    tempColor = (hdfl ? "#e0e0e0" : "#d6c253");
-                    tempShadow = (hdfl ? "0 0 0.5rem #e0e0e0" : "0 0 0.5rem #d6c253");
+                    tempColor = "#d6c253";
+                    tempShadow = "0 0 0.5rem #d6c253";
                     break;
                 case "A":
                     tempGrade = hitGrade;
