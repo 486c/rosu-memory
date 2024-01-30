@@ -808,7 +808,7 @@ impl OutputValues {
                         .n50(self.gameplay.hit_50 as usize)
                         .n_geki(self.gameplay.hit_geki as usize)
                         .n_katu(self.gameplay.hit_katu as usize)
-                        .n_misses(self.gameplay.hit_miss as usize)
+                        .n_misses(0)
                         .calculate();
                     self.fc_pp = fc_pp.pp();
                 }
