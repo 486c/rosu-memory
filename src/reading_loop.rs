@@ -322,10 +322,16 @@ pub fn process_reading_loop(
         values.update_current_pp(&mut state.ivalues);
     }
     
-    // TODO check this for null values
     let ruleset_addr = p.read_i32(
         (p.read_i32(state.addresses.rulesets - 0xb)? + 0x4) as usize
     )?;
+    
+    // If this happened there is zero sense to continue
+    // reading because all the values depends on this
+    // address
+    if ruleset_addr == 0 {
+        return Ok(())
+    }
 
     // Process result screen
     // TODO handle situations when result screen is not ready
