@@ -325,6 +325,9 @@ pub struct BeatmapValues {
     /// ID of whole mapset
     pub mapset_id: i32,
 
+    /// MD5 hash of the beatmap
+    pub md5: String,
+
     pub ar: f32,
     pub cs: f32,
     pub hp: f32,

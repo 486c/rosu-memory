@@ -84,6 +84,10 @@ pub fn process_gameplay(
     let gameplay_base = 
         p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
 
+    if gameplay_base == 0 {
+        return Ok(())
+    }
+
     let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
 
     let hp_base: usize = p.read_i32(gameplay_base + 0x40)? as usize;
@@ -241,6 +245,8 @@ pub fn process_reading_loop(
         values.beatmap.difficulty = p.read_string((beatmap_addr + 0xAC) as usize)?;
         values.beatmap.map_id = p.read_i32((beatmap_addr + 0xC8) as usize)?;
         values.beatmap.mapset_id = p.read_i32((beatmap_addr + 0xCC) as usize)?;
+
+
     }
 
     values.beatmap.beatmap_status = BeatmapStatus::from(
@@ -277,6 +283,10 @@ pub fn process_reading_loop(
 
         values.beatmap.paths.beatmap_full_path.push(&beatmap_folder);
         values.beatmap.paths.beatmap_full_path.push(&beatmap_file);
+
+        values.beatmap.md5 = 
+            p.read_string((beatmap_addr + 0x6C) as usize)?;
+
 
 
         // Check if beatmap changed
