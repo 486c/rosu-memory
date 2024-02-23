@@ -254,6 +254,15 @@ pub fn process_reading_loop(
         state.addresses.chat_checker - 0x20
     )? != 0;
 
+    // Skin folder
+    let skin_data_ptr = p.read_i32(
+        p.read_i32(state.addresses.skin + 4)? as usize
+    )?;
+
+    values.skin_folder = p.read_string(
+        (skin_data_ptr + 68) as usize
+    )?;
+
     if values.state != GameState::PreSongSelect
     && values.state != GameState::MultiplayerLobby 
     && values.state != GameState::MultiplayerResultScreen {
@@ -269,16 +278,6 @@ pub fn process_reading_loop(
         values.beatmap.paths.beatmap_full_path.push(&beatmap_folder);
         values.beatmap.paths.beatmap_full_path.push(&beatmap_file);
 
-        // Skin folder
-        let skin_data_ptr = p.read_i32(
-            p.read_i32(state.addresses.skin + 4)? as usize
-        )?;
-
-        let skin_folder = p.read_string(
-            (skin_data_ptr + 68) as usize
-        )?;
-
-        values.skin_folder = skin_folder;
 
         // Check if beatmap changed
         if (beatmap_folder != values.beatmap.paths.beatmap_folder 
