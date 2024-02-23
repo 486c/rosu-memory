@@ -171,6 +171,7 @@ pub struct StaticAddresses {
     pub rulesets: usize,
     pub playtime: usize,
     pub skin: usize,
+    pub chat_checker: usize,
 }
 
 impl StaticAddresses {
@@ -193,6 +194,8 @@ impl StaticAddresses {
 
         let skin_sign = Signature::from_str("75 21 8B 1D")?;
 
+        let chat_checker = Signature::from_str("0A D7 23 3C 00 00 ?? 01")?;
+
         Ok(Self {
             base: p.read_signature(&base_sign)?,
             status: p.read_signature(&status_sign)?,
@@ -200,6 +203,7 @@ impl StaticAddresses {
             rulesets: p.read_signature(&rulesets_sign)?,
             playtime: p.read_signature(&playtime_sign)?,
             skin: p.read_signature(&skin_sign)?,
+            chat_checker: p.read_signature(&chat_checker)?,
         })
     }
 }
@@ -559,6 +563,10 @@ pub struct OutputValues {
 
     /// Skin folder relative to the osu! folder
     pub skin_folder: String,
+
+
+    /// Is chat enabled (F9/F8)
+    pub chat_enabled: bool,
 
     /// Playtime in milliseconds
     /// `Playing` => represents your progress into current beatmap

@@ -249,6 +249,11 @@ pub fn process_reading_loop(
 
     let mut new_map = false;
 
+    // All time values that available everywhere
+    values.chat_enabled = p.read_i8(
+        state.addresses.chat_checker - 0x20
+    )? != 0;
+
     if values.state != GameState::PreSongSelect
     && values.state != GameState::MultiplayerLobby 
     && values.state != GameState::MultiplayerResultScreen {
