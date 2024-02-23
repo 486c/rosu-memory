@@ -557,6 +557,9 @@ pub struct OutputValues {
     /// Name of the current skin
     pub skin: String,
 
+    /// Skin folder relative to the osu! folder
+    pub skin_folder: String,
+
     /// Playtime in milliseconds
     /// `Playing` => represents your progress into current beatmap
     /// `SongSelect` => represents progress of mp3
