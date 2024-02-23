@@ -134,7 +134,7 @@ impl From<u32> for GameState {
     }
 }
 
-#[derive(Serialize_repr, Debug, Default, PartialEq, Eq)]
+#[derive(Serialize_repr, Debug, Default, PartialEq, Eq, Copy, Clone)]
 #[repr(i16)]
 pub enum BeatmapStatus {
     #[default]
@@ -342,8 +342,14 @@ pub struct BeatmapValues {
     /// Time in milliseconds of first object of beatmap
     pub first_obj_time: f64,
 
-    /// BPM of current selected beatmap
+    /// BPM of currently selected beatmap
     pub bpm: f64,
+
+    /// Max BPM of currently selected beatmap 
+    pub max_bpm: f64,
+
+    /// Min BPM of currently selected beatmap
+    pub min_bpm: f64,
     
     /// Paths of files used by beatmap
     /// .osu file, background file, etc
@@ -699,6 +705,28 @@ impl OutputValues {
         GameMode::from(self.menu_mode as u8)
     }
 
+    pub fn update_min_max_bpm(&mut self) {
+        if let Some(beatmap) = &self.current_beatmap {
+            // Maybe this is not very idiomatic approach
+            // but atleast we dont need to iterate twice
+            // to calculate min and max values
+
+            let mut max_bpm = f64::MIN;
+            let mut min_bpm = f64::MAX;
+
+            for timing_point in beatmap.timing_points.iter() {
+                let bpm = 60000.0 / timing_point.beat_len;
+
+                if bpm > max_bpm { max_bpm = bpm };
+                if bpm < min_bpm { min_bpm = bpm };
+            }
+
+            self.beatmap.max_bpm = max_bpm;
+            self.beatmap.min_bpm = min_bpm;
+        }
+
+    }
+
     pub fn update_current_bpm(&mut self) {
         let _span = tracy_client::span!("get current bpm");
 
@@ -847,7 +875,7 @@ impl OutputValues {
         }
     }
 
-    /// Adjust bpm based on current state
+    /// Adjust bpm based on current state and mods
     /// `Playing` => using gameplay mods
     /// `SongSelect` => using menu_mods
     ///
@@ -860,22 +888,39 @@ impl OutputValues {
                     self.gameplay.unstable_rate /= 1.5;
                     self.current_bpm *= 1.5;
                     self.beatmap.bpm *= 1.5;
+                    self.beatmap.max_bpm *= 1.5;
+                    self.beatmap.min_bpm *= 1.5;
                 }
-
-                if self.gameplay.mods & 256 > 0 {
+                else if self.gameplay.mods & 256 > 0 {
                     self.gameplay.unstable_rate *= 0.75;
                     self.current_bpm *= 0.75;
                     self.beatmap.bpm *= 0.75;
+                    self.beatmap.max_bpm *= 0.75;
+                    self.beatmap.min_bpm *= 0.75;
+                } else {
+                    self.update_min_max_bpm();
+
+                    if let Some(beatmap) = &self.current_beatmap {
+                        self.beatmap.bpm = beatmap.bpm();
+                    }
                 }
             },
             GameState::SongSelect => {
-                // Using menu mods when in SongSelect
                 if self.menu_mods & 64 > 0 {
                     self.beatmap.bpm *= 1.5;
+                    self.beatmap.max_bpm *= 1.5;
+                    self.beatmap.min_bpm *= 1.5;
                 }
-
-                if self.menu_mods & 256 > 0 {
+                else if self.menu_mods & 256 > 0 {
                     self.beatmap.bpm *= 0.75;
+                    self.beatmap.max_bpm *= 0.75;
+                    self.beatmap.min_bpm *= 0.75;
+                } else {
+                    self.update_min_max_bpm();
+
+                    if let Some(beatmap) = &self.current_beatmap {
+                        self.beatmap.bpm = beatmap.bpm();
+                    }
                 }
             },
             _ => ()
@@ -952,6 +997,7 @@ impl OutputValues {
 
     /// Depends on `BeatmapValues` and `BeatmapPathValues`
     pub fn update_full_paths(&mut self) {
+        dbg!("update full paths");
         let _span = tracy_client::span!("update_full_paths");
 
         // beatmap_full_path is expection because

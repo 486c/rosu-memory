@@ -173,11 +173,6 @@ pub fn process_gameplay(
     values.update_current_bpm();
     values.update_kiai();
 
-    // Placing at the very end cuz we should
-    // keep up with current_bpm & unstable rate
-    // updates
-    values.adjust_bpm();
-
     Ok(())
 }
 
@@ -222,7 +217,7 @@ pub fn process_reading_loop(
     }
 
     if beatmap_addr == 0 {
-      return Ok(())
+        return Ok(())
     }
 
     if values.state != GameState::MultiplayerLobby {
@@ -287,8 +282,6 @@ pub fn process_reading_loop(
         values.beatmap.md5 = 
             p.read_string((beatmap_addr + 0x6C) as usize)?;
 
-
-
         // Check if beatmap changed
         if (beatmap_folder != values.beatmap.paths.beatmap_folder 
         || beatmap_file != values.beatmap.paths.beatmap_file
@@ -311,6 +304,7 @@ pub fn process_reading_loop(
                         values.beatmap.first_obj_time = hobj.start_time;
                     }
 
+                    values.beatmap.bpm = beatmap.bpm();
 
                     Some(beatmap)
                 },
@@ -321,16 +315,14 @@ pub fn process_reading_loop(
             };
 
             values.current_beatmap = current_beatmap;
+
+            values.beatmap.paths.beatmap_folder = beatmap_folder;
+            values.beatmap.paths.beatmap_file = beatmap_file;
+
+            values.update_min_max_bpm();
+            values.update_full_paths();
+            values.adjust_bpm();
         }
-
-        values.beatmap.paths.beatmap_folder = beatmap_folder;
-        values.beatmap.paths.beatmap_file = beatmap_file;
-
-        values.update_full_paths();
-    }
-
-    if let Some(beatmap) = &values.current_beatmap {
-        values.beatmap.bpm = beatmap.bpm();
     }
 
     // store the converted map so it's not converted 
@@ -423,6 +415,7 @@ pub fn process_reading_loop(
 
         values.update_current_pp(&mut state.ivalues);
         values.update_stars_and_ss_pp();
+        values.adjust_bpm();
     }
 
     // Update stars when entering `Playing` state
@@ -430,6 +423,7 @@ pub fn process_reading_loop(
     && values.state == GameState::Playing {
         values.reset_gameplay();
         values.update_stars_and_ss_pp();
+        values.adjust_bpm();
     }
     
     // Handle mods changes inside `SongSelect` state
@@ -437,6 +431,7 @@ pub fn process_reading_loop(
     && values.prev_menu_mods != values.menu_mods {
         values.update_stars_and_ss_pp();
         values.update_current_pp(&mut state.ivalues);
+        values.adjust_bpm();
     }
 
     values.prev_menu_mode = values.menu_mode;
