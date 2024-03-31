@@ -22,6 +22,8 @@ pub fn process_key_overlay(
     if keyoverlay_ptr == 0 {
         return Ok(())
     }
+    
+    // TODO optimize using batches?
 
     let keyoverlay_addr = p.read_i32(
         p.read_i32(keyoverlay_ptr + 0x10)? + 0x4
@@ -111,14 +113,17 @@ pub fn process_gameplay(
     values.gameplay.unstable_rate = 
         values.gameplay.calculate_unstable_rate();
 
+    // TODO batch
     values.gameplay.mode = p.read_i32(score_base + 0x64)?;
 
+    // TODO batch
     values.gameplay.hit_300 = p.read_i16(score_base + 0x8a)?;
     values.gameplay.hit_100 = p.read_i16(score_base + 0x88)?;
     values.gameplay.hit_50 = p.read_i16(score_base + 0x8c)?;
 
     values.gameplay.username = p.read_string(score_base + 0x28)?;
-
+    
+    // TODO batch
     values.gameplay.hit_geki = p.read_i16(score_base + 0x8e)?;
     values.gameplay.hit_katu = p.read_i16(score_base + 0x90)?;
     values.gameplay.hit_miss = p.read_i16(score_base + 0x92)?;
@@ -224,7 +229,11 @@ pub fn process_reading_loop(
             size_of::<f32>() * 4, 
             &mut beatmap_stats_buff
         )?;
+        
 
+        // Safety: unwrap here because buff is already initialized
+        // and filled with zeros, the worst case scenario is
+        // ar, cs, od, hp going to be zero's
         values.beatmap.ar = f32::from_le_bytes(
             beatmap_stats_buff[0..4].try_into().unwrap()
         );
@@ -248,10 +257,8 @@ pub fn process_reading_loop(
         values.beatmap.title = p.read_string(beatmap_addr + 0x24)?;
         values.beatmap.creator = p.read_string(beatmap_addr + 0x7C)?;
         values.beatmap.difficulty = p.read_string(beatmap_addr + 0xAC)?;
-        values.beatmap.map_id = p.read_i32(beatmap_addr + 0xC8)?;
-        values.beatmap.mapset_id = p.read_i32(beatmap_addr + 0xCC)?;
-
-
+        values.beatmap.map_id = p.read_i32(beatmap_addr + 0xC8)?; // TODO batch
+        values.beatmap.mapset_id = p.read_i32(beatmap_addr + 0xCC)?; // TODO batch
     }
 
     values.beatmap.beatmap_status = BeatmapStatus::from(
@@ -369,14 +376,16 @@ pub fn process_reading_loop(
         values.result_screen.username = p.read_string(result_base + 0x28)?;
 
         let mods_xor_base = p.read_i32(result_base + 0x1C)?;
-
+        
+        // TODO batch
         let mods_xor1 = p.read_i32(mods_xor_base + 0xC)?;
         let mods_xor2 = p.read_i32(mods_xor_base + 0x8)?;
 
         values.result_screen.mods = (mods_xor1 ^ mods_xor2) as u32;
         values.result_screen.mode = p.read_i32(result_base + 0x64)? as u8;
         values.result_screen.score = p.read_i32(result_base + 0x78)?;
-
+        
+        // TODO batch
         values.result_screen.hit_300 = p.read_i16(result_base + 0x8A)?;
         values.result_screen.hit_100 = p.read_i16(result_base + 0x88)?;
         values.result_screen.hit_50 = p.read_i16(result_base + 0x8C)?;
