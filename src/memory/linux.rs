@@ -108,7 +108,7 @@ impl ProcessTraits for Process {
     fn read_signature(
         &self, 
         sign: &Signature
-    ) -> Result<usize, ProcessError> {
+    ) -> Result<i32, ProcessError> {
         let mut buff = Vec::new();
 
         for region in &self.maps {
@@ -136,7 +136,7 @@ impl ProcessTraits for Process {
             }
 
             if let Some(offset) = find_signature(buff.as_slice(), sign) {
-                return Ok(remote.base + offset);
+                return Ok((remote.base + offset) as i32);
             }
         }
 
@@ -145,12 +145,12 @@ impl ProcessTraits for Process {
 
     fn read(
         &self, 
-        addr: usize, 
+        addr: i32, 
         len: usize, 
         buff: &mut [u8]
     ) -> Result<(), ProcessError> {
         let remote = RemoteIoVec {
-            base: addr,
+            base: addr as usize,
             len
         };
 
@@ -167,7 +167,7 @@ impl ProcessTraits for Process {
             Err(e) => {
                 match e {
                     nix::errno::Errno::EFAULT => 
-                        return Err(ProcessError::BadAddress(addr, len)),
+                        return Err(ProcessError::BadAddress(addr as usize, len)),
                     _ => return Err(e.into()),
                 }
             },

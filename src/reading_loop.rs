@@ -1,4 +1,4 @@
-use std::borrow::Cow;
+use std::{borrow::Cow, mem::size_of};
 
 use rosu_pp::Beatmap;
 use tracy_client::*;
@@ -17,46 +17,46 @@ pub fn process_key_overlay(
     values: &mut OutputValues,
     ruleset_addr: i32,
 ) -> Result<()> {
-    let keyoverlay_ptr = p.read_i32((ruleset_addr + 0xB0) as usize)?;
+    let keyoverlay_ptr = p.read_i32(ruleset_addr + 0xB0)?;
 
     if keyoverlay_ptr == 0 {
         return Ok(())
     }
 
     let keyoverlay_addr = p.read_i32(
-        (p.read_i32(keyoverlay_ptr as usize + 0x10)? + 0x4) as usize
-    )? as usize;
+        p.read_i32(keyoverlay_ptr + 0x10)? + 0x4
+    )?;
     
     values.keyoverlay.k1_pressed = p.read_i8(
-        (p.read_i32(keyoverlay_addr + 0x8)? + 0x1C) as usize
+        p.read_i32(keyoverlay_addr + 0x8)? + 0x1C
     )? != 0;
 
     values.keyoverlay.k1_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0x8)? as usize + 0x14
+        p.read_i32(keyoverlay_addr + 0x8)? + 0x14
     )? as u32;
 
     values.keyoverlay.k2_pressed = p.read_i8(
-        p.read_i32(keyoverlay_addr + 0xC)? as usize + 0x1C
+        p.read_i32(keyoverlay_addr + 0xC)? + 0x1C
     )? != 0;
 
     values.keyoverlay.k2_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0xC)? as usize + 0x14
+        p.read_i32(keyoverlay_addr + 0xC)? + 0x14
     )? as u32;
 
     values.keyoverlay.m1_pressed = p.read_i8(
-        p.read_i32(keyoverlay_addr + 0x10)? as usize + 0x1C
+        p.read_i32(keyoverlay_addr + 0x10)? + 0x1C
     )? != 0;
 
     values.keyoverlay.m1_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0x10)? as usize + 0x14
+        p.read_i32(keyoverlay_addr + 0x10)? + 0x14
     )? as u32;
 
     values.keyoverlay.m2_pressed = p.read_i8(
-        p.read_i32(keyoverlay_addr + 0x14)? as usize + 0x1C
+        p.read_i32(keyoverlay_addr + 0x14)? + 0x1C
     )? != 0;
 
     values.keyoverlay.m2_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0x14)? as usize + 0x14
+        p.read_i32(keyoverlay_addr + 0x14)? + 0x14
     )? as u32;
 
     Ok(())
@@ -82,15 +82,15 @@ pub fn process_gameplay(
     };
 
     let gameplay_base = 
-        p.read_i32((ruleset_addr + 0x68) as usize)? as usize;
+        p.read_i32(ruleset_addr + 0x68)?;
 
     if gameplay_base == 0 {
         return Ok(())
     }
 
-    let score_base = p.read_i32(gameplay_base + 0x38)? as usize;
+    let score_base = p.read_i32(gameplay_base + 0x38)?;
 
-    let hp_base: usize = p.read_i32(gameplay_base + 0x40)? as usize;
+    let hp_base = p.read_i32(gameplay_base + 0x40)?;
 
     // Random value but seems to work pretty well
     // TODO sometimes playtime is >150 but game doesn't have
@@ -101,14 +101,12 @@ pub fn process_gameplay(
             p.read_f64(hp_base + 0x14)?;
     }
 
-    let hit_errors_base = (
-        p.read_i32(score_base + 0x38)?
-        ) as usize;
+    let hit_errors_base = p.read_i32(score_base + 0x38)?;
 
     p.read_i32_array(
         hit_errors_base,
         &mut values.gameplay.hit_errors
-        )?;
+    )?;
 
     values.gameplay.unstable_rate = 
         values.gameplay.calculate_unstable_rate();
@@ -143,9 +141,7 @@ pub fn process_gameplay(
 
     values.prev_hit_miss = values.gameplay.hit_miss;
 
-    let mods_xor_base = (
-        p.read_i32(score_base + 0x1C)?
-    ) as usize;
+    let mods_xor_base = p.read_i32(score_base + 0x1C)?;
 
     let mods_raw = p.read_u64(mods_xor_base + 0x8)?;
 
@@ -189,23 +185,23 @@ pub fn process_reading_loop(
         state.addresses.menu_mods + 0x9
     )?;
 
-    let menu_mods = p.read_u32(menu_mods_ptr as usize)?;
+    let menu_mods = p.read_u32(menu_mods_ptr)?;
     values.menu_mods = menu_mods;
 
     let playtime_ptr = p.read_i32(state.addresses.playtime + 0x5)?;
-    values.playtime = p.read_i32(playtime_ptr as usize)?;
+    values.playtime = p.read_i32(playtime_ptr)?;
 
     let beatmap_ptr = p.read_i32(state.addresses.base - 0xC)?;
-    let beatmap_addr = p.read_i32(beatmap_ptr as usize)?;
+    let beatmap_addr = p.read_i32(beatmap_ptr)?;
 
     let status_ptr = p.read_i32(state.addresses.status - 0x4)?;
 
     let skin_ptr = p.read_i32(state.addresses.skin + 0x4)?;
-    let skin_data = p.read_i32(skin_ptr as usize)?;
-    values.skin = p.read_string(skin_data as usize + 0x44)?;
+    let skin_data = p.read_i32(skin_ptr)?;
+    values.skin = p.read_string(skin_data + 0x44)?;
 
     values.state = GameState::from(
-        p.read_u32(status_ptr as usize)?
+        p.read_u32(status_ptr)?
     );
     
     // Handle leaving `Playing` state
@@ -221,31 +217,45 @@ pub fn process_reading_loop(
     }
 
     if values.state != GameState::MultiplayerLobby {
-        let ar_addr = beatmap_addr + 0x2c;
-        let cs_addr = ar_addr + 0x04;
-        let hp_addr = cs_addr + 0x04;
-        let od_addr = hp_addr + 0x04;
+        let mut beatmap_stats_buff = [0u8; size_of::<f32>() * 4];
 
-        values.beatmap.ar = p.read_f32(ar_addr as usize)?;
-        values.beatmap.cs = p.read_f32(cs_addr as usize)?;
-        values.beatmap.hp = p.read_f32(hp_addr as usize)?;
-        values.beatmap.od = p.read_f32(od_addr as usize)?;
+        let _ = p.read(
+            beatmap_addr + 0x2c, 
+            size_of::<f32>() * 4, 
+            &mut beatmap_stats_buff
+        )?;
+
+        values.beatmap.ar = f32::from_le_bytes(
+            beatmap_stats_buff[0..4].try_into().unwrap()
+        );
+
+        values.beatmap.cs = f32::from_le_bytes(
+            beatmap_stats_buff[4..8].try_into().unwrap()
+        );
+
+        values.beatmap.hp = f32::from_le_bytes(
+            beatmap_stats_buff[8..12].try_into().unwrap()
+        );
+
+        values.beatmap.od = f32::from_le_bytes(
+            beatmap_stats_buff[12..].try_into().unwrap()
+        );
 
         let plays_addr = p.read_i32(state.addresses.base - 0x33)? + 0xC;
-        values.plays = p.read_i32(plays_addr as usize)?;
+        values.plays = p.read_i32(plays_addr)?;
 
-        values.beatmap.artist = p.read_string((beatmap_addr + 0x18) as usize)?;
-        values.beatmap.title = p.read_string((beatmap_addr + 0x24) as usize)?;
-        values.beatmap.creator = p.read_string((beatmap_addr + 0x7C) as usize)?;
-        values.beatmap.difficulty = p.read_string((beatmap_addr + 0xAC) as usize)?;
-        values.beatmap.map_id = p.read_i32((beatmap_addr + 0xC8) as usize)?;
-        values.beatmap.mapset_id = p.read_i32((beatmap_addr + 0xCC) as usize)?;
+        values.beatmap.artist = p.read_string(beatmap_addr + 0x18)?;
+        values.beatmap.title = p.read_string(beatmap_addr + 0x24)?;
+        values.beatmap.creator = p.read_string(beatmap_addr + 0x7C)?;
+        values.beatmap.difficulty = p.read_string(beatmap_addr + 0xAC)?;
+        values.beatmap.map_id = p.read_i32(beatmap_addr + 0xC8)?;
+        values.beatmap.mapset_id = p.read_i32(beatmap_addr + 0xCC)?;
 
 
     }
 
     values.beatmap.beatmap_status = BeatmapStatus::from(
-        p.read_i16(beatmap_addr as usize + 0x12C)?
+        p.read_i16(beatmap_addr + 0x12C)?
     );
 
     let mut new_map = false;
@@ -257,11 +267,11 @@ pub fn process_reading_loop(
 
     // Skin folder
     let skin_data_ptr = p.read_i32(
-        p.read_i32(state.addresses.skin + 4)? as usize
+        p.read_i32(state.addresses.skin + 4)?
     )?;
 
     values.skin_folder = p.read_string(
-        (skin_data_ptr + 68) as usize
+        skin_data_ptr + 68
     )?;
 
     if values.state != GameState::PreSongSelect
@@ -269,9 +279,9 @@ pub fn process_reading_loop(
     && values.state != GameState::MultiplayerResultScreen {
         let menu_mode_addr = p.read_i32(state.addresses.base - 0x33)?;
 
-        let beatmap_file = p.read_string((beatmap_addr + 0x90) as usize)?;
-        let beatmap_folder = p.read_string((beatmap_addr + 0x78) as usize)?;
-        values.menu_mode = p.read_i32(menu_mode_addr as usize)?;
+        let beatmap_file = p.read_string(beatmap_addr + 0x90)?;
+        let beatmap_folder = p.read_string(beatmap_addr + 0x78)?;
+        values.menu_mode = p.read_i32(menu_mode_addr)?;
 
         values.beatmap.paths.beatmap_full_path 
             = values.osu_path.join("Songs/");
@@ -280,7 +290,7 @@ pub fn process_reading_loop(
         values.beatmap.paths.beatmap_full_path.push(&beatmap_file);
 
         values.beatmap.md5 = 
-            p.read_string((beatmap_addr + 0x6C) as usize)?;
+            p.read_string(beatmap_addr + 0x6C)?;
 
         // Check if beatmap changed
         if (beatmap_folder != values.beatmap.paths.beatmap_folder 
@@ -341,7 +351,7 @@ pub fn process_reading_loop(
     }
     
     let ruleset_addr = p.read_i32(
-        (p.read_i32(state.addresses.rulesets - 0xb)? + 0x4) as usize
+        p.read_i32(state.addresses.rulesets - 0xb)? + 0x4
     )?;
     
     // If this happened there is zero sense to continue
@@ -354,15 +364,11 @@ pub fn process_reading_loop(
     // Process result screen
     // TODO handle situations when result screen is not ready
     if values.state == GameState::ResultScreen {
-        let result_base = (
-            p.read_i32(ruleset_addr as usize + 0x38)?
-        ) as usize;
+        let result_base = p.read_i32(ruleset_addr+ 0x38)?;
 
         values.result_screen.username = p.read_string(result_base + 0x28)?;
 
-        let mods_xor_base = (
-            p.read_i32(result_base + 0x1C)?
-        ) as usize;
+        let mods_xor_base = p.read_i32(result_base + 0x1C)?;
 
         let mods_xor1 = p.read_i32(mods_xor_base + 0xC)?;
         let mods_xor2 = p.read_i32(mods_xor_base + 0x8)?;

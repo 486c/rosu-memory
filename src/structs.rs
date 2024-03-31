@@ -165,13 +165,13 @@ impl From<i16> for BeatmapStatus {
 
 #[derive(Default)]
 pub struct StaticAddresses {
-    pub base: usize,
-    pub status: usize,
-    pub menu_mods: usize,
-    pub rulesets: usize,
-    pub playtime: usize,
-    pub skin: usize,
-    pub chat_checker: usize,
+    pub base: i32,
+    pub status: i32,
+    pub menu_mods: i32,
+    pub rulesets: i32,
+    pub playtime: i32,
+    pub skin: i32,
+    pub chat_checker: i32,
 }
 
 impl StaticAddresses {

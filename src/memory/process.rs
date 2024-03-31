@@ -18,7 +18,7 @@ macro_rules! prim_read_impl {
         paste! {
             fn [<read_ $t>](
                 &self,
-                addr: usize
+                addr: i32
             ) -> Result<$t, ProcessError> {
                 let mut bytes = [0u8; std::mem::size_of::<$t>()];
                 self.read(addr, std::mem::size_of::<$t>(), &mut bytes)?;
@@ -35,7 +35,7 @@ macro_rules! prim_read_array_impl {
         paste! {
             fn [<read_ $t _array>](
                 &self,
-                addr: usize,
+                addr: i32,
                 buff: &mut Vec<$t>
             ) -> Result<(), ProcessError> {
                 let items_ptr = self.read_i32(addr + 4)?;
@@ -50,7 +50,7 @@ macro_rules! prim_read_array_impl {
 
 
                 self.read(
-                    items_ptr as usize + 8,
+                    items_ptr + 8,
                     size * std::mem::size_of::<$t>(),
                     byte_buff
                 )?;
@@ -83,18 +83,18 @@ pub trait ProcessTraits where Self: Sized {
     fn read_signature(
         &self, 
         sign: &Signature
-    ) -> Result<usize, ProcessError>;
+    ) -> Result<i32, ProcessError>;
 
     fn read(
         &self, 
-        addr: usize, 
+        addr: i32, 
         len: usize, 
         buff: &mut [u8]
     ) -> Result<(), ProcessError>;
 
     fn read_uleb128(
         &self,
-        mut addr: usize
+        mut addr: i32,
     ) -> Result<u64, ProcessError> {
         let mut value: u64 = 0;
         let mut bytes_read = 0;
@@ -118,9 +118,9 @@ pub trait ProcessTraits where Self: Sized {
 
     fn read_string(
         &self,
-        addr: usize
+        addr: i32,
     ) -> Result<String, ProcessError> {
-        let mut addr = self.read_i32(addr)? as usize;
+        let mut addr = self.read_i32(addr)?;
         // C# string structure: 4B obj header, 4B str len, str itself
         let len = self.read_u32(addr + 0x4)? as usize;
         addr += 0x8;
