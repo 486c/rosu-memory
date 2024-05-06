@@ -22,8 +22,22 @@ use serde_repr::Serialize_repr;
 use eyre::Result;
 
 use crate::network::smol_hyper::SmolIo;
+
+
+#[derive(Clone, Copy, PartialEq)]
+#[repr(u8)]
+pub enum WsKind {
+    Gosu,
+    Rosu,
+}
+
+pub struct WsClient {
+    pub kind: WsKind,
+    pub client: WebSocketStream<SmolIo<Upgraded>>,
+}
+
 pub type Arm<T> = Arc<Mutex<T>>;
-pub type Clients = Arm<Vec<WebSocketStream<SmolIo<Upgraded>>>>;
+pub type Clients = Arm<Vec<WsClient>>;
 
 macro_rules! calculate_accuracy {
     ($self: expr) => {{
@@ -310,6 +324,10 @@ pub struct BeatmapPathValues {
     /// Absolute background file path
     /// Example: `/path/to/osu/Songs/beatmap/background.jpg`
     pub background_path_full: PathBuf,
+    
+    /// Relative to beatmap folder audio file path
+    /// Example: ``
+    pub audio_file: String,
 }
 
 #[derive(Debug, Default, Serialize)]
@@ -926,7 +944,16 @@ impl OutputValues {
             _ => ()
         }
     }
-
+    
+    /// Returns mods depending on current game state
+    pub fn get_current_mods(&self) -> u32 {
+        match self.state {
+            GameState::Playing => self.gameplay.mods,
+            GameState::SongSelect => self.menu_mods,
+            GameState::ResultScreen => self.result_screen.mods,
+            _ => self.menu_mods
+        }
+    }
 
     pub fn update_stars_and_ss_pp(&mut self) {
         let _span = tracy_client::span!("update stars and ss_pp");

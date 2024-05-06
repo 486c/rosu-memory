@@ -1,4 +1,4 @@
-let socket = new ReconnectingWebSocket("ws://localhost:9001/ws");
+let socket = new ReconnectingWebSocket("ws://localhost:24050/rws");
 let ur = document.getElementById("ur");
 socket.onopen = () => {
     console.log("Successfully Connected");

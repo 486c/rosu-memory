@@ -1,5 +1,6 @@
 mod network;
 mod structs;
+mod gosu_structs;
 mod reading_loop;
 
 use structs::{InnerValues, OutputValues, Clients};

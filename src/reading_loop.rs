@@ -288,6 +288,7 @@ pub fn process_reading_loop(
 
         let beatmap_file = p.read_string(beatmap_addr + 0x90)?;
         let beatmap_folder = p.read_string(beatmap_addr + 0x78)?;
+        let audio_file = p.read_string(beatmap_addr + 0x64)?;
         values.menu_mode = p.read_i32(menu_mode_addr)?;
 
         values.beatmap.paths.beatmap_full_path 
@@ -335,6 +336,7 @@ pub fn process_reading_loop(
 
             values.beatmap.paths.beatmap_folder = beatmap_folder;
             values.beatmap.paths.beatmap_file = beatmap_file;
+            values.beatmap.paths.audio_file = audio_file;
 
             values.update_min_max_bpm();
             values.update_full_paths();

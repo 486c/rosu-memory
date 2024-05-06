@@ -4,7 +4,7 @@ use http_body_util::Full;
 
 use std::net::TcpListener;
 
-use crate::structs::{OutputValues, Clients, Arm};
+use crate::{gosu_structs::GosuValues, structs::{Arm, Clients, OutputValues, WsClient, WsKind}};
 
 use self::smol_hyper::SmolIo;
 use futures_util::sink::SinkExt;
@@ -17,28 +17,31 @@ use async_tungstenite::{
 
 use eyre::Result;
 use hyper::{
-    service::service_fn, 
-    Request, Response, StatusCode, 
-    body::Bytes,
-    header::{
-        HeaderValue, 
-        CONNECTION, UPGRADE, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY}, 
-    server::conn::http1
+    body::Bytes, header::{
+        HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE}, server::conn::http1, service::service_fn, Request, Response, StatusCode
 };
+
 
 pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
     let _span = tracy_client::span!("handle clients");
 
-    let serialized_values = {
+    let (serialized_rosu_values, serialized_gosu_values) = {
         let values_lock = values.lock().unwrap();
+
+        let values = &*values_lock;
+
+        let gosu_values: GosuValues = values.into();
     
-        serde_json::to_string(&*values_lock).unwrap()
+        (
+            serde_json::to_string(&values).unwrap(),
+            serde_json::to_string(&gosu_values).unwrap(),
+        )
     };
 
     let mut clients = clients.lock().unwrap();
     clients.retain_mut(|websocket| {
         smol::block_on(async {
-            let next_future = websocket.next();
+            let next_future = websocket.client.next();
 
             let msg_future = 
                 smol::future::poll_once(next_future);
@@ -53,9 +56,16 @@ pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
                 return false;
             };
 
-            let res = websocket.send(
-                Message::Text(serialized_values.clone())
-            ).await;
+            let res = if websocket.kind == WsKind::Gosu {
+                // If gosu values is not serialized yet, do this now
+                websocket.client.send(
+                    Message::Text(serialized_gosu_values.clone())
+                ).await
+            } else {
+                websocket.client.send(
+                    Message::Text(serialized_rosu_values.clone())
+                ).await
+            };
 
             // When some sort of websocket's error happened
             // Just close current websocket connection
@@ -65,7 +75,7 @@ pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
                 println!("{:?}", e);
                 
                 // Ignoring result of `Close` message
-                let _ = websocket.send(
+                let _ = websocket.client.send(
                     Message::Close(None)
                 ).await;
 
@@ -112,7 +122,8 @@ pub fn server_thread(ctx_clients: Clients, values: Arm<OutputValues>) {
 
 async fn serve_ws(
     clients: Clients, 
-    mut req: Request<hyper::body::Incoming>
+    mut req: Request<hyper::body::Incoming>,
+    kind: WsKind,
 ) -> Result<Response<Full<Bytes>>> {
 
     let headers = req.headers();
@@ -131,10 +142,15 @@ async fn serve_ws(
             Role::Server,
             None,
         ).await;
+
+        let ws_client = WsClient {
+            client,
+            kind,
+        };
         
         let mut clients = clients.lock().unwrap();
 
-        clients.push(client);
+        clients.push(ws_client);
     }).detach();
     
     let mut res = Response::new(Full::new(Bytes::default()));
@@ -206,9 +222,9 @@ async fn serve(
     values: Arm<OutputValues>,
     req: Request<hyper::body::Incoming>,
 ) -> Result<Response<Full<Bytes>>> {
-    if req.uri() != "/ws" {
-        serve_http(values, req).await
-    } else {
-        serve_ws(clients, req).await
+    match req.uri().path() {
+        "/ws" => serve_ws(clients, req, WsKind::Gosu).await,
+        "/rws" => serve_ws(clients, req, WsKind::Rosu).await,
+        _ => serve_http(values, req).await,
     }
 }

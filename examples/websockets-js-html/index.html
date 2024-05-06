@@ -29,7 +29,7 @@
 	<a id="result_acc">result_acc: <a><br>
 
 	<script>
-	  const socket = new WebSocket("ws://localhost:9001/ws");
+	  const socket = new WebSocket("ws://localhost:24050/rws");
 
 	  socket.addEventListener("open", (event) => {
 		  console.log("Connected!");
@@ -40,10 +40,15 @@
 	  });
 
 	  socket.addEventListener("message", (event) => {
-		  console.log("Message from server ", event.data);
+		  //console.log("Message from server ", event.data);
 
 		  const data = JSON.parse(event.data)
-		  console.log(data.keyoverlay)
+
+		  console.log(data);
+
+		  console.log(data.beatmap.bpm)
+		  console.log(data.beatmap.max_bpm)
+		  console.log(data.beatmap.min_bpm)
 
 		  const stars_elem = document.getElementById("stars");
 		  stars_elem.innerHTML = "Stars: " + data.stars.toString();
