@@ -89,7 +89,7 @@ pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
 
 pub fn server_thread(ctx_clients: Clients, values: Arm<OutputValues>) {
     smol::block_on(async {
-        let tcp = TcpListener::bind("127.0.0.1:9001").unwrap();
+        let tcp = TcpListener::bind("127.0.0.1:24050").unwrap();
         let listener = Async::new(tcp)
             .unwrap();
 
