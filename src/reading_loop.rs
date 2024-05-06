@@ -224,12 +224,11 @@ pub fn process_reading_loop(
     if values.state != GameState::MultiplayerLobby {
         let mut beatmap_stats_buff = [0u8; size_of::<f32>() * 4];
 
-        let _ = p.read(
+        p.read(
             beatmap_addr + 0x2c, 
             size_of::<f32>() * 4, 
             &mut beatmap_stats_buff
         )?;
-        
 
         // Safety: unwrap here because buff is already initialized
         // and filled with zeros, the worst case scenario is

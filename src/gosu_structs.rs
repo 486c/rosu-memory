@@ -218,7 +218,7 @@ impl From<&OutputValues> for GosuValues {
                         full: value.beatmap.paths.background_path_full
                             .clone()
                             .into_os_string().into_string()
-                            .unwrap_or(String::new()),
+                            .unwrap_or_default(),
                         folder: value.beatmap.paths.beatmap_folder.clone(),
                         file: value.beatmap.paths.beatmap_file.clone(),
                         bg: value.beatmap.paths.background_file.clone(),
