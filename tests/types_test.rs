@@ -112,13 +112,13 @@ impl ProcessTraits for FakeProccess {
     fn read_signature(
         &self, 
         _sign: &rosu_memory::memory::signature::Signature
-    ) -> Result<usize, ProcessError> {
+    ) -> Result<i32, ProcessError> {
         todo!()
     }
 
     fn read(
         &self, 
-        addr: usize, 
+        addr: i32, 
         len: usize, 
         buff: &mut [u8]
     ) -> Result<(), ProcessError> {
@@ -126,7 +126,7 @@ impl ProcessTraits for FakeProccess {
         // self.buff.set_position(addr as u64);
         //self.buff.read(buff);
 
-        let mut slice = &self.buff[addr..addr+len];
+        let mut slice = &self.buff[addr as usize..addr as usize+len];
         let _ = slice.read(buff);
 
         Ok(())
