@@ -9,8 +9,8 @@ use windows::Win32::Foundation::HANDLE;
 
 #[derive(Debug)]
 pub struct MemoryRegion {
-    pub from: usize,
-    pub size: usize
+    pub from: i32,
+    pub size: i32
 }
 
 macro_rules! prim_read_impl {

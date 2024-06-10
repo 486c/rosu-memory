@@ -100,8 +100,8 @@ impl ProcessTraits for Process {
             if info.State != MEM_FREE
             {
                 self.maps.push( MemoryRegion {
-                    from: info.BaseAddress as usize,
-                    size: info.RegionSize
+                    from: info.BaseAddress as i32,
+                    size: info.RegionSize as i32,
                 })
             }
         };
@@ -112,18 +112,18 @@ impl ProcessTraits for Process {
     fn read_signature(
         &self, 
         sign: &Signature
-    ) -> Result<usize, ProcessError> {
+    ) -> Result<i32, ProcessError> {
         let mut buf = Vec::new();
         let mut bytesread: usize = 0;
 
         for region in self.maps.iter() {
-            buf.resize(region.size, 0);
+            buf.resize(region.size as usize, 0);
 
             let res = unsafe { ReadProcessMemory(
                 self.handle,
                 region.from as *mut c_void,
                 buf.as_mut_ptr() as *mut c_void,
-                region.size,
+                region.size as usize,
                 Some(&mut bytesread)
             ) };
 
@@ -139,7 +139,7 @@ impl ProcessTraits for Process {
             }
 
             if let Some(offset) = find_signature(&buf[..bytesread], sign) {
-                return Ok(region.from + offset)
+                return Ok(region.from + offset as i32)
             }
         }
 
@@ -148,7 +148,7 @@ impl ProcessTraits for Process {
 
     fn read(
         &self, 
-        addr: usize, 
+        addr: i32, 
         len: usize, 
         buff: &mut [u8]
     ) -> Result<(), ProcessError> {
