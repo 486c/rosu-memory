@@ -22,6 +22,7 @@ pub struct StaticSignatures {
     pub skin_data: Signature,
     pub rulesets: Signature,
     pub chat_area: Signature,
+    pub audio_time_base: Signature,
 }
 
 //impl StaticSignatures {

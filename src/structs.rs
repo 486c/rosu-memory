@@ -186,6 +186,7 @@ pub struct StaticAddresses {
     pub playtime: i32,
     pub skin: i32,
     pub chat_checker: i32,
+    pub audio_time_base: i32,
 }
 
 impl StaticAddresses {
@@ -210,6 +211,8 @@ impl StaticAddresses {
 
         let chat_checker = Signature::from_str("0A D7 23 3C 00 00 ?? 01")?;
 
+        let audio_time_base = Signature::from_str("DB 5C 24 34 8B 44 24 34")?;
+
         Ok(Self {
             base: p.read_signature(&base_sign)?,
             status: p.read_signature(&status_sign)?,
@@ -218,6 +221,7 @@ impl StaticAddresses {
             playtime: p.read_signature(&playtime_sign)?,
             skin: p.read_signature(&skin_sign)?,
             chat_checker: p.read_signature(&chat_checker)?,
+            audio_time_base: p.read_signature(&audio_time_base)?,
         })
     }
 }
@@ -591,7 +595,6 @@ pub struct OutputValues {
     /// Skin folder relative to the osu! folder
     pub skin_folder: String,
 
-
     /// Is chat enabled (F9/F8)
     pub chat_enabled: bool,
 
@@ -672,6 +675,10 @@ pub struct OutputValues {
     pub mods_str: Vec<&'static str>,
 
     pub plays: i32,
+    
+    /// Position of current playing audio in milliseconds
+    /// (to be honest it have nothing to do with precision)
+    pub precise_audio_time: i32,
 }
 
 impl OutputValues {
@@ -728,7 +735,6 @@ impl OutputValues {
             // Maybe this is not very idiomatic approach
             // but atleast we dont need to iterate twice
             // to calculate min and max values
-
             let mut max_bpm = f64::MIN;
             let mut min_bpm = f64::MAX;
 
@@ -1024,7 +1030,6 @@ impl OutputValues {
 
     /// Depends on `BeatmapValues` and `BeatmapPathValues`
     pub fn update_full_paths(&mut self) {
-        dbg!("update full paths");
         let _span = tracy_client::span!("update_full_paths");
 
         // beatmap_full_path is expection because
