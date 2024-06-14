@@ -361,7 +361,10 @@ pub fn process_reading_loop(
     let ruleset_addr = p.read_i32(
         p.read_i32(state.addresses.rulesets - 0xb)? + 0x4
     )?;
-    
+
+    let audio_time_ptr = p.read_i32(state.addresses.audio_time_base + 0x9)?;
+    values.precise_audio_time = p.read_i32(audio_time_ptr)?;
+
     // If this happened there is zero sense to continue
     // reading because all the values depends on this
     // address
