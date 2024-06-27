@@ -100,7 +100,7 @@ impl ProcessTraits for Process {
             if info.State != MEM_FREE
             {
                 self.maps.push( MemoryRegion {
-                    from: info.BaseAddress,
+                    from: info.BaseAddress as usize,
                     size: info.RegionSize,
                 })
             }
