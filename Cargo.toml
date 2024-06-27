@@ -7,7 +7,7 @@ edition = "2021"
 async-tungstenite = "0.23.0"
 cfg-if = "1.0.0"
 clap = { version = "4.4.8", default-features = false, features = ["std", "derive", "env"] }
-eyre = "0.6.9"
+eyre = "0.6.12"
 paste = "1.0.14"
 rosu-pp = { git = "https://github.com/486c/rosu-pp.git", branch = "main", features = ["gradual"] }
 serde = { version = "1.0.192", default-features = false, features = ["derive"] }
