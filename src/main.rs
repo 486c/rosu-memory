@@ -108,12 +108,12 @@ fn main() -> Result<()> {
         match args.osu_path {
             Some(ref v) => {
                 println!("Using provided osu! folder path");
-                values.osu_path = v.clone();
+                values.osu_path.clone_from(v);
             },
             None => {
                 println!("Using auto-detected osu! folder path");
                 if let Some(ref dir) = p.executable_dir {
-                    values.osu_path = dir.clone();
+                    values.osu_path.clone_from(dir);
                 } else {
                     return Err(Report::msg(
                         "Can't auto-detect osu! folder path \

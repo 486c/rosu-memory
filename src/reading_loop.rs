@@ -310,8 +310,9 @@ pub fn process_reading_loop(
                 Ok(beatmap) => {
                     new_map = true;
 
-                    values.beatmap.paths.background_file = 
-                        beatmap.background.filename.clone();
+                    values.beatmap.paths.background_file.clone_from(
+                        &beatmap.background.filename
+                    );
 
                     if let Some(hobj) = beatmap.hit_objects.last() {
                         values.beatmap.last_obj_time = hobj.start_time;

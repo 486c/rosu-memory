@@ -243,8 +243,6 @@ pub struct InnerValues {
         Option<GradualPerformance<'static>>,
 
     pub current_beatmap_perf: Option<PerformanceAttributes>,
-
-    pub addresses: StaticAddresses
 }
 
 impl InnerValues {
