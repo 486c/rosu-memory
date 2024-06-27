@@ -100,8 +100,8 @@ impl ProcessTraits for Process {
             if info.State != MEM_FREE
             {
                 self.maps.push( MemoryRegion {
-                    from: info.BaseAddress as usize,
-                    size: info.RegionSize as usize,
+                    from: info.BaseAddress,
+                    size: info.RegionSize,
                 })
             }
         };
@@ -117,13 +117,13 @@ impl ProcessTraits for Process {
         let mut bytesread: usize = 0;
 
         for region in self.maps.iter() {
-            buf.resize(region.size as usize, 0);
+            buf.resize(region.size, 0);
 
             let res = unsafe { ReadProcessMemory(
                 self.handle,
                 region.from as *mut c_void,
                 buf.as_mut_ptr() as *mut c_void,
-                region.size as usize,
+                region.size,
                 Some(&mut bytesread)
             ) };
 
