@@ -98,7 +98,7 @@ impl ProcessTraits for Process {
                 to_str, 16
             )?;
     
-            v.push(MemoryRegion{ from, size: to - from });
+            v.push(MemoryRegion{ from , size: to - from });
         }
     
         self.maps = v;

@@ -100,8 +100,8 @@ impl ProcessTraits for Process {
             if info.State != MEM_FREE
             {
                 self.maps.push( MemoryRegion {
-                    from: info.BaseAddress as i32,
-                    size: info.RegionSize as i32,
+                    from: info.BaseAddress as usize,
+                    size: info.RegionSize as usize,
                 })
             }
         };
@@ -139,7 +139,7 @@ impl ProcessTraits for Process {
             }
 
             if let Some(offset) = find_signature(&buf[..bytesread], sign) {
-                return Ok(region.from + offset as i32)
+                return Ok((region.from + offset) as i32)
             }
         }
 
