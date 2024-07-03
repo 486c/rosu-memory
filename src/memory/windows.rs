@@ -1,4 +1,4 @@
-use std::ffi::c_void;
+use std::ffi::{c_uint, c_void};
 use std::path::PathBuf;
 
 use windows::Win32::Foundation::HMODULE;
@@ -121,7 +121,7 @@ impl ProcessTraits for Process {
 
             let res = unsafe { ReadProcessMemory(
                 self.handle,
-                region.from as *mut c_void,
+                region.from as c_uint as *mut c_void,
                 buf.as_mut_ptr() as *mut c_void,
                 region.size,
                 Some(&mut bytesread)
@@ -156,7 +156,7 @@ impl ProcessTraits for Process {
 
         let res = unsafe { ReadProcessMemory(
             self.handle as HANDLE,
-            addr as *mut c_void,
+            addr as c_uint as *mut c_void,
             buff.as_mut_ptr() as *mut c_void,
             len,
             Some(&mut n)
