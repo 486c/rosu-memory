@@ -4,7 +4,7 @@ use rosu_pp::Beatmap;
 use tracy_client::*;
 use eyre::Result;
 
-use rosu_memory::memory::process::{Process, ProcessTraits};
+use rosu_mem::process::{Process, ProcessTraits};
 
 use crate::structs::{State, GameState, BeatmapStatus, OutputValues};
 
