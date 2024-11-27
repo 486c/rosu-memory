@@ -20,11 +20,10 @@ use std::time::Duration;
 
 use clap::Parser;
 
-use rosu_memory::
-    memory::{
-        process::{Process, ProcessTraits}, 
-        error::ProcessError
-    };
+use rosu_mem::{
+    process::{Process, ProcessTraits}, 
+    error::ProcessError
+};
 
 use eyre::{Report, Result};
 

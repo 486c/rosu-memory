@@ -4,11 +4,11 @@ version = "0.2.0"
 edition = "2021"
 
 [dependencies]
+rosu-mem = { git = "https://github.com/486c/rosu-mem.git", tag = "v1.0.0" }
 async-tungstenite = "0.23.0"
 cfg-if = "1.0.0"
 clap = { version = "4.4.8", default-features = false, features = ["std", "derive", "env"] }
 eyre = "0.6.12"
-paste = "1.0.14"
 rosu-pp = { git = "https://github.com/486c/rosu-pp.git", branch = "main", features = ["gradual"] }
 serde = { version = "1.0.192", default-features = false, features = ["derive"] }
 serde_json = "1.0.108"
@@ -20,12 +20,6 @@ async-dup = "1.2.2"
 hyper = { version = "1.0.1", default-features = false, features = ["server", "http1"] }
 http-body-util = "0.1.0"
 pin-project-lite = "0.2.13"
-
-[target.'cfg(unix)'.dependencies]
-nix = { version = "0.25.0",  default-features = false,  features = ["uio", "process", "feature"] }
-
-[target.'cfg(windows)'.dependencies]
-windows = {version = "0.48", features = ["Win32_Foundation", "Win32_System_Diagnostics_ToolHelp", "Win32_System_Threading", "Win32_System_Memory", "Win32_System_Diagnostics_Debug", "Win32_System_ProcessStatus"] }
 
 [features]
 tracy-profile = ["tracy-client/default"]
@@ -39,22 +33,3 @@ panic = "abort"
 
 [profile.release.package."*"]
 opt-level = "s"
-
-[dev-dependencies]
-rand = "0.8.5"
-
-[lints.clippy]
-# Ignoring this clippy warning because of one edge case
-# with `prim_read_array_impl(u8)`.
-#
-# std::slice::from_raw_parts_mut(..) expects
-# to use element count (see docs) not bytes and in u8 case it becomes
-# something like: 
-# buff.len() * std::mem::size_of::<u8>()
-# ^                  ^ always 1
-# |
-# valid length
-# where valid length * 1 = valid_length
-#
-# So clippy thinks we passing bytes count not element count
-size_of_in_element_count = "allow"

@@ -438,9 +438,9 @@ dependencies = [
 
 [[package]]
 name = "eyre"
-version = "0.6.9"
+version = "0.6.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "80f656be11ddf91bd709454d15d5bd896fbaf4cc3314e69349e4d1569f5b46cd"
+checksum = "7cd915d99f24784cdc19fd37ef22b97e3ff0ae756c7e492e9fbfe897d61e2aec"
 dependencies = [
  "indenter",
  "once_cell",
@@ -839,9 +839,9 @@ checksum = "bb813b8af86854136c6922af0598d719255ecb2179515e6e7730d468f05c9cae"
 
 [[package]]
 name = "paste"
-version = "1.0.14"
+version = "1.0.15"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "de3145af08024dea9fa9914f381a17b8fc6034dfb00f3a84013f7ff43f29ed4c"
+checksum = "57c0d7b74b563b49d38dae00a0c37d4d6de9b432382b2892f0574ddcae73fd0a"
 
 [[package]]
 name = "percent-encoding"
@@ -1001,6 +1001,17 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "c08c74e62047bb2de4ff487b251e4a92e24f48745648451635cec7d591162d9f"
 
 [[package]]
+name = "rosu-mem"
+version = "1.0.0"
+source = "git+https://github.com/486c/rosu-mem.git?tag=v1.0.0#2349cb845e3149c71873bfeda7ec81afec94c8c0"
+dependencies = [
+ "cfg-if",
+ "nix",
+ "paste",
+ "windows",
+]
+
+[[package]]
 name = "rosu-memory"
 version = "0.2.0"
 dependencies = [
@@ -1012,17 +1023,14 @@ dependencies = [
  "futures-util",
  "http-body-util",
  "hyper",
- "nix",
- "paste",
  "pin-project-lite",
- "rand",
+ "rosu-mem",
  "rosu-pp",
  "serde",
  "serde_json",
  "serde_repr",
  "smol",
  "tracy-client",
- "windows",
 ]
 
 [[package]]

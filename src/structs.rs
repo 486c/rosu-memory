@@ -7,7 +7,7 @@ use std::{
 
 use async_tungstenite::WebSocketStream;
 use hyper::upgrade::Upgraded;
-use rosu_memory::memory::{
+use rosu_mem::{
     process::{Process, ProcessTraits},
     signature::Signature
 };
