@@ -755,7 +755,7 @@ impl OutputValues {
         let _span = tracy_client::span!("get current bpm");
 
         let bpm = if let Some(beatmap) = &self.current_beatmap {
-            match timing_point_at(&beatmap, self.playtime as f64) {
+            match timing_point_at(beatmap, self.playtime as f64) {
                 Some(v) => 60000.0 / v.beat_len,
                 None => return,
             }
@@ -772,7 +772,7 @@ impl OutputValues {
         self.kiai_now = if let Some(beatmap) = &self.current_beatmap {
             // TODO: get rid of extra allocation?
             let kiai_data = effect_point_at(
-                &beatmap,
+                beatmap,
                 self.playtime as f64
             );
 
@@ -799,7 +799,7 @@ impl OutputValues {
 
                 let diff = Difficulty::new()
                     .mods(self.result_screen.mods)
-                    .calculate(&beatmap);
+                    .calculate(beatmap);
 
                 let perf = Performance::new(diff)
                     .n300(self.result_screen.hit_300 as u32)
@@ -844,7 +844,7 @@ impl OutputValues {
                         .lazer(false) // Reminder
                         .mods(self.gameplay.mods);
 
-                    let mut grad = GradualPerformance::new(diff, &beatmap);
+                    let mut grad = GradualPerformance::new(diff, beatmap);
 
                     // In cases if we start mid-map, advance to the
                     // current position.
@@ -915,7 +915,7 @@ impl OutputValues {
 
                 let diff = Difficulty::new()
                     .mods(self.gameplay.mods)
-                    .calculate(&beatmap);
+                    .calculate(beatmap);
 
                 let perf_attrs = Performance::new(diff)
                     .calculate();
@@ -1021,7 +1021,7 @@ impl OutputValues {
 
             self.stars = Difficulty::new()
                 .mods(mods)
-                .calculate(&beatmap)
+                .calculate(beatmap)
                 .stars();
 
             let attr = Performance::new(beatmap)
