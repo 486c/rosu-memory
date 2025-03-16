@@ -1,4 +1,4 @@
-use std::{borrow::Cow, mem::size_of};
+use std::mem::size_of;
 
 use rosu_pp::{Beatmap, GameMods};
 use tracy_client::*;
@@ -73,7 +73,7 @@ pub fn process_gameplay(
     let _span = span!("Gameplay data");
 
     if values.prev_playtime > values.playtime {
-        values.reset_gameplay();
+        values.reset_gameplay(&mut state.ivalues);
         state.ivalues.reset();
     }
 
@@ -212,7 +212,7 @@ pub fn process_reading_loop(
     // Handle leaving `Playing` state
     if values.prev_state == GameState::Playing 
     && values.state != GameState::Playing {
-        values.reset_gameplay();
+        values.reset_gameplay(&mut state.ivalues);
         state.ivalues.reset();
         values.update_stars_and_ss_pp();
     }
@@ -442,7 +442,7 @@ pub fn process_reading_loop(
     // Update stars when entering `Playing` state
     if values.prev_state != GameState::Playing 
     && values.state == GameState::Playing {
-        values.reset_gameplay();
+        values.reset_gameplay(&mut state.ivalues);
         values.update_stars_and_ss_pp();
         values.adjust_bpm();
     }
