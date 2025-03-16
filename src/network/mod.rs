@@ -59,11 +59,11 @@ pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {
             let res = if websocket.kind == WsKind::Gosu {
                 // If gosu values is not serialized yet, do this now
                 websocket.client.send(
-                    Message::Text(serialized_gosu_values.clone())
+                    Message::Text(serialized_gosu_values.clone().into())
                 ).await
             } else {
                 websocket.client.send(
-                    Message::Text(serialized_rosu_values.clone())
+                    Message::Text(serialized_rosu_values.clone().into())
                 ).await
             };
 
