@@ -1,6 +1,6 @@
 use std::{borrow::Cow, mem::size_of};
 
-use rosu_pp::Beatmap;
+use rosu_pp::{Beatmap, GameMods};
 use tracy_client::*;
 use eyre::Result;
 
@@ -309,10 +309,14 @@ pub fn process_reading_loop(
             ) {
                 Ok(beatmap) => {
                     new_map = true;
-
+                    
+                    
+                    /*
+                    TODO bring back background
                     values.beatmap.paths.background_file.clone_from(
                         &beatmap.background.filename
                     );
+                    */
 
                     if let Some(hobj) = beatmap.hit_objects.last() {
                         values.beatmap.last_obj_time = hobj.start_time;
@@ -347,12 +351,9 @@ pub fn process_reading_loop(
     // store the converted map so it's not converted 
     // everytime it's used for pp calc
     if new_map {
-        if let Some(map) = &values.current_beatmap {
-            if let Cow::Owned(converted) = map
-                .convert_mode(values.menu_gamemode()) 
-            {
-                values.current_beatmap = Some(converted);
-            }
+        if let Some(map) = values.current_beatmap.take() {
+            let converted = map.convert(values.menu_gamemode(), &GameMods::default());
+            values.current_beatmap = Some(converted?);
         }
 
         values.update_stars_and_ss_pp();

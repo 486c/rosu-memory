@@ -2,6 +2,7 @@ mod network;
 mod structs;
 mod gosu_structs;
 mod reading_loop;
+mod utils;
 
 use structs::{InnerValues, OutputValues, Clients};
 
@@ -26,6 +27,9 @@ use rosu_mem::{
 };
 
 use eyre::{Report, Result};
+
+// Workaround for new winello umu-run stuff
+static EXCLUDE_WORDS: [&str; 2] = ["umu-run", "waitforexitandrun"];
 
 #[derive(Parser, Debug)]
 pub struct Args {
@@ -90,9 +94,11 @@ fn main() -> Result<()> {
     }
 
     'init_loop: loop {
-
-        let p = match Process::initialize("osu!.exe") {
-            Ok(p) => p,
+        let p = match Process::initialize("osu!.exe", &EXCLUDE_WORDS) {
+            Ok(p) => {
+                println!("Found process, pid - {}", p.pid);
+                p
+            },
             Err(e) => {
                 println!("{:?}", Report::new(e));
                 thread::sleep(args.error_interval);
