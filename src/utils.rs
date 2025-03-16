@@ -1,7 +1,11 @@
-use rosu_pp::{model::control_point::{EffectPoint, TimingPoint}, Beatmap};
+use rosu_pp::{
+    model::control_point::{EffectPoint, TimingPoint},
+    Beatmap,
+};
 
 pub fn effect_point_at(beatmap: &Beatmap, time: f64) -> Option<&EffectPoint> {
-    beatmap.effect_points
+    beatmap
+        .effect_points
         .binary_search_by(|probe| probe.time.total_cmp(&time))
         .map_or_else(|i| i.checked_sub(1), Some)
         .map(|i| &beatmap.effect_points[i])

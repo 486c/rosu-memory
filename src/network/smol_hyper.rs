@@ -11,15 +11,13 @@ pin_project! {
 
 impl<T> SmolIo<T> {
     pub fn new(inner: T) -> Self {
-        Self {
-            inner
-        }
+        Self { inner }
     }
 }
 
 impl<T> hyper::rt::Read for SmolIo<T>
 where
-    T: smol::io::AsyncRead
+    T: smol::io::AsyncRead,
 {
     fn poll_read(
         self: std::pin::Pin<&mut Self>,
@@ -33,9 +31,9 @@ where
 
         let n = {
             match smol::io::AsyncRead::poll_read(
-                self.project().inner, 
-                cx, 
-                &mut tmp_buf[..remaining]
+                self.project().inner,
+                cx,
+                &mut tmp_buf[..remaining],
             ) {
                 Poll::Ready(n) => n?,
                 Poll::Pending => return std::task::Poll::Pending,
@@ -45,17 +43,15 @@ where
         let tmp_buf = tmp_buf.map(MaybeUninit::new);
         buf_mut[..n].copy_from_slice(&tmp_buf[..n]);
 
-        unsafe {
-            buf.advance(n)
-        };
+        unsafe { buf.advance(n) };
 
         Poll::Ready(Ok(()))
     }
 }
 
-impl<T> hyper::rt::Write for SmolIo<T> 
+impl<T> hyper::rt::Write for SmolIo<T>
 where
-    T: smol::io::AsyncWrite 
+    T: smol::io::AsyncWrite,
 {
     fn poll_write(
         self: std::pin::Pin<&mut Self>,
@@ -63,11 +59,7 @@ where
         buf: &[u8],
     ) -> Poll<Result<usize, std::io::Error>> {
         let n = {
-            match smol::io::AsyncWrite::poll_write(
-                self.project().inner, 
-                cx, 
-                buf
-            ) {
+            match smol::io::AsyncWrite::poll_write(self.project().inner, cx, buf) {
                 Poll::Ready(n) => n?,
                 Poll::Pending => return std::task::Poll::Pending,
             }
@@ -77,8 +69,8 @@ where
     }
 
     fn poll_flush(
-        self: std::pin::Pin<&mut Self>, 
-        cx: &mut std::task::Context<'_>
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
     ) -> Poll<Result<(), std::io::Error>> {
         smol::io::AsyncWrite::poll_flush(self.project().inner, cx)
     }
@@ -93,7 +85,7 @@ where
 
 impl<T> smol::io::AsyncRead for SmolIo<T>
 where
-    T: hyper::rt::Read 
+    T: hyper::rt::Read,
 {
     fn poll_read(
         self: std::pin::Pin<&mut Self>,
@@ -102,11 +94,7 @@ where
     ) -> Poll<std::io::Result<usize>> {
         let mut read_buf = hyper::rt::ReadBuf::new(buf);
 
-        match hyper::rt::Read::poll_read(
-            self.project().inner, 
-            cx, 
-            read_buf.unfilled()
-        ) {
+        match hyper::rt::Read::poll_read(self.project().inner, cx, read_buf.unfilled()) {
             Poll::Ready(n) => n?,
             Poll::Pending => return Poll::Pending,
         };
@@ -115,10 +103,9 @@ where
     }
 }
 
-
 impl<T> smol::io::AsyncWrite for SmolIo<T>
 where
-    T: hyper::rt::Write
+    T: hyper::rt::Write,
 {
     fn poll_write(
         self: std::pin::Pin<&mut Self>,
@@ -129,15 +116,15 @@ where
     }
 
     fn poll_flush(
-        self: std::pin::Pin<&mut Self>, 
-        cx: &mut std::task::Context<'_>
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
     ) -> Poll<std::io::Result<()>> {
         hyper::rt::Write::poll_flush(self.project().inner, cx)
     }
 
     fn poll_close(
-        self: std::pin::Pin<&mut Self>, 
-        cx: &mut std::task::Context<'_>
+        self: std::pin::Pin<&mut Self>,
+        cx: &mut std::task::Context<'_>,
     ) -> Poll<std::io::Result<()>> {
         hyper::rt::Write::poll_shutdown(self.project().inner, cx)
     }
