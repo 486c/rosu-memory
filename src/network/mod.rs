@@ -7,7 +7,6 @@ use std::net::TcpListener;
 use crate::{gosu_structs::GosuValues, structs::{Arm, Clients, OutputValues, WsClient, WsKind}};
 
 use self::smol_hyper::SmolIo;
-use futures_util::sink::SinkExt;
 use smol::{prelude::*, Async};
 
 use async_tungstenite::{

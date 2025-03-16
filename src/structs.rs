@@ -680,8 +680,9 @@ pub struct OutputValues {
 impl OutputValues {
     // Reseting values should happen from `OutputValues` functions
     // Separating it in individual functions gonna decrease readability
-    // a lot
-    pub fn reset_gameplay(&mut self) {
+    // a lot.
+    // Also reset a inner values for gradual pp calculator
+    pub fn reset_gameplay(&mut self, ivalues: &mut InnerValues) {
         let _span = tracy_client::span!("reset gameplay!");
 
         self.keyoverlay.reset();
@@ -718,6 +719,8 @@ impl OutputValues {
         self.gameplay.current_hp_smooth = 0.0;
 
         self.gameplay.unstable_rate = 0.0;
+
+        ivalues.reset();
     }
     
     #[inline]
@@ -746,7 +749,6 @@ impl OutputValues {
             self.beatmap.max_bpm = max_bpm;
             self.beatmap.min_bpm = min_bpm;
         }
-
     }
 
     pub fn update_current_bpm(&mut self) {
@@ -830,43 +832,44 @@ impl OutputValues {
             score_state.n50 = self.gameplay.hit_50 as u32;
             score_state.misses = self.gameplay.hit_miss as u32;
             
-            /*
-            {
-                max_combo: self.gameplay.max_combo as u32,
-                n_geki: self.gameplay.hit_geki as u32,
-                n_katu: self.gameplay.hit_katu as u32,
-                n300: self.gameplay.hit_300 as u32,
-                n100: self.gameplay.hit_100 as u32,
-                n50: self.gameplay.hit_50 as u32,
-                misses: self.gameplay.hit_miss as u32,
-                osu_large_tick_hits: todo!(),
-                osu_small_tick_hits: todo!(),
-                slider_end_hits: todo!(),
-            };
-            */
-
-            let passed_objects = self.gameplay.passed_objects;
-            let prev_passed_objects = self.prev_passed_objects;
-            let delta = passed_objects - prev_passed_objects;
+            // Protecting from non-initialized values
+            if self.gameplay.passed_objects == 0 && self.prev_passed_objects == 0 {
+                return;
+            }
 
             let gradual = ivalues
                 .gradual_performance_current
                 .get_or_insert_with(|| {
                     let diff = Difficulty::new()
+                        .lazer(false) // Reminder
                         .mods(self.gameplay.mods);
 
-                    GradualPerformance::new(diff, &beatmap)
-                    /*
-                    // TODO: required until we rework the struct
-                    let static_beatmap = unsafe {
-                        extend_lifetime(beatmap)
+                    let mut grad = GradualPerformance::new(diff, &beatmap);
+
+                    // In cases if we start mid-map, advance to the
+                    // current position.
+                    if self.prev_passed_objects == 0 && self.gameplay.passed_objects != 0 {
+                        let res = grad.nth(score_state.clone(), self.gameplay.passed_objects);
+
+                        if res.is_none() {
+                            println!("
+                                Failed to advance gradual pp forward: passed_objects: {}, grad_remaining_objects: {}",
+                                self.gameplay.passed_objects,
+                                grad.len()
+                            )
+                        };
+
+                        self.prev_passed_objects = self.gameplay.passed_objects;
+                        self.delta_sum += self.gameplay.passed_objects;
                     };
-                    GradualPerformance::new(
-                        static_beatmap,
-                        self.gameplay.mods
-                    )
-                    */
+
+                    grad
                 });
+
+            let passed_objects = self.gameplay.passed_objects;
+            let prev_passed_objects = self.prev_passed_objects;
+            let delta = passed_objects - prev_passed_objects;
+
 
             // delta can't be 0 as processing 0 actually processes 1 object
             if (delta > 0) && (self.delta_sum <= prev_passed_objects) {
@@ -877,9 +880,11 @@ impl OutputValues {
                         self.current_pp = attributes.pp();
                         self.current_stars = attributes.stars();
                     }
-                    None => { println!("Failed to calculate current pp/sr") }
+                    None => { println!(
+                        "Failed to calculate current pp/sr, delta_sum: {}, delta_curr: {}",
+                        self.delta_sum, delta - 1
+                    )}
                 }
-
             }
         }
     }
@@ -902,21 +907,6 @@ impl OutputValues {
                         .pp();
 
                     self.fc_pp = fc_pp;
-
-                    /*
-                    let fc_pp = AnyPP::new(beatmap)
-                        .attributes(attributes.clone())
-                        .mode(self.gameplay.gamemode())
-                        .mods(self.gameplay.mods)
-                        .n300(self.gameplay.hit_300 as usize)
-                        .n100(self.gameplay.hit_100 as usize)
-                        .n50(self.gameplay.hit_50 as usize)
-                        .n_geki(self.gameplay.hit_geki as usize)
-                        .n_katu(self.gameplay.hit_katu as usize)
-                        .n_misses(0)
-                        .calculate();
-
-                    */
                 }
                 else {
                     self.fc_pp = 0.0
@@ -1087,10 +1077,6 @@ impl OutputValues {
         self.beatmap.paths.background_path_full
             .push(&self.beatmap.paths.background_file);
     }
-}
-
-unsafe fn extend_lifetime<T>(value: &T) -> &'static T {
-    std::mem::transmute(value)
 }
 
 #[cfg(test)]
