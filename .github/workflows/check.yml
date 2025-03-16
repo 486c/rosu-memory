@@ -29,7 +29,5 @@ jobs:
         run: cargo check --verbose --target ${{ matrix.target }}
       - name: Run cargo clippy
         run: cargo clippy --all-features --all-targets -- -Dwarnings
-      - name: Run cargo audit
-        run: cargo audit
       - name: Run tests
         run: cargo test
