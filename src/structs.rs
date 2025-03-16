@@ -12,16 +12,13 @@ use rosu_mem::{
     signature::Signature
 };
 
-use rosu_pp::{Beatmap, BeatmapExt, GameMode,
-              PerformanceAttributes, GradualPerformance,
-              beatmap::EffectPoint, ScoreState, AnyPP
-};
+use rosu_pp::{any::{PerformanceAttributes, ScoreState}, model::mode::GameMode, Beatmap, Difficulty, GradualPerformance, Performance};
 
 use serde::Serialize;
 use serde_repr::Serialize_repr;
 use eyre::Result;
 
-use crate::network::smol_hyper::SmolIo;
+use crate::{network::smol_hyper::SmolIo, utils::{effect_point_at, timing_point_at}};
 
 
 #[derive(Clone, Copy, PartialEq)]
@@ -240,8 +237,9 @@ pub struct State {
 #[derive(Default)]
 pub struct InnerValues {
     pub gradual_performance_current:
-        Option<GradualPerformance<'static>>,
+        Option<GradualPerformance>,
 
+    /// Used for recalculations on fc_pp 
     pub current_beatmap_perf: Option<PerformanceAttributes>,
 }
 
@@ -724,11 +722,13 @@ impl OutputValues {
     
     #[inline]
     pub fn menu_gamemode(&self) -> GameMode {
-        let _span = tracy_client::span!("menu gamemody");
+        let _span = tracy_client::span!("menu_gamemode");
         GameMode::from(self.menu_mode as u8)
     }
 
     pub fn update_min_max_bpm(&mut self) {
+        let _span = tracy_client::span!("update_min_max_bpm");
+
         if let Some(beatmap) = &self.current_beatmap {
             // Maybe this is not very idiomatic approach
             // but atleast we dont need to iterate twice
@@ -753,9 +753,10 @@ impl OutputValues {
         let _span = tracy_client::span!("get current bpm");
 
         let bpm = if let Some(beatmap) = &self.current_beatmap {
-            60000.0 / beatmap
-                .timing_point_at(self.playtime as f64)
-                .beat_len
+            match timing_point_at(&beatmap, self.playtime as f64) {
+                Some(v) => 60000.0 / v.beat_len,
+                None => return,
+            }
         } else {
             self.current_bpm
         };
@@ -768,8 +769,11 @@ impl OutputValues {
 
         self.kiai_now = if let Some(beatmap) = &self.current_beatmap {
             // TODO: get rid of extra allocation?
-            let kiai_data: Option<EffectPoint> = beatmap
-                .effect_point_at(self.playtime as f64);
+            let kiai_data = effect_point_at(
+                &beatmap,
+                self.playtime as f64
+            );
+
             if let Some(kiai) = kiai_data {
                 kiai.kiai
             } else {
@@ -789,19 +793,22 @@ impl OutputValues {
 
         if self.state == GameState::ResultScreen {
             if let Some(beatmap) = &self.current_beatmap {
-                let attr = beatmap
-                    .pp()
-                    .mode(self.result_screen.gamemode())
+                //.mode(self.result_screen.gamemode()) TODO
+
+                let diff = Difficulty::new()
                     .mods(self.result_screen.mods)
-                    .n300(self.result_screen.hit_300 as usize)
-                    .n100(self.result_screen.hit_100 as usize)
-                    .n50(self.result_screen.hit_50 as usize)
-                    .n_geki(self.result_screen.hit_geki as usize)
-                    .n_katu(self.result_screen.hit_katu as usize)
-                    .n_misses(self.result_screen.hit_miss as usize)
+                    .calculate(&beatmap);
+
+                let perf = Performance::new(diff)
+                    .n300(self.result_screen.hit_300 as u32)
+                    .n100(self.result_screen.hit_100 as u32)
+                    .n50(self.result_screen.hit_50 as u32)
+                    .n_geki(self.result_screen.hit_geki as u32)
+                    .n_katu(self.result_screen.hit_katu as u32)
+                    .misses(self.result_screen.hit_miss as u32)
                     .calculate();
 
-                self.current_pp = attr.pp();
+                self.current_pp = perf.pp();
             }
 
             return;
@@ -813,15 +820,30 @@ impl OutputValues {
         }
 
         if let Some(beatmap) = &self.current_beatmap {
-            let score_state = ScoreState {
-                max_combo: self.gameplay.max_combo as usize,
-                n_geki: self.gameplay.hit_geki as usize,
-                n_katu: self.gameplay.hit_katu as usize,
-                n300: self.gameplay.hit_300 as usize,
-                n100: self.gameplay.hit_100 as usize,
-                n50: self.gameplay.hit_50 as usize,
-                n_misses: self.gameplay.hit_miss as usize,
+            let mut score_state = ScoreState::new();
+
+            score_state.max_combo = self.gameplay.max_combo as u32;
+            score_state.n_geki = self.gameplay.hit_geki as u32;
+            score_state.n_katu = self.gameplay.hit_katu as u32;
+            score_state.n300 = self.gameplay.hit_300 as u32;
+            score_state.n100 = self.gameplay.hit_100 as u32;
+            score_state.n50 = self.gameplay.hit_50 as u32;
+            score_state.misses = self.gameplay.hit_miss as u32;
+            
+            /*
+            {
+                max_combo: self.gameplay.max_combo as u32,
+                n_geki: self.gameplay.hit_geki as u32,
+                n_katu: self.gameplay.hit_katu as u32,
+                n300: self.gameplay.hit_300 as u32,
+                n100: self.gameplay.hit_100 as u32,
+                n50: self.gameplay.hit_50 as u32,
+                misses: self.gameplay.hit_miss as u32,
+                osu_large_tick_hits: todo!(),
+                osu_small_tick_hits: todo!(),
+                slider_end_hits: todo!(),
             };
+            */
 
             let passed_objects = self.gameplay.passed_objects;
             let prev_passed_objects = self.prev_passed_objects;
@@ -830,6 +852,11 @@ impl OutputValues {
             let gradual = ivalues
                 .gradual_performance_current
                 .get_or_insert_with(|| {
+                    let diff = Difficulty::new()
+                        .mods(self.gameplay.mods);
+
+                    GradualPerformance::new(diff, &beatmap)
+                    /*
                     // TODO: required until we rework the struct
                     let static_beatmap = unsafe {
                         extend_lifetime(beatmap)
@@ -838,6 +865,7 @@ impl OutputValues {
                         static_beatmap,
                         self.gameplay.mods
                     )
+                    */
                 });
 
             // delta can't be 0 as processing 0 actually processes 1 object
@@ -858,11 +886,24 @@ impl OutputValues {
 
     /// Depends on `GameplayValues`
     pub fn update_fc_pp(&mut self, ivalues: &mut InnerValues) {
-        let _span = tracy_client::span!("get_fc_pp");
+        let _span = tracy_client::span!("update_fc_pp");
         if let Some(beatmap) = &self.current_beatmap {
             if ivalues.current_beatmap_perf.is_some() {
-                if let Some(attributes) =
-                    ivalues.current_beatmap_perf.clone() {
+                if let Some(perf_attrs) = ivalues.current_beatmap_perf.clone() {
+                    let fc_pp = perf_attrs.performance()
+                        .mods(self.gameplay.mods)
+                        .n300(self.gameplay.hit_300 as u32)
+                        .n100(self.gameplay.hit_100 as u32)
+                        .n50(self.gameplay.hit_50 as u32)
+                        .n_geki(self.gameplay.hit_geki as u32)
+                        .n_katu(self.gameplay.hit_katu as u32)
+                        .misses(0)
+                        .calculate()
+                        .pp();
+
+                    self.fc_pp = fc_pp;
+
+                    /*
                     let fc_pp = AnyPP::new(beatmap)
                         .attributes(attributes.clone())
                         .mode(self.gameplay.gamemode())
@@ -874,21 +915,25 @@ impl OutputValues {
                         .n_katu(self.gameplay.hit_katu as usize)
                         .n_misses(0)
                         .calculate();
-                    self.fc_pp = fc_pp.pp();
+
+                    */
                 }
                 else {
                     self.fc_pp = 0.0
                 }
             } else {
-                let attr = AnyPP::new(beatmap)
+
+                let diff = Difficulty::new()
                     .mods(self.gameplay.mods)
-                    .mode(self.gameplay.gamemode())
+                    .calculate(&beatmap);
+
+                let perf_attrs = Performance::new(diff)
                     .calculate();
 
-                let ss_pp = attr.pp();
+                let ss_pp = perf_attrs.pp();
                 self.ss_pp = ss_pp;
 
-                ivalues.current_beatmap_perf = Some(attr);
+                ivalues.current_beatmap_perf = Some(perf_attrs);
 
                 self.fc_pp = ss_pp;
             }
@@ -980,16 +1025,16 @@ impl OutputValues {
                     _ => self.menu_gamemode()
                 }
             };
+            
+            // Just to be sure
+            assert_eq!(beatmap.mode, mode);
 
-            self.stars = beatmap
-                .stars()
-                .mode(mode)     // Catch convertions is 
-                .calculate()    // broken so converting
-                .stars();       // manually, read #57 & #55
+            self.stars = Difficulty::new()
+                .mods(mods)
+                .calculate(&beatmap)
+                .stars();
 
-            let attr = beatmap
-                .pp()
-                .mode(mode)     // ^
+            let attr = Performance::new(beatmap)
                 .mods(mods)
                 .calculate();
 

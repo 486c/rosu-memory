@@ -4,12 +4,12 @@ version = "0.2.0"
 edition = "2021"
 
 [dependencies]
-rosu-mem = { git = "https://github.com/486c/rosu-mem.git", tag = "v1.0.0" }
+rosu-mem = { git = "https://github.com/486c/rosu-mem.git", tag = "v2.0.0" }
 async-tungstenite = "0.23.0"
 cfg-if = "1.0.0"
 clap = { version = "4.4.8", default-features = false, features = ["std", "derive", "env"] }
 eyre = "0.6.12"
-rosu-pp = { git = "https://github.com/486c/rosu-pp.git", branch = "main", features = ["gradual"] }
+rosu-pp = { version = "2.0.0" }
 serde = { version = "1.0.192", default-features = false, features = ["derive"] }
 serde_json = "1.0.108"
 serde_repr = "0.1.17"
