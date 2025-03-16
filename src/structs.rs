@@ -782,6 +782,7 @@ impl OutputValues {
                 //.mode(self.result_screen.gamemode()) TODO
 
                 let diff = Difficulty::new()
+                    .lazer(false)
                     .mods(self.result_screen.mods)
                     .calculate(beatmap);
 
@@ -899,6 +900,7 @@ impl OutputValues {
                 }
             } else {
                 let diff = Difficulty::new()
+                    .lazer(false)
                     .mods(self.gameplay.mods)
                     .calculate(beatmap);
 
@@ -1001,7 +1003,11 @@ impl OutputValues {
             // Just to be sure
             assert_eq!(beatmap.mode, mode);
 
-            self.stars = Difficulty::new().mods(mods).calculate(beatmap).stars();
+            self.stars = Difficulty::new()
+                .lazer(false)
+                .mods(mods)
+                .calculate(beatmap)
+                .stars();
 
             let attr = Performance::new(beatmap).mods(mods).calculate();
 
