@@ -1,29 +1,26 @@
-mod network;
-mod structs;
 mod gosu_structs;
+mod network;
 mod reading_loop;
+mod structs;
 mod utils;
 
-use structs::{InnerValues, OutputValues, Clients};
+use structs::{Clients, InnerValues, OutputValues};
 
-use crate::network::{server_thread, handle_clients};
+use crate::network::{handle_clients, server_thread};
 
 use crate::reading_loop::process_reading_loop;
-use crate::structs::{
-    StaticAddresses,
-    State,
-};
+use crate::structs::{State, StaticAddresses};
 
-use std::sync::{Arc, Mutex};
 use std::path::PathBuf;
+use std::sync::{Arc, Mutex};
 use std::thread;
 use std::time::Duration;
 
 use clap::Parser;
 
 use rosu_mem::{
-    process::{Process, ProcessTraits}, 
-    error::ProcessError
+    error::ProcessError,
+    process::{Process, ProcessTraits},
 };
 
 use eyre::{Report, Result};
@@ -41,7 +38,7 @@ pub struct Args {
     #[clap(default_value = "300")]
     #[arg(short, long, value_parser=parse_interval_ms)]
     interval: std::time::Duration,
-    
+
     /// Amount of seconds waiting after critical error happened
     /// before running again
     #[clap(default_value = "3")]
@@ -49,16 +46,12 @@ pub struct Args {
     error_interval: std::time::Duration,
 }
 
-fn parse_interval_ms(
-    arg: &str
-) -> Result<std::time::Duration, std::num::ParseIntError> {
+fn parse_interval_ms(arg: &str) -> Result<std::time::Duration, std::num::ParseIntError> {
     let ms = arg.parse()?;
     Ok(std::time::Duration::from_millis(ms))
 }
 
-fn parse_interval_secs(
-    arg: &str
-) -> Result<std::time::Duration, std::num::ParseIntError> {
+fn parse_interval_secs(arg: &str) -> Result<std::time::Duration, std::num::ParseIntError> {
     let secs = arg.parse()?;
     Ok(std::time::Duration::from_secs(secs))
 }
@@ -76,21 +69,16 @@ fn main() -> Result<()> {
         ivalues: inner_values,
         values: output_values,
     };
-    
+
     // Spawning Hyper server
     let server_clients = state.clients.clone();
     let server_values = state.values.clone();
-    std::thread::spawn(move || server_thread(
-        server_clients, server_values
-    ));
+    std::thread::spawn(move || server_thread(server_clients, server_values));
 
     println!("Spawned server!");
 
     if args.interval != Duration::from_millis(300) {
-        println!(
-            "Using non default interval: {}", 
-            args.interval.as_millis()
-        );
+        println!("Using non default interval: {}", args.interval.as_millis());
     }
 
     'init_loop: loop {
@@ -98,12 +86,12 @@ fn main() -> Result<()> {
             Ok(p) => {
                 println!("Found process, pid - {}", p.pid);
                 p
-            },
+            }
             Err(e) => {
                 println!("{:?}", Report::new(e));
                 thread::sleep(args.error_interval);
-                continue 'init_loop
-            },
+                continue 'init_loop;
+            }
         };
 
         let mut values = state.values.lock().unwrap();
@@ -114,7 +102,7 @@ fn main() -> Result<()> {
             Some(ref v) => {
                 println!("Using provided osu! folder path");
                 values.osu_path.clone_from(v);
-            },
+            }
             None => {
                 println!("Using auto-detected osu! folder path");
                 if let Some(ref dir) = p.executable_dir {
@@ -123,12 +111,12 @@ fn main() -> Result<()> {
                     return Err(Report::msg(
                         "Can't auto-detect osu! folder path \
                          nor any was provided through command \
-                         line argument"
+                         line argument",
                     ));
                 }
-            },
+            }
         }
-        
+
         // Checking if path exists
         if !values.osu_path.exists() {
             println!(
@@ -139,8 +127,8 @@ fn main() -> Result<()> {
             return Err(Report::msg(
                 "Can't auto-detect osu! folder path \
                  nor any was provided through command \
-                 line argument"
-            ))
+                 line argument",
+            ));
         };
 
         drop(values);
@@ -148,59 +136,52 @@ fn main() -> Result<()> {
         println!("Reading static signatures...");
         match StaticAddresses::new(&p) {
             Ok(v) => state.addresses = v,
-            Err(e) => {
-                match e.downcast_ref::<ProcessError>() {
-                    Some(&ProcessError::ProcessNotFound) =>  {
-                        thread::sleep(args.error_interval);
-                        continue 'init_loop
-                    },
-                    #[cfg(target_os = "windows")]
-                    Some(&ProcessError::OsError{ .. }) => {
-                        println!("{:?}", e);
-                        thread::sleep(args.error_interval);
-                        continue 'init_loop
-                    },
-                    Some(_) | None => {
-                        println!("{:?}", e);
-                        thread::sleep(args.error_interval);
-                        continue 'init_loop
-                    },
+            Err(e) => match e.downcast_ref::<ProcessError>() {
+                Some(&ProcessError::ProcessNotFound) => {
+                    thread::sleep(args.error_interval);
+                    continue 'init_loop;
+                }
+                #[cfg(target_os = "windows")]
+                Some(&ProcessError::OsError { .. }) => {
+                    println!("{:?}", e);
+                    thread::sleep(args.error_interval);
+                    continue 'init_loop;
+                }
+                Some(_) | None => {
+                    println!("{:?}", e);
+                    thread::sleep(args.error_interval);
+                    continue 'init_loop;
                 }
             },
         };
 
         println!("Starting reading loop");
         'main_loop: loop {
-            if let Err(e) = process_reading_loop(
-                &p,
-                &mut state
-            ) {
+            if let Err(e) = process_reading_loop(&p, &mut state) {
                 match e.downcast_ref::<ProcessError>() {
                     Some(&ProcessError::ProcessNotFound) => {
                         thread::sleep(args.error_interval);
-                        continue 'init_loop
-                    },
+                        continue 'init_loop;
+                    }
                     #[cfg(target_os = "windows")]
-                    Some(&ProcessError::OsError{ .. }) => {
+                    Some(&ProcessError::OsError { .. }) => {
                         println!("{:?}", e);
                         thread::sleep(args.error_interval);
-                        continue 'init_loop
-                    },
+                        continue 'init_loop;
+                    }
                     Some(_) | None => {
                         println!("{:?}", e);
                         thread::sleep(args.error_interval);
-                        continue 'main_loop
-                    },
+                        continue 'main_loop;
+                    }
                 }
             }
 
             smol::block_on(async {
-                handle_clients(
-                    state.values.clone(), state.clients.clone()
-                ).await;
+                handle_clients(state.values.clone(), state.clients.clone()).await;
             });
 
             std::thread::sleep(args.interval);
         }
-    };
+    }
 }

@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::structs::{GameState, OutputValues, BeatmapStatus};
+use crate::structs::{BeatmapStatus, GameState, OutputValues};
 
 #[derive(Debug, Serialize)]
 pub struct GosuMenu {
@@ -34,7 +34,7 @@ pub struct GosuBeatmapTime {
     first_obj: f64,
     current: f64,
     full: f64,
-    mp3: f64
+    mp3: f64,
 }
 
 #[derive(Debug, Serialize)]
@@ -102,7 +102,6 @@ pub struct GosuBeatmap {
     stats: GosuBeatmapStats,
 
     path: GosuBeatmapPath,
-
 }
 
 #[derive(Debug, Serialize)]
@@ -121,7 +120,7 @@ pub struct GosuGameplayHp {
 pub struct GosuGameplayHitsGrade {
     current: String,
     #[serde(rename = "maxThisPlay")]
-    max: String
+    max: String,
 }
 
 #[derive(Debug, Serialize)]
@@ -155,8 +154,6 @@ pub struct GosuGameplayHits {
 
     #[serde(rename = "unstableRate")]
     unstable_rate: f64,
-
-
     // TODO hitErrorArray
 }
 
@@ -215,9 +212,13 @@ impl From<&OutputValues> for GosuValues {
                         mp3: value.beatmap.last_obj_time,
                     },
                     path: GosuBeatmapPath {
-                        full: value.beatmap.paths.background_path_full
+                        full: value
+                            .beatmap
+                            .paths
+                            .background_path_full
                             .clone()
-                            .into_os_string().into_string()
+                            .into_os_string()
+                            .into_string()
                             .unwrap_or_default(),
                         folder: value.beatmap.paths.beatmap_folder.clone(),
                         file: value.beatmap.paths.beatmap_file.clone(),
@@ -227,20 +228,17 @@ impl From<&OutputValues> for GosuValues {
                 },
                 mods: GosuMods {
                     num: value.get_current_mods(),
-                    str: value.mods_str.iter()
-                        .fold(String::new(), |mut acc, x| {
-                            acc.push_str(x);
+                    str: value.mods_str.iter().fold(String::new(), |mut acc, x| {
+                        acc.push_str(x);
 
-                            acc
-                        }),
+                        acc
+                    }),
                 },
                 state: value.state,
                 skin_folder: value.skin_folder.clone(),
                 gamemode: value.menu_mode,
                 chat_enabled: value.chat_enabled,
-                pp: GosuMenuPp {
-                    pp_ss: value.ss_pp,
-                },
+                pp: GosuMenuPp { pp_ss: value.ss_pp },
             },
             gameplay: GosuGameplay {
                 gamemode: value.gameplay.gamemode() as u8,
@@ -307,7 +305,7 @@ impl From<&OutputValues> for GosuValues {
                 45.56485843658447,
                 70.59610366821289,
                 70.64111709594727,
-                78.77282524108887, 
+                78.77282524108887,
                 174.9065968440129,
                 171.57178192138673,
                 154.53320966448103,

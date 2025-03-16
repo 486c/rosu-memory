@@ -1,13 +1,12 @@
 use std::mem::size_of;
 
+use eyre::Result;
 use rosu_pp::{Beatmap, GameMods};
 use tracy_client::*;
-use eyre::Result;
 
 use rosu_mem::process::{Process, ProcessTraits};
 
-use crate::structs::{State, GameState, BeatmapStatus, OutputValues};
-
+use crate::structs::{BeatmapStatus, GameState, OutputValues, State};
 
 /// Here cases when key overlay is not gonna be available for reading:
 /// 1. Map is not fully loaded
@@ -20,46 +19,28 @@ pub fn process_key_overlay(
     let keyoverlay_ptr = p.read_i32(ruleset_addr + 0xB0)?;
 
     if keyoverlay_ptr == 0 {
-        return Ok(())
+        return Ok(());
     }
-    
+
     // TODO optimize using batches?
 
-    let keyoverlay_addr = p.read_i32(
-        p.read_i32(keyoverlay_ptr + 0x10)? + 0x4
-    )?;
-    
-    values.keyoverlay.k1_pressed = p.read_i8(
-        p.read_i32(keyoverlay_addr + 0x8)? + 0x1C
-    )? != 0;
+    let keyoverlay_addr = p.read_i32(p.read_i32(keyoverlay_ptr + 0x10)? + 0x4)?;
 
-    values.keyoverlay.k1_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0x8)? + 0x14
-    )? as u32;
+    values.keyoverlay.k1_pressed = p.read_i8(p.read_i32(keyoverlay_addr + 0x8)? + 0x1C)? != 0;
 
-    values.keyoverlay.k2_pressed = p.read_i8(
-        p.read_i32(keyoverlay_addr + 0xC)? + 0x1C
-    )? != 0;
+    values.keyoverlay.k1_count = p.read_i32(p.read_i32(keyoverlay_addr + 0x8)? + 0x14)? as u32;
 
-    values.keyoverlay.k2_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0xC)? + 0x14
-    )? as u32;
+    values.keyoverlay.k2_pressed = p.read_i8(p.read_i32(keyoverlay_addr + 0xC)? + 0x1C)? != 0;
 
-    values.keyoverlay.m1_pressed = p.read_i8(
-        p.read_i32(keyoverlay_addr + 0x10)? + 0x1C
-    )? != 0;
+    values.keyoverlay.k2_count = p.read_i32(p.read_i32(keyoverlay_addr + 0xC)? + 0x14)? as u32;
 
-    values.keyoverlay.m1_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0x10)? + 0x14
-    )? as u32;
+    values.keyoverlay.m1_pressed = p.read_i8(p.read_i32(keyoverlay_addr + 0x10)? + 0x1C)? != 0;
 
-    values.keyoverlay.m2_pressed = p.read_i8(
-        p.read_i32(keyoverlay_addr + 0x14)? + 0x1C
-    )? != 0;
+    values.keyoverlay.m1_count = p.read_i32(p.read_i32(keyoverlay_addr + 0x10)? + 0x14)? as u32;
 
-    values.keyoverlay.m2_count = p.read_i32(
-        p.read_i32(keyoverlay_addr + 0x14)? + 0x14
-    )? as u32;
+    values.keyoverlay.m2_pressed = p.read_i8(p.read_i32(keyoverlay_addr + 0x14)? + 0x1C)? != 0;
+
+    values.keyoverlay.m2_count = p.read_i32(p.read_i32(keyoverlay_addr + 0x14)? + 0x14)? as u32;
 
     Ok(())
 }
@@ -80,14 +61,13 @@ pub fn process_gameplay(
     values.prev_playtime = values.playtime;
 
     if ruleset_addr == 0 {
-        return Ok(())
+        return Ok(());
     };
 
-    let gameplay_base = 
-        p.read_i32(ruleset_addr + 0x68)?;
+    let gameplay_base = p.read_i32(ruleset_addr + 0x68)?;
 
     if gameplay_base == 0 {
-        return Ok(())
+        return Ok(());
     }
 
     let score_base = p.read_i32(gameplay_base + 0x38)?;
@@ -99,19 +79,14 @@ pub fn process_gameplay(
     // values yet unreal to debug, occurs rarely and randomly
     if values.playtime > 150 {
         values.gameplay.current_hp = p.read_f64(hp_base + 0x1C)?;
-        values.gameplay.current_hp_smooth = 
-            p.read_f64(hp_base + 0x14)?;
+        values.gameplay.current_hp_smooth = p.read_f64(hp_base + 0x14)?;
     }
 
     let hit_errors_base = p.read_i32(score_base + 0x38)?;
 
-    p.read_i32_array(
-        hit_errors_base,
-        &mut values.gameplay.hit_errors
-    )?;
+    p.read_i32_array(hit_errors_base, &mut values.gameplay.hit_errors)?;
 
-    values.gameplay.unstable_rate = 
-        values.gameplay.calculate_unstable_rate();
+    values.gameplay.unstable_rate = values.gameplay.calculate_unstable_rate();
 
     // TODO batch
     values.gameplay.mode = p.read_i32(score_base + 0x64)?;
@@ -122,7 +97,7 @@ pub fn process_gameplay(
     values.gameplay.hit_50 = p.read_i16(score_base + 0x8c)?;
 
     values.gameplay.username = p.read_string(score_base + 0x28)?;
-    
+
     // TODO batch
     values.gameplay.hit_geki = p.read_i16(score_base + 0x8e)?;
     values.gameplay.hit_katu = p.read_i16(score_base + 0x90)?;
@@ -139,10 +114,10 @@ pub fn process_gameplay(
     values.gameplay.combo = p.read_i16(score_base + 0x94)?;
     values.gameplay.max_combo = p.read_i16(score_base + 0x68)?;
 
-    if values.gameplay.combo < values.prev_combo
-        && values.gameplay.hit_miss == values.prev_hit_miss {
-            values.gameplay.slider_breaks += 1;
-        }
+    if values.gameplay.combo < values.prev_combo && values.gameplay.hit_miss == values.prev_hit_miss
+    {
+        values.gameplay.slider_breaks += 1;
+    }
 
     values.prev_hit_miss = values.gameplay.hit_miss;
 
@@ -154,11 +129,7 @@ pub fn process_gameplay(
     let mods_xor2 = mods_raw >> 32;
 
     // Read key overlay
-    process_key_overlay(
-        p,
-        values,
-        ruleset_addr
-    )?;
+    process_key_overlay(p, values, ruleset_addr)?;
 
     values.gameplay.mods = (mods_xor1 ^ mods_xor2) as u32;
     values.update_readable_mods();
@@ -177,18 +148,13 @@ pub fn process_gameplay(
     Ok(())
 }
 
-pub fn process_reading_loop(
-    p: &Process,
-    state: &mut State
-) -> Result<()> {
+pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
     let _span = span!("reading loop");
 
     let values = state.values.clone();
     let mut values = values.lock().unwrap();
 
-    let menu_mods_ptr = p.read_i32(
-        state.addresses.menu_mods + 0x9
-    )?;
+    let menu_mods_ptr = p.read_i32(state.addresses.menu_mods + 0x9)?;
 
     let menu_mods = p.read_u32(menu_mods_ptr)?;
     values.menu_mods = menu_mods;
@@ -205,49 +171,38 @@ pub fn process_reading_loop(
     let skin_data = p.read_i32(skin_ptr)?;
     values.skin = p.read_string(skin_data + 0x44)?;
 
-    values.state = GameState::from(
-        p.read_u32(status_ptr)?
-    );
-    
+    values.state = GameState::from(p.read_u32(status_ptr)?);
+
     // Handle leaving `Playing` state
-    if values.prev_state == GameState::Playing 
-    && values.state != GameState::Playing {
+    if values.prev_state == GameState::Playing && values.state != GameState::Playing {
         values.reset_gameplay(&mut state.ivalues);
         state.ivalues.reset();
         values.update_stars_and_ss_pp();
     }
 
     if beatmap_addr == 0 {
-        return Ok(())
+        return Ok(());
     }
 
     if values.state != GameState::MultiplayerLobby {
         let mut beatmap_stats_buff = [0u8; size_of::<f32>() * 4];
 
         p.read(
-            beatmap_addr + 0x2c, 
-            size_of::<f32>() * 4, 
-            &mut beatmap_stats_buff
+            beatmap_addr + 0x2c,
+            size_of::<f32>() * 4,
+            &mut beatmap_stats_buff,
         )?;
 
         // Safety: unwrap here because buff is already initialized
         // and filled with zeros, the worst case scenario is
         // ar, cs, od, hp going to be zero's
-        values.beatmap.ar = f32::from_le_bytes(
-            beatmap_stats_buff[0..4].try_into().unwrap()
-        );
+        values.beatmap.ar = f32::from_le_bytes(beatmap_stats_buff[0..4].try_into().unwrap());
 
-        values.beatmap.cs = f32::from_le_bytes(
-            beatmap_stats_buff[4..8].try_into().unwrap()
-        );
+        values.beatmap.cs = f32::from_le_bytes(beatmap_stats_buff[4..8].try_into().unwrap());
 
-        values.beatmap.hp = f32::from_le_bytes(
-            beatmap_stats_buff[8..12].try_into().unwrap()
-        );
+        values.beatmap.hp = f32::from_le_bytes(beatmap_stats_buff[8..12].try_into().unwrap());
 
-        values.beatmap.od = f32::from_le_bytes(
-            beatmap_stats_buff[12..].try_into().unwrap()
-        );
+        values.beatmap.od = f32::from_le_bytes(beatmap_stats_buff[12..].try_into().unwrap());
 
         let plays_addr = p.read_i32(state.addresses.base - 0x33)? + 0xC;
         values.plays = p.read_i32(plays_addr)?;
@@ -260,29 +215,22 @@ pub fn process_reading_loop(
         values.beatmap.mapset_id = p.read_i32(beatmap_addr + 0xCC)?; // TODO batch
     }
 
-    values.beatmap.beatmap_status = BeatmapStatus::from(
-        p.read_i16(beatmap_addr + 0x12C)?
-    );
+    values.beatmap.beatmap_status = BeatmapStatus::from(p.read_i16(beatmap_addr + 0x12C)?);
 
     let mut new_map = false;
 
     // All time values that available everywhere
-    values.chat_enabled = p.read_i8(
-        state.addresses.chat_checker - 0x20
-    )? != 0;
+    values.chat_enabled = p.read_i8(state.addresses.chat_checker - 0x20)? != 0;
 
     // Skin folder
-    let skin_data_ptr = p.read_i32(
-        p.read_i32(state.addresses.skin + 4)?
-    )?;
+    let skin_data_ptr = p.read_i32(p.read_i32(state.addresses.skin + 4)?)?;
 
-    values.skin_folder = p.read_string(
-        skin_data_ptr + 68
-    )?;
+    values.skin_folder = p.read_string(skin_data_ptr + 68)?;
 
     if values.state != GameState::PreSongSelect
-    && values.state != GameState::MultiplayerLobby 
-    && values.state != GameState::MultiplayerResultScreen {
+        && values.state != GameState::MultiplayerLobby
+        && values.state != GameState::MultiplayerResultScreen
+    {
         let menu_mode_addr = p.read_i32(state.addresses.base - 0x33)?;
 
         let beatmap_file = p.read_string(beatmap_addr + 0x90)?;
@@ -290,27 +238,24 @@ pub fn process_reading_loop(
         let audio_file = p.read_string(beatmap_addr + 0x64)?;
         values.menu_mode = p.read_i32(menu_mode_addr)?;
 
-        values.beatmap.paths.beatmap_full_path 
-            = values.osu_path.join("Songs/");
+        values.beatmap.paths.beatmap_full_path = values.osu_path.join("Songs/");
 
         values.beatmap.paths.beatmap_full_path.push(&beatmap_folder);
         values.beatmap.paths.beatmap_full_path.push(&beatmap_file);
 
-        values.beatmap.md5 = 
-            p.read_string(beatmap_addr + 0x6C)?;
+        values.beatmap.md5 = p.read_string(beatmap_addr + 0x6C)?;
 
         // Check if beatmap changed
-        if (beatmap_folder != values.beatmap.paths.beatmap_folder 
-        || beatmap_file != values.beatmap.paths.beatmap_file
-        || values.prev_menu_mode != values.menu_mode)
-        && values.beatmap.paths.beatmap_full_path.exists() {
-            let current_beatmap = match Beatmap::from_path(
-                &values.beatmap.paths.beatmap_full_path
-            ) {
+        if (beatmap_folder != values.beatmap.paths.beatmap_folder
+            || beatmap_file != values.beatmap.paths.beatmap_file
+            || values.prev_menu_mode != values.menu_mode)
+            && values.beatmap.paths.beatmap_full_path.exists()
+        {
+            let current_beatmap = match Beatmap::from_path(&values.beatmap.paths.beatmap_full_path)
+            {
                 Ok(beatmap) => {
                     new_map = true;
-                    
-                    
+
                     /*
                     TODO bring back background
                     values.beatmap.paths.background_file.clone_from(
@@ -329,11 +274,11 @@ pub fn process_reading_loop(
                     values.beatmap.bpm = beatmap.bpm();
 
                     Some(beatmap)
-                },
+                }
                 Err(_) => {
                     println!("Failed to parse beatmap");
                     None
-                },
+                }
             };
 
             values.current_beatmap = current_beatmap;
@@ -348,7 +293,7 @@ pub fn process_reading_loop(
         }
     }
 
-    // store the converted map so it's not converted 
+    // store the converted map so it's not converted
     // everytime it's used for pp calc
     if new_map {
         if let Some(map) = values.current_beatmap.take() {
@@ -359,10 +304,8 @@ pub fn process_reading_loop(
         values.update_stars_and_ss_pp();
         values.update_current_pp(&mut state.ivalues);
     }
-    
-    let ruleset_addr = p.read_i32(
-        p.read_i32(state.addresses.rulesets - 0xb)? + 0x4
-    )?;
+
+    let ruleset_addr = p.read_i32(p.read_i32(state.addresses.rulesets - 0xb)? + 0x4)?;
 
     let audio_time_ptr = p.read_i32(state.addresses.audio_time_base + 0x9)?;
     values.precise_audio_time = p.read_i32(audio_time_ptr)?;
@@ -371,18 +314,18 @@ pub fn process_reading_loop(
     // reading because all the values depends on this
     // address
     if ruleset_addr == 0 {
-        return Ok(())
+        return Ok(());
     }
 
     // Process result screen
     // TODO handle situations when result screen is not ready
     if values.state == GameState::ResultScreen {
-        let result_base = p.read_i32(ruleset_addr+ 0x38)?;
+        let result_base = p.read_i32(ruleset_addr + 0x38)?;
 
         values.result_screen.username = p.read_string(result_base + 0x28)?;
 
         let mods_xor_base = p.read_i32(result_base + 0x1C)?;
-        
+
         // TODO batch
         let mods_xor1 = p.read_i32(mods_xor_base + 0xC)?;
         let mods_xor2 = p.read_i32(mods_xor_base + 0x8)?;
@@ -390,7 +333,7 @@ pub fn process_reading_loop(
         values.result_screen.mods = (mods_xor1 ^ mods_xor2) as u32;
         values.result_screen.mode = p.read_i32(result_base + 0x64)? as u8;
         values.result_screen.score = p.read_i32(result_base + 0x78)?;
-        
+
         // TODO batch
         values.result_screen.hit_300 = p.read_i16(result_base + 0x8A)?;
         values.result_screen.hit_100 = p.read_i16(result_base + 0x88)?;
@@ -400,15 +343,10 @@ pub fn process_reading_loop(
 
         values.result_screen.update_accuracy();
     }
-    
+
     // Process gameplay
     if values.state == GameState::Playing {
-        let res = process_gameplay(
-            p,
-            state,
-            &mut values,
-            ruleset_addr
-        );
+        let res = process_gameplay(p, state, &mut values, ruleset_addr);
 
         if let Err(e) = res {
             println!("{:?}", e);
@@ -417,8 +355,7 @@ pub fn process_reading_loop(
     }
 
     // Handling entering `ResultScreen` state
-    if values.prev_state != GameState::ResultScreen
-    && values.state == GameState::ResultScreen {
+    if values.prev_state != GameState::ResultScreen && values.state == GameState::ResultScreen {
         if values.prev_state != GameState::Playing {
             values.update_current_pp(&mut state.ivalues);
         }
@@ -427,8 +364,7 @@ pub fn process_reading_loop(
     }
 
     // Handling entering `SongSelect` state
-    if values.prev_state != GameState::SongSelect
-    && values.state == GameState::SongSelect {
+    if values.prev_state != GameState::SongSelect && values.state == GameState::SongSelect {
         // Reseting pp's from result screen
         if values.prev_state == GameState::ResultScreen {
             values.current_pp = 0.0;
@@ -440,16 +376,14 @@ pub fn process_reading_loop(
     }
 
     // Update stars when entering `Playing` state
-    if values.prev_state != GameState::Playing 
-    && values.state == GameState::Playing {
+    if values.prev_state != GameState::Playing && values.state == GameState::Playing {
         values.reset_gameplay(&mut state.ivalues);
         values.update_stars_and_ss_pp();
         values.adjust_bpm();
     }
-    
+
     // Handle mods changes inside `SongSelect` state
-    if values.state == GameState::SongSelect 
-    && values.prev_menu_mods != values.menu_mods {
+    if values.state == GameState::SongSelect && values.prev_menu_mods != values.menu_mods {
         values.update_stars_and_ss_pp();
         values.update_current_pp(&mut state.ivalues);
         values.adjust_bpm();

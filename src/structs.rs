@@ -2,24 +2,30 @@ use std::{
     num::TryFromIntError,
     path::PathBuf,
     str::FromStr,
-    sync::{Arc, Mutex}
+    sync::{Arc, Mutex},
 };
 
 use async_tungstenite::WebSocketStream;
 use hyper::upgrade::Upgraded;
 use rosu_mem::{
     process::{Process, ProcessTraits},
-    signature::Signature
+    signature::Signature,
 };
 
-use rosu_pp::{any::{PerformanceAttributes, ScoreState}, model::mode::GameMode, Beatmap, Difficulty, GradualPerformance, Performance};
+use rosu_pp::{
+    any::{PerformanceAttributes, ScoreState},
+    model::mode::GameMode,
+    Beatmap, Difficulty, GradualPerformance, Performance,
+};
 
+use eyre::Result;
 use serde::Serialize;
 use serde_repr::Serialize_repr;
-use eyre::Result;
 
-use crate::{network::smol_hyper::SmolIo, utils::{effect_point_at, timing_point_at}};
-
+use crate::{
+    network::smol_hyper::SmolIo,
+    utils::{effect_point_at, timing_point_at},
+};
 
 #[derive(Clone, Copy, PartialEq)]
 #[repr(u8)]
@@ -39,43 +45,37 @@ pub type Clients = Arm<Vec<WsClient>>;
 macro_rules! calculate_accuracy {
     ($self: expr) => {{
         match $self.gamemode() {
-            GameMode::Osu => 
-                ($self.hit_300 as f64 * 6. 
-                 + $self.hit_100 as f64 * 2. 
-                 + $self.hit_50 as f64)
-                / 
-                (($self.hit_300 
-                  + $self.hit_100 
-                  + $self.hit_50 
-                  + $self.hit_miss) as f64 * 6.
-                ),
-            GameMode::Taiko =>
+            GameMode::Osu => {
+                ($self.hit_300 as f64 * 6. + $self.hit_100 as f64 * 2. + $self.hit_50 as f64)
+                    / (($self.hit_300 + $self.hit_100 + $self.hit_50 + $self.hit_miss) as f64 * 6.)
+            }
+            GameMode::Taiko => {
                 ($self.hit_300 as f64 * 2. + $self.hit_100 as f64)
-                / 
-                (($self.hit_300 
-                  + $self.hit_100 
-                  + $self.hit_50 
-                  + $self.hit_miss) as f64 * 2.),
-            GameMode::Catch =>
+                    / (($self.hit_300 + $self.hit_100 + $self.hit_50 + $self.hit_miss) as f64 * 2.)
+            }
+            GameMode::Catch => {
                 ($self.hit_300 + $self.hit_100 + $self.hit_50) as f64
-                / 
-                ($self.hit_300 + $self.hit_100 + $self.hit_50 
-                 + $self.hit_katu + $self.hit_miss) as f64,
-            GameMode::Mania =>
-                (($self.hit_geki + $self.hit_300) as f64 
-                 * 6. + $self.hit_katu as f64 
-                 * 4. + $self.hit_100 as f64 
-                 * 2. + $self.hit_50 as f64)
-                / 
-                (($self.hit_geki 
-                  + $self.hit_300 
-                  + $self.hit_katu 
-                  + $self.hit_100 
-                  + $self.hit_50 
-                  + $self.hit_miss) as f64 * 6.
-                )
+                    / ($self.hit_300
+                        + $self.hit_100
+                        + $self.hit_50
+                        + $self.hit_katu
+                        + $self.hit_miss) as f64
+            }
+            GameMode::Mania => {
+                (($self.hit_geki + $self.hit_300) as f64 * 6.
+                    + $self.hit_katu as f64 * 4.
+                    + $self.hit_100 as f64 * 2.
+                    + $self.hit_50 as f64)
+                    / (($self.hit_geki
+                        + $self.hit_300
+                        + $self.hit_katu
+                        + $self.hit_100
+                        + $self.hit_50
+                        + $self.hit_miss) as f64
+                        * 6.)
+            }
         }
-    }}
+    }};
 }
 
 //TODO use bitflags & enum & bitflags iterator for converting to string?
@@ -192,17 +192,12 @@ impl StaticAddresses {
 
         let base_sign = Signature::from_str("F8 01 74 04 83 65")?;
         let status_sign = Signature::from_str("48 83 F8 04 73 1E")?;
-        let menu_mods_sign = Signature::from_str(
-            "C8 FF ?? ?? ?? ?? ?? 81 0D ?? ?? ?? ?? 00 08 00 00"
-        )?;
+        let menu_mods_sign =
+            Signature::from_str("C8 FF ?? ?? ?? ?? ?? 81 0D ?? ?? ?? ?? 00 08 00 00")?;
 
-        let rulesets_sign = Signature::from_str(
-            "7D 15 A1 ?? ?? ?? ?? 85 C0"
-        )?;
+        let rulesets_sign = Signature::from_str("7D 15 A1 ?? ?? ?? ?? 85 C0")?;
 
-        let playtime_sign = Signature::from_str(
-            "5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04"
-        )?;
+        let playtime_sign = Signature::from_str("5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04")?;
 
         let skin_sign = Signature::from_str("75 21 8B 1D")?;
 
@@ -223,7 +218,6 @@ impl StaticAddresses {
     }
 }
 
-
 pub struct State {
     pub addresses: StaticAddresses,
     pub clients: Clients,
@@ -236,10 +230,9 @@ pub struct State {
 // shared between any threads
 #[derive(Default)]
 pub struct InnerValues {
-    pub gradual_performance_current:
-        Option<GradualPerformance>,
+    pub gradual_performance_current: Option<GradualPerformance>,
 
-    /// Used for recalculations on fc_pp 
+    /// Used for recalculations on fc_pp
     pub current_beatmap_perf: Option<PerformanceAttributes>,
 }
 
@@ -324,7 +317,7 @@ pub struct BeatmapPathValues {
     /// Absolute background file path
     /// Example: `/path/to/osu/Songs/beatmap/background.jpg`
     pub background_path_full: PathBuf,
-    
+
     /// Relative to beatmap folder audio file path
     /// Example: ``
     pub audio_file: String,
@@ -350,7 +343,7 @@ pub struct BeatmapValues {
     pub cs: f32,
     pub hp: f32,
     pub od: f32,
-    
+
     /// Beatmap Status aka Ranked, Pending, Loved, etc
     pub beatmap_status: BeatmapStatus,
 
@@ -363,12 +356,12 @@ pub struct BeatmapValues {
     /// BPM of currently selected beatmap
     pub bpm: f64,
 
-    /// Max BPM of currently selected beatmap 
+    /// Max BPM of currently selected beatmap
     pub max_bpm: f64,
 
     /// Min BPM of currently selected beatmap
     pub min_bpm: f64,
-    
+
     /// Paths of files used by beatmap
     /// .osu file, background file, etc
     pub paths: BeatmapPathValues,
@@ -415,24 +408,23 @@ impl GameplayValues {
         let _span = tracy_client::span!("passed objects");
 
         let value = match self.gamemode() {
-            GameMode::Osu => 
-                self.hit_300 + self.hit_100 
-                + self.hit_50 + self.hit_miss,
-            GameMode::Taiko => 
-                self.hit_300 + self.hit_100 + self.hit_miss,
-            GameMode::Catch => 
-                self.hit_300 + self.hit_100 
-                + self.hit_50 + self.hit_miss
-                + self.hit_katu,
-            GameMode::Mania => 
-                self.hit_300 + self.hit_100 
-                + self.hit_50 + self.hit_miss
-                + self.hit_katu + self.hit_geki,
+            GameMode::Osu => self.hit_300 + self.hit_100 + self.hit_50 + self.hit_miss,
+            GameMode::Taiko => self.hit_300 + self.hit_100 + self.hit_miss,
+            GameMode::Catch => {
+                self.hit_300 + self.hit_100 + self.hit_50 + self.hit_miss + self.hit_katu
+            }
+            GameMode::Mania => {
+                self.hit_300
+                    + self.hit_100
+                    + self.hit_50
+                    + self.hit_miss
+                    + self.hit_katu
+                    + self.hit_geki
+            }
         };
 
         usize::try_from(value)
     }
-
 
     pub fn get_current_grade(&self) -> &'static str {
         let _span = tracy_client::span!("calculate current grade");
@@ -443,43 +435,34 @@ impl GameplayValues {
                 let ratio50 = self.hit_50 as f64 / total_hits;
                 if self.accuracy == 1. {
                     "SS"
-                } else if ratio300 > 0.9 
-                    && self.hit_miss == 0 
-                    && ratio50 <= 0.1 {
+                } else if ratio300 > 0.9 && self.hit_miss == 0 && ratio50 <= 0.1 {
                     "S"
-                } else if ratio300 > 0.8 
-                    && self.hit_miss == 0 || ratio300 > 0.9 {
+                } else if ratio300 > 0.8 && self.hit_miss == 0 || ratio300 > 0.9 {
                     "A"
-                } else if ratio300 > 0.7 
-                    && self.hit_miss == 0 
-                    || ratio300 > 0.8 {
+                } else if ratio300 > 0.7 && self.hit_miss == 0 || ratio300 > 0.8 {
                     "B"
                 } else if ratio300 > 0.6 {
                     "C"
                 } else {
                     "D"
                 }
-            },
+            }
             GameMode::Taiko => {
                 let ratio300 = self.hit_300 as f64 / total_hits;
                 if self.accuracy == 1. {
                     "SS"
                 } else if ratio300 > 0.9 && self.hit_miss == 0 {
                     "S"
-                } else if ratio300 > 0.8 
-                    && self.hit_miss == 0 
-                    || ratio300 > 0.9 {
+                } else if ratio300 > 0.8 && self.hit_miss == 0 || ratio300 > 0.9 {
                     "A"
-                } else if ratio300 > 0.7 
-                    && self.hit_miss == 0 
-                    || ratio300 > 0.8 {
+                } else if ratio300 > 0.7 && self.hit_miss == 0 || ratio300 > 0.8 {
                     "B"
                 } else if ratio300 > 0.6 {
                     "C"
                 } else {
                     "D"
                 }
-            },
+            }
             GameMode::Catch => {
                 if self.accuracy == 1. {
                     "SS"
@@ -494,7 +477,7 @@ impl GameplayValues {
                 } else {
                     "D"
                 }
-            },
+            }
             GameMode::Mania => {
                 if self.accuracy == 1. {
                     "SS"
@@ -516,7 +499,7 @@ impl GameplayValues {
         match (base_grade, self.mods & (8 | 1024 | 1048576)) {
             ("SS", conj) if conj > 0 => "SSH",
             ("S", conj) if conj > 0 => "SH",
-            _ => base_grade
+            _ => base_grade,
         }
     }
 
@@ -538,7 +521,7 @@ impl GameplayValues {
         let _span = tracy_client::span!("calculate ur");
 
         if self.hit_errors.is_empty() {
-            return 0.0
+            return 0.0;
         };
 
         let hit_errors_len = self.hit_errors.len() as i32;
@@ -584,7 +567,7 @@ pub struct OutputValues {
     pub prev_menu_mode: i32,
     #[serde(skip)]
     pub delta_sum: usize,
-    
+
     /// Name of the current skin
     pub skin: String,
 
@@ -602,10 +585,10 @@ pub struct OutputValues {
 
     /// Current gamemode on `SongSelect` state
     pub menu_mode: i32,
-    
+
     /// Current state of the game
     pub state: GameState,
-    
+
     /// Stars of current beatmap without any mods
     pub stars: f64,
 
@@ -615,14 +598,14 @@ pub struct OutputValues {
     /// `ResultScreen` => using result_screen mods
     pub stars_mods: f64,
 
-    /// Stars calculated during gameplay and based on 
+    /// Stars calculated during gameplay and based on
     /// current gameplay mods and passed objects
     /// calculated gradually
     pub current_stars: f64,
 
     /// Result Screen info
     pub result_screen: ResultScreenValues,
-    
+
     /// Gameplay info
     pub gameplay: GameplayValues,
 
@@ -639,13 +622,13 @@ pub struct OutputValues {
     /// Is kiai is active now
     /// based on your progress into the beatmap
     pub kiai_now: bool,
-    
+
     /// Current PP based on your state
-    /// 
-    /// `Playing` => based on your progress into the beatmap 
+    ///
+    /// `Playing` => based on your progress into the beatmap
     ///              and gameplay mods
     /// `SongSelect` => ss_pp for current map using menu_mods
-    /// `ResultScreen` => pp calculated for score on the screen 
+    /// `ResultScreen` => pp calculated for score on the screen
     ///                   (values are taken from result_screen)
     pub current_pp: f64,
 
@@ -671,7 +654,7 @@ pub struct OutputValues {
     pub mods_str: Vec<&'static str>,
 
     pub plays: i32,
-    
+
     /// Position of current playing audio in milliseconds
     /// (to be honest it have nothing to do with precision)
     pub precise_audio_time: i32,
@@ -722,7 +705,7 @@ impl OutputValues {
 
         ivalues.reset();
     }
-    
+
     #[inline]
     pub fn menu_gamemode(&self) -> GameMode {
         let _span = tracy_client::span!("menu_gamemode");
@@ -742,8 +725,12 @@ impl OutputValues {
             for timing_point in beatmap.timing_points.iter() {
                 let bpm = 60000.0 / timing_point.beat_len;
 
-                if bpm > max_bpm { max_bpm = bpm };
-                if bpm < min_bpm { min_bpm = bpm };
+                if bpm > max_bpm {
+                    max_bpm = bpm
+                };
+                if bpm < min_bpm {
+                    min_bpm = bpm
+                };
             }
 
             self.beatmap.max_bpm = max_bpm;
@@ -771,10 +758,7 @@ impl OutputValues {
 
         self.kiai_now = if let Some(beatmap) = &self.current_beatmap {
             // TODO: get rid of extra allocation?
-            let kiai_data = effect_point_at(
-                beatmap,
-                self.playtime as f64
-            );
+            let kiai_data = effect_point_at(beatmap, self.playtime as f64);
 
             if let Some(kiai) = kiai_data {
                 kiai.kiai
@@ -815,7 +799,7 @@ impl OutputValues {
 
             return;
         }
-        
+
         // TODO yep it definitely should be refactored
         if self.state == GameState::SongSelect {
             self.current_pp = self.ss_pp;
@@ -831,7 +815,7 @@ impl OutputValues {
             score_state.n100 = self.gameplay.hit_100 as u32;
             score_state.n50 = self.gameplay.hit_50 as u32;
             score_state.misses = self.gameplay.hit_miss as u32;
-            
+
             // Protecting from non-initialized values
             if self.gameplay.passed_objects == 0 && self.prev_passed_objects == 0 {
                 return;
@@ -870,7 +854,6 @@ impl OutputValues {
             let prev_passed_objects = self.prev_passed_objects;
             let delta = passed_objects - prev_passed_objects;
 
-
             // delta can't be 0 as processing 0 actually processes 1 object
             if (delta > 0) && (self.delta_sum <= prev_passed_objects) {
                 self.delta_sum += delta;
@@ -880,10 +863,13 @@ impl OutputValues {
                         self.current_pp = attributes.pp();
                         self.current_stars = attributes.stars();
                     }
-                    None => { println!(
-                        "Failed to calculate current pp/sr, delta_sum: {}, delta_curr: {}",
-                        self.delta_sum, delta - 1
-                    )}
+                    None => {
+                        println!(
+                            "Failed to calculate current pp/sr, delta_sum: {}, delta_curr: {}",
+                            self.delta_sum,
+                            delta - 1
+                        )
+                    }
                 }
             }
         }
@@ -895,7 +881,8 @@ impl OutputValues {
         if let Some(beatmap) = &self.current_beatmap {
             if ivalues.current_beatmap_perf.is_some() {
                 if let Some(perf_attrs) = ivalues.current_beatmap_perf.clone() {
-                    let fc_pp = perf_attrs.performance()
+                    let fc_pp = perf_attrs
+                        .performance()
                         .mods(self.gameplay.mods)
                         .n300(self.gameplay.hit_300 as u32)
                         .n100(self.gameplay.hit_100 as u32)
@@ -907,18 +894,15 @@ impl OutputValues {
                         .pp();
 
                     self.fc_pp = fc_pp;
-                }
-                else {
+                } else {
                     self.fc_pp = 0.0
                 }
             } else {
-
                 let diff = Difficulty::new()
                     .mods(self.gameplay.mods)
                     .calculate(beatmap);
 
-                let perf_attrs = Performance::new(diff)
-                    .calculate();
+                let perf_attrs = Performance::new(diff).calculate();
 
                 let ss_pp = perf_attrs.pp();
                 self.ss_pp = ss_pp;
@@ -947,8 +931,7 @@ impl OutputValues {
                     self.beatmap.bpm *= 1.5;
                     self.beatmap.max_bpm *= 1.5;
                     self.beatmap.min_bpm *= 1.5;
-                }
-                else if self.gameplay.mods & 256 > 0 {
+                } else if self.gameplay.mods & 256 > 0 {
                     self.gameplay.unstable_rate *= 0.75;
                     self.current_bpm *= 0.75;
                     self.beatmap.bpm *= 0.75;
@@ -961,14 +944,13 @@ impl OutputValues {
                         self.beatmap.bpm = beatmap.bpm();
                     }
                 }
-            },
+            }
             GameState::SongSelect => {
                 if self.menu_mods & 64 > 0 {
                     self.beatmap.bpm *= 1.5;
                     self.beatmap.max_bpm *= 1.5;
                     self.beatmap.min_bpm *= 1.5;
-                }
-                else if self.menu_mods & 256 > 0 {
+                } else if self.menu_mods & 256 > 0 {
                     self.beatmap.bpm *= 0.75;
                     self.beatmap.max_bpm *= 0.75;
                     self.beatmap.min_bpm *= 0.75;
@@ -979,18 +961,18 @@ impl OutputValues {
                         self.beatmap.bpm = beatmap.bpm();
                     }
                 }
-            },
-            _ => ()
+            }
+            _ => (),
         }
     }
-    
+
     /// Returns mods depending on current game state
     pub fn get_current_mods(&self) -> u32 {
         match self.state {
             GameState::Playing => self.gameplay.mods,
             GameState::SongSelect => self.menu_mods,
             GameState::ResultScreen => self.result_screen.mods,
-            _ => self.menu_mods
+            _ => self.menu_mods,
         }
     }
 
@@ -1003,7 +985,7 @@ impl OutputValues {
                     GameState::Playing => self.gameplay.mods,
                     GameState::SongSelect => self.menu_mods,
                     GameState::ResultScreen => self.result_screen.mods,
-                    _ => self.menu_mods
+                    _ => self.menu_mods,
                 }
             };
 
@@ -1012,45 +994,39 @@ impl OutputValues {
                     GameState::Playing => self.gameplay.gamemode(),
                     GameState::SongSelect => self.menu_gamemode(),
                     GameState::ResultScreen => self.result_screen.gamemode(),
-                    _ => self.menu_gamemode()
+                    _ => self.menu_gamemode(),
                 }
             };
-            
+
             // Just to be sure
             assert_eq!(beatmap.mode, mode);
 
-            self.stars = Difficulty::new()
-                .mods(mods)
-                .calculate(beatmap)
-                .stars();
+            self.stars = Difficulty::new().mods(mods).calculate(beatmap).stars();
 
-            let attr = Performance::new(beatmap)
-                .mods(mods)
-                .calculate();
+            let attr = Performance::new(beatmap).mods(mods).calculate();
 
             self.stars_mods = attr.stars();
             self.ss_pp = attr.pp();
         }
     }
-    
+
     pub fn update_readable_mods(&mut self) {
         let _span = tracy_client::span!("get_readable_mods");
 
         let mods_values = match self.state {
             GameState::Playing => self.gameplay.mods,
             GameState::SongSelect => self.menu_mods,
-            GameState::ResultScreen=> self.result_screen.mods,
+            GameState::ResultScreen => self.result_screen.mods,
             _ => self.menu_mods,
         };
 
         self.mods_str.clear();
 
-        MODS.iter()
-            .for_each(|(idx, name)| {
-                if let Some(m) = (mods_values & idx > 0).then_some(*name) {
-                    self.mods_str.push(m);
-                }
-            });
+        MODS.iter().for_each(|(idx, name)| {
+            if let Some(m) = (mods_values & idx > 0).then_some(*name) {
+                self.mods_str.push(m);
+            }
+        });
 
         if self.mods_str.contains(&"NC") {
             self.mods_str.retain(|x| x != &"DT");
@@ -1068,13 +1044,16 @@ impl OutputValues {
         // beatmap_full_path is expection because
         // it depends on previous state
 
-        self.beatmap.paths.background_path_full 
-            = self.osu_path.join("Songs/");
+        self.beatmap.paths.background_path_full = self.osu_path.join("Songs/");
 
-        self.beatmap.paths.background_path_full
+        self.beatmap
+            .paths
+            .background_path_full
             .push(&self.beatmap.paths.beatmap_folder);
 
-        self.beatmap.paths.background_path_full
+        self.beatmap
+            .paths
+            .background_path_full
             .push(&self.beatmap.paths.background_file);
     }
 }
@@ -1094,22 +1073,16 @@ mod test {
         };
 
         values.update_readable_mods();
-        assert_eq!(
-            vec!["HD", "HR", "DT"], 
-            values.mods_str
-        );
+        assert_eq!(vec!["HD", "HR", "DT"], values.mods_str);
 
         values.gameplay.mods = 584;
         values.update_readable_mods();
-        assert_eq!(
-            vec!["HD", "NC"],
-            values.mods_str
-        );
+        assert_eq!(vec!["HD", "NC"], values.mods_str);
 
         values.gameplay.mods = 1107561552;
         values.update_readable_mods();
         assert_eq!(
-            vec!["HR","DT","FL","AU","K7","Coop","MR"], 
+            vec!["HR", "DT", "FL", "AU", "K7", "Coop", "MR"],
             values.mods_str
         );
     }
