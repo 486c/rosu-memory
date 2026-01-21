@@ -167,10 +167,6 @@ pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
 
     let status_ptr = p.read_i32(state.addresses.status - 0x4)?;
 
-    let skin_ptr = p.read_i32(state.addresses.skin + 0x4)?;
-    let skin_data = p.read_i32(skin_ptr)?;
-    values.skin = p.read_string(skin_data + 0x44)?;
-
     values.state = GameState::from(p.read_u32(status_ptr)?);
 
     // Handle leaving `Playing` state
@@ -223,9 +219,13 @@ pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
     values.chat_enabled = p.read_i8(state.addresses.chat_checker - 0x20)? != 0;
 
     // Skin folder
-    let skin_data_ptr = p.read_i32(p.read_i32(state.addresses.skin + 4)?)?;
+    let skin_osu_ptr = p.read_i32(state.addresses.skin + 0x7)?;
+    let skin_osu_base = p.read_i32(skin_osu_ptr)?;
 
-    values.skin_folder = p.read_string(skin_data_ptr + 68)?;
+    let skin_name = p.read_string(skin_osu_base + 0x44)?;
+
+    values.skin_folder = values.osu_path.join("Skin").join(&skin_name);
+    values.skin = skin_name;
 
     if values.state != GameState::PreSongSelect
         && values.state != GameState::MultiplayerLobby

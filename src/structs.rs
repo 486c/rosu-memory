@@ -199,7 +199,7 @@ impl StaticAddresses {
 
         let playtime_sign = Signature::from_str("5E 5F 5D C3 A1 ?? ?? ?? ?? 89 ?? 04")?;
 
-        let skin_sign = Signature::from_str("75 21 8B 1D")?;
+        let skin_sign = Signature::from_str("74 2C 85 FF 75 28 A1 ?? ?? ?? ?? 8D 15")?;
 
         let chat_checker = Signature::from_str("0A D7 23 3C 00 00 ?? 01")?;
 
@@ -572,7 +572,7 @@ pub struct OutputValues {
     pub skin: String,
 
     /// Skin folder relative to the osu! folder
-    pub skin_folder: String,
+    pub skin_folder: PathBuf,
 
     /// Is chat enabled (F9/F8)
     pub chat_enabled: bool,

@@ -235,7 +235,7 @@ impl From<&OutputValues> for GosuValues {
                     }),
                 },
                 state: value.state,
-                skin_folder: value.skin_folder.clone(),
+                skin_folder: value.skin_folder.to_str().unwrap_or("").to_owned(),
                 gamemode: value.menu_mode,
                 chat_enabled: value.chat_enabled,
                 pp: GosuMenuPp { pp_ss: value.ss_pp },
