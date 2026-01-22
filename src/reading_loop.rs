@@ -87,21 +87,25 @@ pub fn process_gameplay(
     p.read_i32_array(hit_errors_base, &mut values.gameplay.hit_errors)?;
 
     values.gameplay.unstable_rate = values.gameplay.calculate_unstable_rate();
-
-    // TODO batch
     values.gameplay.mode = p.read_i32(score_base + 0x64)?;
 
-    // TODO batch
-    values.gameplay.hit_300 = p.read_i16(score_base + 0x8a)?;
-    values.gameplay.hit_100 = p.read_i16(score_base + 0x88)?;
-    values.gameplay.hit_50 = p.read_i16(score_base + 0x8c)?;
+    let mut score_info_buff = [0u8; size_of::<i16>() * 6];
+
+    p.read(
+        score_base + 0x88,
+        size_of::<i16>() * 6,
+        &mut score_info_buff,
+    )?;
+
+    // Safety: Already filled with zeros & bounds are correct
+    values.gameplay.hit_100 = i16::from_le_bytes(score_info_buff[0..2].try_into().unwrap());
+    values.gameplay.hit_300 = i16::from_le_bytes(score_info_buff[2..4].try_into().unwrap());
+    values.gameplay.hit_50 = i16::from_le_bytes(score_info_buff[4..6].try_into().unwrap());
+    values.gameplay.hit_geki = i16::from_le_bytes(score_info_buff[6..8].try_into().unwrap());
+    values.gameplay.hit_katu = i16::from_le_bytes(score_info_buff[8..10].try_into().unwrap());
+    values.gameplay.hit_miss = i16::from_le_bytes(score_info_buff[10..].try_into().unwrap());
 
     values.gameplay.username = p.read_string_with_limit_from_ptr(score_base + 0x28, 30)?;
-
-    // TODO batch
-    values.gameplay.hit_geki = p.read_i16(score_base + 0x8e)?;
-    values.gameplay.hit_katu = p.read_i16(score_base + 0x90)?;
-    values.gameplay.hit_miss = p.read_i16(score_base + 0x92)?;
 
     let passed_objects = values.gameplay.passed_objects()?;
 
@@ -110,7 +114,6 @@ pub fn process_gameplay(
     values.gameplay.update_accuracy();
 
     values.gameplay.score = p.read_i32(score_base + 0x78)?;
-
     values.gameplay.combo = p.read_i16(score_base + 0x94)?;
     values.gameplay.max_combo = p.read_i16(score_base + 0x68)?;
 
