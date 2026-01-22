@@ -96,7 +96,7 @@ pub fn process_gameplay(
     values.gameplay.hit_100 = p.read_i16(score_base + 0x88)?;
     values.gameplay.hit_50 = p.read_i16(score_base + 0x8c)?;
 
-    values.gameplay.username = p.read_string(score_base + 0x28)?;
+    values.gameplay.username = p.read_string_from_ptr(score_base + 0x28)?;
 
     // TODO batch
     values.gameplay.hit_geki = p.read_i16(score_base + 0x8e)?;
@@ -193,20 +193,17 @@ pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
         // and filled with zeros, the worst case scenario is
         // ar, cs, od, hp going to be zero's
         values.beatmap.ar = f32::from_le_bytes(beatmap_stats_buff[0..4].try_into().unwrap());
-
         values.beatmap.cs = f32::from_le_bytes(beatmap_stats_buff[4..8].try_into().unwrap());
-
         values.beatmap.hp = f32::from_le_bytes(beatmap_stats_buff[8..12].try_into().unwrap());
-
         values.beatmap.od = f32::from_le_bytes(beatmap_stats_buff[12..].try_into().unwrap());
 
         let plays_addr = p.read_i32(state.addresses.base - 0x33)? + 0xC;
         values.plays = p.read_i32(plays_addr)?;
 
-        values.beatmap.artist = p.read_string(beatmap_addr + 0x18)?;
-        values.beatmap.title = p.read_string(beatmap_addr + 0x24)?;
-        values.beatmap.creator = p.read_string(beatmap_addr + 0x7C)?;
-        values.beatmap.difficulty = p.read_string(beatmap_addr + 0xAC)?;
+        values.beatmap.artist = p.read_string_from_ptr(beatmap_addr + 0x18)?;
+        values.beatmap.title = p.read_string_from_ptr(beatmap_addr + 0x24)?;
+        values.beatmap.creator = p.read_string_from_ptr(beatmap_addr + 0x7C)?;
+        values.beatmap.difficulty = p.read_string_from_ptr(beatmap_addr + 0xAC)?;
         values.beatmap.map_id = p.read_i32(beatmap_addr + 0xC8)?; // TODO batch
         values.beatmap.mapset_id = p.read_i32(beatmap_addr + 0xCC)?; // TODO batch
     }
@@ -222,7 +219,7 @@ pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
     let skin_osu_ptr = p.read_i32(state.addresses.skin + 0x7)?;
     let skin_osu_base = p.read_i32(skin_osu_ptr)?;
 
-    let skin_name = p.read_string(skin_osu_base + 0x44)?;
+    let skin_name = p.read_string_from_ptr(skin_osu_base + 0x44)?;
 
     values.skin_folder = values.osu_path.join("Skin").join(&skin_name);
     values.skin = skin_name;
@@ -233,9 +230,9 @@ pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
     {
         let menu_mode_addr = p.read_i32(state.addresses.base - 0x33)?;
 
-        let beatmap_file = p.read_string(beatmap_addr + 0x90)?;
-        let beatmap_folder = p.read_string(beatmap_addr + 0x78)?;
-        let audio_file = p.read_string(beatmap_addr + 0x64)?;
+        let beatmap_file = p.read_string_from_ptr(beatmap_addr + 0x90)?;
+        let beatmap_folder = p.read_string_from_ptr(beatmap_addr + 0x78)?;
+        let audio_file = p.read_string_from_ptr(beatmap_addr + 0x64)?;
         values.menu_mode = p.read_i32(menu_mode_addr)?;
 
         values.beatmap.paths.beatmap_full_path = values.osu_path.join("Songs/");
@@ -243,7 +240,7 @@ pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
         values.beatmap.paths.beatmap_full_path.push(&beatmap_folder);
         values.beatmap.paths.beatmap_full_path.push(&beatmap_file);
 
-        values.beatmap.md5 = p.read_string(beatmap_addr + 0x6C)?;
+        values.beatmap.md5 = p.read_string_from_ptr(beatmap_addr + 0x6C)?;
 
         // Check if beatmap changed
         if (beatmap_folder != values.beatmap.paths.beatmap_folder
@@ -322,7 +319,7 @@ pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
     if values.state == GameState::ResultScreen {
         let result_base = p.read_i32(ruleset_addr + 0x38)?;
 
-        values.result_screen.username = p.read_string(result_base + 0x28)?;
+        values.result_screen.username = p.read_string_from_ptr(result_base + 0x28)?;
 
         let mods_xor_base = p.read_i32(result_base + 0x1C)?;
 

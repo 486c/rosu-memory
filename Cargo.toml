@@ -4,7 +4,7 @@ version = "2.0.1"
 edition = "2021"
 
 [dependencies]
-rosu-mem = "2.0.0"
+rosu-mem = "3.0.0"
 async-tungstenite = "0.29.1"
 cfg-if = "1.0.0"
 clap = { version = "4.5.32", default-features = false, features = ["std", "derive", "env"] }
