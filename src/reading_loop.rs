@@ -349,12 +349,25 @@ pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
         values.result_screen.mode = p.read_i32(result_base + 0x64)? as u8;
         values.result_screen.score = p.read_i32(result_base + 0x78)?;
 
-        // TODO batch
-        values.result_screen.hit_100 = p.read_i16(result_base + 0x88)?;
-        values.result_screen.hit_300 = p.read_i16(result_base + 0x8A)?;
-        values.result_screen.hit_50 = p.read_i16(result_base + 0x8C)?;
-        values.result_screen.hit_geki = p.read_i16(result_base + 0x8E)?;
-        values.result_screen.hit_katu = p.read_i16(result_base + 0x90)?;
+        let mut info_buff = [0u8; size_of::<i16>() * 6];
+
+        p.read(result_base + 0x88, size_of::<i16>() * 6, &mut info_buff)?;
+
+        // Safety: Already filled with zeros & bounds are correct
+        unsafe {
+            values.result_screen.hit_100 =
+                i16::from_le_bytes(info_buff[0..2].try_into().unwrap_unchecked());
+            values.result_screen.hit_300 =
+                i16::from_le_bytes(info_buff[2..4].try_into().unwrap_unchecked());
+            values.result_screen.hit_50 =
+                i16::from_le_bytes(info_buff[4..6].try_into().unwrap_unchecked());
+            values.result_screen.hit_geki =
+                i16::from_le_bytes(info_buff[6..8].try_into().unwrap_unchecked());
+            values.result_screen.hit_katu =
+                i16::from_le_bytes(info_buff[8..10].try_into().unwrap_unchecked());
+            values.result_screen.hit_miss =
+                i16::from_le_bytes(info_buff[10..].try_into().unwrap_unchecked());
+        }
 
         values.result_screen.update_accuracy();
     }
