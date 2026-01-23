@@ -1,6 +1,7 @@
-use std::mem::size_of;
+use std::{fs::File, io::Read, mem::size_of};
 
 use eyre::Result;
+use rosu_map::section::events::Events;
 use rosu_pp::{Beatmap, GameMods};
 use tracy_client::*;
 
@@ -265,17 +266,21 @@ pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
             || values.prev_menu_mode != values.menu_mode)
             && values.beatmap.paths.beatmap_full_path.exists()
         {
-            let current_beatmap = match Beatmap::from_path(&values.beatmap.paths.beatmap_full_path)
-            {
+            let mut file = File::open(&values.beatmap.paths.beatmap_full_path)?;
+            let mut beatmap_buff = Vec::new();
+            file.read_to_end(&mut beatmap_buff)?;
+
+            let events_section = rosu_map::from_bytes::<Events>(&beatmap_buff)?;
+
+            let current_beatmap = match Beatmap::from_bytes(&beatmap_buff) {
                 Ok(beatmap) => {
                     new_map = true;
 
-                    /*
-                    TODO bring back background
-                    values.beatmap.paths.background_file.clone_from(
-                        &beatmap.background.filename
-                    );
-                    */
+                    values
+                        .beatmap
+                        .paths
+                        .background_file
+                        .clone_from(&events_section.background_file);
 
                     if let Some(hobj) = beatmap.hit_objects.last() {
                         values.beatmap.last_obj_time = hobj.start_time;
