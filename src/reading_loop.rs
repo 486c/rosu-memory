@@ -98,12 +98,20 @@ pub fn process_gameplay(
     )?;
 
     // Safety: Already filled with zeros & bounds are correct
-    values.gameplay.hit_100 = i16::from_le_bytes(score_info_buff[0..2].try_into().unwrap());
-    values.gameplay.hit_300 = i16::from_le_bytes(score_info_buff[2..4].try_into().unwrap());
-    values.gameplay.hit_50 = i16::from_le_bytes(score_info_buff[4..6].try_into().unwrap());
-    values.gameplay.hit_geki = i16::from_le_bytes(score_info_buff[6..8].try_into().unwrap());
-    values.gameplay.hit_katu = i16::from_le_bytes(score_info_buff[8..10].try_into().unwrap());
-    values.gameplay.hit_miss = i16::from_le_bytes(score_info_buff[10..].try_into().unwrap());
+    unsafe {
+        values.gameplay.hit_100 =
+            i16::from_le_bytes(score_info_buff[0..2].try_into().unwrap_unchecked());
+        values.gameplay.hit_300 =
+            i16::from_le_bytes(score_info_buff[2..4].try_into().unwrap_unchecked());
+        values.gameplay.hit_50 =
+            i16::from_le_bytes(score_info_buff[4..6].try_into().unwrap_unchecked());
+        values.gameplay.hit_geki =
+            i16::from_le_bytes(score_info_buff[6..8].try_into().unwrap_unchecked());
+        values.gameplay.hit_katu =
+            i16::from_le_bytes(score_info_buff[8..10].try_into().unwrap_unchecked());
+        values.gameplay.hit_miss =
+            i16::from_le_bytes(score_info_buff[10..].try_into().unwrap_unchecked());
+    }
 
     values.gameplay.username = p.read_string_with_limit_from_ptr(score_base + 0x28, 30)?;
 
@@ -192,13 +200,19 @@ pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
             &mut beatmap_stats_buff,
         )?;
 
-        // Safety: unwrap here because buff is already initialized
+        // Safety: `buff` is already initialized
         // and filled with zeros, the worst case scenario is
         // ar, cs, od, hp going to be zero's
-        values.beatmap.ar = f32::from_le_bytes(beatmap_stats_buff[0..4].try_into().unwrap());
-        values.beatmap.cs = f32::from_le_bytes(beatmap_stats_buff[4..8].try_into().unwrap());
-        values.beatmap.hp = f32::from_le_bytes(beatmap_stats_buff[8..12].try_into().unwrap());
-        values.beatmap.od = f32::from_le_bytes(beatmap_stats_buff[12..].try_into().unwrap());
+        unsafe {
+            values.beatmap.ar =
+                f32::from_le_bytes(beatmap_stats_buff[0..4].try_into().unwrap_unchecked());
+            values.beatmap.cs =
+                f32::from_le_bytes(beatmap_stats_buff[4..8].try_into().unwrap_unchecked());
+            values.beatmap.hp =
+                f32::from_le_bytes(beatmap_stats_buff[8..12].try_into().unwrap_unchecked());
+            values.beatmap.od =
+                f32::from_le_bytes(beatmap_stats_buff[12..].try_into().unwrap_unchecked());
+        }
 
         let plays_addr = p.read_i32(state.addresses.base - 0x33)? + 0xC;
         values.plays = p.read_i32(plays_addr)?;
@@ -336,8 +350,8 @@ pub fn process_reading_loop(p: &Process, state: &mut State) -> Result<()> {
         values.result_screen.score = p.read_i32(result_base + 0x78)?;
 
         // TODO batch
-        values.result_screen.hit_300 = p.read_i16(result_base + 0x8A)?;
         values.result_screen.hit_100 = p.read_i16(result_base + 0x88)?;
+        values.result_screen.hit_300 = p.read_i16(result_base + 0x8A)?;
         values.result_screen.hit_50 = p.read_i16(result_base + 0x8C)?;
         values.result_screen.hit_geki = p.read_i16(result_base + 0x8E)?;
         values.result_screen.hit_katu = p.read_i16(result_base + 0x90)?;
