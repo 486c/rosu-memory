@@ -10,20 +10,20 @@ use crate::{
 };
 
 use self::smol_hyper::SmolIo;
-use smol::{prelude::*, Async};
+use smol::{Async, prelude::*};
 
 use async_tungstenite::{
-    tungstenite::{handshake::derive_accept_key, protocol::Role, Message},
     WebSocketStream,
+    tungstenite::{Message, handshake::derive_accept_key, protocol::Role},
 };
 
 use eyre::Result;
 use hyper::{
+    Request, Response, StatusCode,
     body::Bytes,
-    header::{HeaderValue, CONNECTION, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE},
+    header::{CONNECTION, HeaderValue, SEC_WEBSOCKET_ACCEPT, SEC_WEBSOCKET_KEY, UPGRADE},
     server::conn::http1,
     service::service_fn,
-    Request, Response, StatusCode,
 };
 
 pub async fn handle_clients(values: Arm<OutputValues>, clients: Clients) {

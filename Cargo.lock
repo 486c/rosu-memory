@@ -994,6 +994,7 @@ dependencies = [
  "http-body-util",
  "hyper",
  "pin-project-lite",
+ "rosu-map",
  "rosu-mem",
  "rosu-pp",
  "serde",
