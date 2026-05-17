@@ -143,6 +143,22 @@ pub fn process_gameplay(
     // Read key overlay
     process_key_overlay(p, values, ruleset_addr)?;
 
+    let base_player = p.read_i32(state.addresses.base - 51)?;
+
+    // Read pause
+    values.gameplay.is_paused = match p.read_u8(base_player + 33)? {
+        0 => false,
+        1 => true,
+        _ => todo!()
+    };
+
+    // Read failed
+    values.gameplay.is_failed = match p.read_u8(base_player + 28)? {
+        0 => false,
+        1 => true,
+        _ => todo!()
+    };
+
     values.gameplay.mods = (mods_xor1 ^ mods_xor2) as u32;
     values.update_readable_mods();
 

@@ -391,6 +391,9 @@ pub struct GameplayValues {
 
     pub passed_objects: usize,
 
+    pub is_paused: bool,
+    pub is_failed: bool,
+
     #[serde(default = "SS")]
     pub grade: &'static str,
     pub current_hp: f64,
